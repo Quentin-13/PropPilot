@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tail:*)",
+      "Bash(python3:*)",
+      "Bash(pip install fastapi uvicorn python-multipart --quiet 2>&1 | tail -3 && python3 -c \"import server; print\\('✅ server.py OK'\\)\" 2>&1)",
+      "Bash(pip3 install:*)",
+      "Bash(open:*)",
+      "Bash(cd:*)",
+      "Bash(head:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

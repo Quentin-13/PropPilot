@@ -1,0 +1,1 @@
+"""Synchronisation automatique PropPilot ↔ CRM."""

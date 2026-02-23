@@ -1,0 +1,91 @@
+version: "3.9"
+
+services:
+
+  # ─── API FastAPI (webhooks + back-office) ─────────────────────────────────
+  api:
+    build: .
+    container_name: proppilot_api
+    command: uvicorn server:app --host 0.0.0.0 --port 8000 --workers 2
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data          # Persistance SQLite
+      - ./data/images:/app/data/images
+    env_file:
+      - config/.env
+    environment:
+      - DATABASE_PATH=/app/data/agency.db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ─── Dashboard Streamlit ───────────────────────────────────────────────────
+  dashboard:
+    build: .
+    container_name: proppilot_dashboard
+    command: streamlit run dashboard/app.py --server.port 8501 --server.address 0.0.0.0 --server.headless true
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+      - ./data/images:/app/data/images
+    env_file:
+      - config/.env
+    environment:
+      - DATABASE_PATH=/app/data/agency.db
+    depends_on:
+      - api
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ─── Cron jobs (nurturing + appels voix) ──────────────────────────────────
+  cron:
+    build: .
+    container_name: proppilot_cron
+    command: >
+      sh -c "
+        while true; do
+          echo '[CRON] Traitement nurturing...' &&
+          python3 main.py process-nurturing &&
+          echo '[CRON] Pause 3600s...' &&
+          sleep 3600
+        done
+      "
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - config/.env
+    environment:
+      - DATABASE_PATH=/app/data/agency.db
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # ─── Sync CRM automatique (toutes les 15 min) ─────────────────────────────
+  sync:
+    build: .
+    container_name: proppilot_sync
+    command: python -m integrations.sync.scheduler
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - config/.env
+    environment:
+      - DATABASE_PATH=/app/data/agency.db
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  data:
+    driver: local
