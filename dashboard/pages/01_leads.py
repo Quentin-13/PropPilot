@@ -28,12 +28,20 @@ settings = get_settings()
 
 st.set_page_config(page_title="Leads — PropPilot", layout="wide", page_icon="👥")
 
+from dashboard.auth_ui import require_auth, render_sidebar_logout
+require_auth()
+render_sidebar_logout()
+
+client_id = st.session_state.get("user_id", settings.agency_client_id)
+tier = st.session_state.get("plan", settings.agency_tier)
+agency_name = st.session_state.get("agency_name", settings.agency_name)
+
 st.title("👥 Pipeline Leads")
-st.markdown(f"**{settings.agency_name}** · Forfait {settings.agency_tier}")
+st.markdown(f"**{agency_name}** · Forfait {tier}")
 
 # ─── KPIs Pipeline ──────────────────────────────────────────────────────────
 
-stats = get_pipeline_stats(settings.agency_client_id)
+stats = get_pipeline_stats(client_id)
 
 col1, col2, col3, col4, col5 = st.columns(5)
 with col1:
@@ -81,7 +89,7 @@ with col_f4:
 # ─── Chargement leads ────────────────────────────────────────────────────────
 
 leads = get_leads_by_client(
-    client_id=settings.agency_client_id,
+    client_id=client_id,
     statut=filter_statut if filter_statut != "Tous" else None,
     score_min=filter_score_min if filter_score_min > 0 else None,
     limit=200,
@@ -179,7 +187,7 @@ else:
                         twilio = TwilioTool()
                         result = twilio.send_sms(
                             to=selected_lead.telephone,
-                            body=f"Bonjour {selected_lead.prenom} ! Votre conseiller {settings.agency_name} souhaite vous rappeler. Êtes-vous disponible maintenant ?",
+                            body=f"Bonjour {selected_lead.prenom} ! Votre conseiller {agency_name} souhaite vous rappeler. Êtes-vous disponible maintenant ?",
                         )
                         if result["success"]:
                             st.success(f"SMS {'(mock)' if result.get('mock') else ''} envoyé !")
@@ -249,12 +257,12 @@ with st.expander("➕ Ajouter un lead manuellement"):
                 from memory.models import Lead, ProjetType
                 from memory.usage_tracker import check_and_consume
 
-                usage_ok = check_and_consume(settings.agency_client_id, "lead", tier=settings.agency_tier)
+                usage_ok = check_and_consume(client_id, "lead", tier=tier)
                 if not usage_ok["allowed"]:
                     st.error(usage_ok["message"])
                 else:
                     new_lead = Lead(
-                        client_id=settings.agency_client_id,
+                        client_id=client_id,
                         prenom=m_prenom,
                         nom=m_nom,
                         telephone=m_tel,

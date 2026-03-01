@@ -22,8 +22,16 @@ settings = get_settings()
 
 st.set_page_config(page_title="Annonces — PropPilot", layout="wide", page_icon="🏠")
 
+from dashboard.auth_ui import require_auth, render_sidebar_logout
+require_auth()
+render_sidebar_logout()
+
+client_id = st.session_state.get("user_id", client_id)
+tier = st.session_state.get("plan", tier)
+agency_name = st.session_state.get("agency_name", settings.agency_name)
+
 st.title("🏠 Annonces & Staging Virtuel")
-st.markdown(f"**{settings.agency_name}** · Forfait {settings.agency_tier}")
+st.markdown(f"**{agency_name}** · Forfait {tier}")
 
 # ─── KPIs annonces ────────────────────────────────────────────────────────────
 
@@ -34,7 +42,7 @@ with get_connection() as conn:
                   COALESCE(AVG(prix), 0) as prix_moyen,
                   COALESCE(SUM(surface), 0) as surface_totale
            FROM listings WHERE client_id = ?""",
-        (settings.agency_client_id,),
+        (client_id,),
     ).fetchone()
     nb_listings = stats["total"] if stats else 0
     nb_avec_images = stats["avec_images"] if stats else 0
@@ -110,8 +118,8 @@ with tab_gen:
         else:
             with st.spinner("Génération de l'annonce en cours..."):
                 agent = ListingGeneratorAgent(
-                    client_id=settings.agency_client_id,
-                    tier=settings.agency_tier,
+                    client_id=client_id,
+                    tier=tier,
                 )
                 result = agent.generate(
                     type_bien=type_bien,
@@ -238,8 +246,8 @@ with tab_staging:
     from tools.dalle_tool import STAGING_STYLES
 
     staging_agent = VirtualStagingAgent(
-        client_id=settings.agency_client_id,
-        tier=settings.agency_tier,
+        client_id=client_id,
+        tier=tier,
     )
 
     with st.form("staging_form"):
@@ -373,7 +381,7 @@ with tab_history:
                WHERE client_id = ?
                ORDER BY created_at DESC
                LIMIT 100""",
-            (settings.agency_client_id,),
+            (client_id,),
         ).fetchall()
 
     if not rows:
@@ -479,8 +487,8 @@ with tab_history:
                             with st.spinner("Génération du staging..."):
                                 from agents.virtual_staging import VirtualStagingAgent
                                 sa = VirtualStagingAgent(
-                                    client_id=settings.agency_client_id,
-                                    tier=settings.agency_tier,
+                                    client_id=client_id,
+                                    tier=tier,
                                 )
                                 sr = sa.stage_property(property_description=desc, style="contemporain", nb_images=1, rooms=["sejour"])
                             if sr.get("success"):

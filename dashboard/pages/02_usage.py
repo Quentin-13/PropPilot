@@ -23,12 +23,20 @@ settings = get_settings()
 
 st.set_page_config(page_title="Usage — PropPilot", layout="wide", page_icon="📊")
 
+from dashboard.auth_ui import require_auth, render_sidebar_logout
+require_auth()
+render_sidebar_logout()
+
+client_id = st.session_state.get("user_id", settings.agency_client_id)
+tier = st.session_state.get("plan", tier)
+agency_name = st.session_state.get("agency_name", settings.agency_name)
+
 st.title("📊 Utilisation mensuelle")
-st.markdown(f"**{settings.agency_name}** · Forfait **{settings.agency_tier}** · {datetime.now().strftime('%B %Y')}")
+st.markdown(f"**{agency_name}** · Forfait **{tier}** · {datetime.now().strftime('%B %Y')}")
 
 # ─── Usage data ────────────────────────────────────────────────────────────
 
-usage = get_usage_summary(settings.agency_client_id, settings.agency_tier)
+usage = get_usage_summary(client_id, tier)
 
 # ─── Alertes globales ──────────────────────────────────────────────────────
 
@@ -174,7 +182,7 @@ st.markdown("---")
 # ─── Détail par fonctionnalité ─────────────────────────────────────────────
 
 with st.expander("📋 Détail complet de l'utilisation"):
-    tier_limits = TIERS[settings.agency_tier]
+    tier_limits = TIERS[tier]
 
     detail_data = [
         {
@@ -232,9 +240,9 @@ st.markdown("### Votre forfait actuel")
 tier_col1, tier_col2, tier_col3 = st.columns(3)
 
 tiers_display = {
-    "Starter": {"prix": "790€/mois", "leads": "300 leads", "voix": "160 min", "highlight": settings.agency_tier == "Starter"},
-    "Pro": {"prix": "1 490€/mois", "leads": "800 leads", "voix": "550 min", "highlight": settings.agency_tier == "Pro"},
-    "Elite": {"prix": "2 990€/mois", "leads": "Illimité", "voix": "Illimité", "highlight": settings.agency_tier == "Elite"},
+    "Starter": {"prix": "790€/mois", "leads": "300 leads", "voix": "160 min", "highlight": tier == "Starter"},
+    "Pro": {"prix": "1 490€/mois", "leads": "800 leads", "voix": "550 min", "highlight": tier == "Pro"},
+    "Elite": {"prix": "2 990€/mois", "leads": "Illimité", "voix": "Illimité", "highlight": tier == "Elite"},
 }
 
 for col, (tier_name, info) in zip([tier_col1, tier_col2, tier_col3], tiers_display.items()):
@@ -255,7 +263,7 @@ for col, (tier_name, info) in zip([tier_col1, tier_col2, tier_col3], tiers_displ
         """, unsafe_allow_html=True)
 
 # Gain concret si pas Elite
-if settings.agency_tier == "Starter":
+if tier == "Starter":
     st.info("💡 **Passer Pro** → 800 leads/mois au lieu de 300, 550 min voix au lieu de 160. Contactez-nous : upgrade@proppilot.fr")
-elif settings.agency_tier == "Pro":
+elif tier == "Pro":
     st.info("💡 **Passer Elite** → Leads illimités, voix illimitée, white-label, Slack dédié. Contactez-nous : upgrade@proppilot.fr")

@@ -1,13 +1,12 @@
 """
 Dashboard Streamlit — Point d'entrée principal.
-Initialise la DB, configure le thème, affiche la navigation.
+Initialise la DB, vérifie l'auth, configure le thème, affiche la navigation.
 """
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
-# Ensure project root on path
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
@@ -22,7 +21,7 @@ settings = get_settings()
 
 # ─── Configuration Streamlit ───────────────────────────────────────────────────
 st.set_page_config(
-    page_title=f"PropPilot — {settings.agency_name}",
+    page_title="PropPilot",
     page_icon="🏠",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -77,22 +76,22 @@ div[data-testid="metric-container"] {
 </style>
 """, unsafe_allow_html=True)
 
-# ─── Sidebar ──────────────────────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown(f"""
-    <div style="padding: 8px 0 20px 0;">
-        <div style="font-size: 24px;">🏠</div>
-        <div style="font-size: 18px; font-weight: 700; color: white;">{settings.agency_name}</div>
-        <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">Forfait {settings.agency_tier}</div>
-    </div>
-    """, unsafe_allow_html=True)
+# ─── Auth ──────────────────────────────────────────────────────────────────────
+from dashboard.auth_ui import render_sidebar_logout, require_auth
 
-    st.markdown("---")
-    st.markdown("<div style='color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;'>Navigation</div>", unsafe_allow_html=True)
+require_auth()
+
+# ─── Sidebar ──────────────────────────────────────────────────────────────────
+render_sidebar_logout()
+
+# ─── Données de session ────────────────────────────────────────────────────────
+client_id = st.session_state.get("user_id", settings.agency_client_id)
+tier = st.session_state.get("plan", settings.agency_tier)
+agency_name = st.session_state.get("agency_name", settings.agency_name)
 
 # ─── Page d'accueil ───────────────────────────────────────────────────────────
-st.title(f"🏠 PropPilot — {settings.agency_name}")
-st.markdown(f"**Forfait {settings.agency_tier}** · Bienvenue dans votre tableau de bord")
+st.title(f"🏠 PropPilot — {agency_name}")
+st.markdown(f"**Forfait {tier}** · Bienvenue dans votre tableau de bord")
 
 st.markdown("---")
 
@@ -102,8 +101,8 @@ from memory.usage_tracker import get_usage_summary
 from datetime import datetime
 
 col1, col2, col3, col4 = st.columns(4)
-stats = get_pipeline_stats(settings.agency_client_id)
-usage = get_usage_summary(settings.agency_client_id, settings.agency_tier)
+stats = get_pipeline_stats(client_id)
+usage = get_usage_summary(client_id, tier)
 
 with col1:
     total_leads = stats.get("total", 0)
@@ -173,7 +172,7 @@ with t_col3:
 st.markdown("---")
 st.markdown(
     f"<div style='text-align: center; color: #888; font-size: 12px;'>"
-    f"PropPilot · Forfait {settings.agency_tier} · "
+    f"PropPilot · Forfait {tier} · "
     f"<a href='mailto:hello@proppilot.fr'>hello@proppilot.fr</a>"
     f"</div>",
     unsafe_allow_html=True,

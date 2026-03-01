@@ -21,13 +21,21 @@ settings = get_settings()
 
 st.set_page_config(page_title="Appels — PropPilot", layout="wide", page_icon="📞")
 
+from dashboard.auth_ui import require_auth, render_sidebar_logout
+require_auth()
+render_sidebar_logout()
+
+client_id = st.session_state.get("user_id", settings.agency_client_id)
+tier = st.session_state.get("plan", settings.agency_tier)
+agency_name = st.session_state.get("agency_name", settings.agency_name)
+
 st.title("📞 Historique des Appels Voix IA")
-st.markdown(f"**{settings.agency_name}** · Forfait {settings.agency_tier}")
+st.markdown(f"**{agency_name}** · Forfait {tier}")
 
 # ─── KPIs appels ──────────────────────────────────────────────────────────────
 
 from agents.voice_call import VoiceCallAgent
-agent = VoiceCallAgent(client_id=settings.agency_client_id, tier=settings.agency_tier)
+agent = VoiceCallAgent(client_id=client_id, tier=tier)
 
 # Appels depuis Retell (mock ou réel)
 calls = agent.get_calls_history(limit=50)
@@ -59,7 +67,7 @@ with st.expander("📱 Lancer un appel sortant vers un lead chaud"):
     from memory.lead_repository import get_leads_by_client
 
     hot_leads = get_leads_by_client(
-        client_id=settings.agency_client_id,
+        client_id=client_id,
         statut="qualifie",
         score_min=7,
         limit=20,
@@ -233,7 +241,7 @@ with st.expander("🔍 Analyser un dossier pour anomalies"):
 
         submitted = st.form_submit_button("🔍 Analyser", type="primary")
         if submitted:
-            detector = AnomalyDetectorAgent(client_id=settings.agency_client_id, tier=settings.agency_tier)
+            detector = AnomalyDetectorAgent(client_id=client_id, tier=tier)
             dossier = {
                 "projet": a_projet,
                 "budget": a_budget,

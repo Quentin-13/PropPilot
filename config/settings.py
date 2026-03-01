@@ -66,6 +66,9 @@ class Settings(BaseSettings):
     agency_commission_rate: float = Field(default=0.05, alias="AGENCY_COMMISSION_RATE")
     agency_average_price: float = Field(default=280000.0, alias="AGENCY_AVERAGE_PRICE")
 
+    # URL de l'API FastAPI (pour le dashboard)
+    api_url: str = Field(default="http://localhost:8000", alias="API_URL")
+
     # Admin
     admin_password: str = Field(default="changeme", alias="ADMIN_PASSWORD")
 

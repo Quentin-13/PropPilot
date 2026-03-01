@@ -23,6 +23,14 @@ settings = get_settings()
 
 st.set_page_config(page_title="Admin — PropPilot", layout="wide", page_icon="🔐")
 
+from dashboard.auth_ui import require_auth, render_sidebar_logout
+require_auth()
+render_sidebar_logout()
+
+client_id = st.session_state.get("user_id", settings.agency_client_id)
+tier = st.session_state.get("plan", settings.agency_tier)
+agency_name = st.session_state.get("agency_name", settings.agency_name)
+
 # ─── Authentification ─────────────────────────────────────────────────────────
 
 ADMIN_PASSWORD = getattr(settings, "admin_password", None) or "admin2026"
@@ -206,7 +214,7 @@ with st.expander("🔄 Synchronisation CRM Apimo"):
         apimo = ApimoClient()
 
         with st.spinner("Synchronisation en cours..."):
-            result = apimo.sync_all_qualified_leads(settings.agency_client_id)
+            result = apimo.sync_all_qualified_leads(client_id)
 
         col_a1, col_a2, col_a3 = st.columns(3)
         with col_a1:

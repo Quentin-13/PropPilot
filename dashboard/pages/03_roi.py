@@ -21,8 +21,16 @@ settings = get_settings()
 
 st.set_page_config(page_title="ROI — PropPilot", layout="wide", page_icon="💰")
 
+from dashboard.auth_ui import require_auth, render_sidebar_logout
+require_auth()
+render_sidebar_logout()
+
+client_id = st.session_state.get("user_id", client_id)
+tier = st.session_state.get("plan", tier)
+agency_name = st.session_state.get("agency_name", settings.agency_name)
+
 st.title("💰 ROI & Performance")
-st.markdown(f"**{settings.agency_name}** · Forfait {settings.agency_tier}")
+st.markdown(f"**{agency_name}** · Forfait {tier}")
 
 # ─── Période ─────────────────────────────────────────────────────────────────
 col_period, _ = st.columns([1, 3])
@@ -37,7 +45,7 @@ with col_period:
     )
 
 # ─── Données pipeline ─────────────────────────────────────────────────────────
-stats = get_pipeline_stats(settings.agency_client_id, month=month_str)
+stats = get_pipeline_stats(client_id, month=month_str)
 from memory.database import get_connection
 
 # Calcul revenus estimés
@@ -154,7 +162,7 @@ st.markdown("---")
 st.markdown("### Évolution vs mois précédent")
 
 prev_month = (datetime.now() - timedelta(days=30)).strftime("%Y-%m")
-prev_stats = get_pipeline_stats(settings.agency_client_id, month=prev_month)
+prev_stats = get_pipeline_stats(client_id, month=prev_month)
 
 prev_rdv = prev_stats.get("rdv_count", 0)
 prev_mandats = prev_stats.get("mandat_count", 0)
@@ -188,7 +196,7 @@ with comp_col3:
 
 # ─── ROI calculé ──────────────────────────────────────────────────────────────
 from config.tier_limits import TIERS
-tier_price = TIERS[settings.agency_tier].prix_mensuel
+tier_price = TIERS[tier].prix_mensuel
 
 st.markdown("---")
 st.markdown("### Calcul ROI")

@@ -20,8 +20,16 @@ settings = get_settings()
 
 st.set_page_config(page_title="Configuration — PropPilot", layout="wide", page_icon="⚙️")
 
+from dashboard.auth_ui import require_auth, render_sidebar_logout
+require_auth()
+render_sidebar_logout()
+
+client_id = st.session_state.get("user_id", client_id)
+tier = st.session_state.get("plan", tier)
+agency_name = st.session_state.get("agency_name", agency_name)
+
 st.title("⚙️ Configuration de votre PropPilot")
-st.markdown(f"**{settings.agency_name}** · Forfait {settings.agency_tier}")
+st.markdown(f"**{agency_name}** · Forfait {tier}")
 
 # ─── Wizard steps ─────────────────────────────────────────────────────────────
 
@@ -57,7 +65,7 @@ if st.session_state.wizard_step == 1:
     st.markdown("## Étape 1 — Identité de votre agence")
 
     with st.form("step1_form"):
-        agency_name = st.text_input("Nom de l'agence *", value=settings.agency_name)
+        agency_name = st.text_input("Nom de l'agence *", value=agency_name)
         col_a, col_b = st.columns(2)
         with col_a:
             commission_rate = st.number_input(
@@ -152,7 +160,7 @@ elif st.session_state.wizard_step == 2:
         if test_number:
             result = twilio.send_sms(
                 to=test_number,
-                body=f"🏠 Bonjour ! Votre agence IA {settings.agency_name} est bien configurée. Ce message confirme que les SMS fonctionnent.",
+                body=f"🏠 Bonjour ! Votre agence IA {agency_name} est bien configurée. Ce message confirme que les SMS fonctionnent.",
             )
             if result["success"]:
                 mock_txt = " (mode démo)" if result.get("mock") else ""
@@ -221,7 +229,7 @@ elif st.session_state.wizard_step == 3:
 elif st.session_state.wizard_step == 4:
     st.markdown("## Étape 4 — Forfait & Facturation")
 
-    current_tier = settings.agency_tier
+    current_tier = tier
     tier_prices = {"Starter": 790, "Pro": 1490, "Elite": 2990}
 
     col_s1, col_s2, col_s3 = st.columns(3)
@@ -304,8 +312,8 @@ elif st.session_state.wizard_step == 5:
                 result = process_incoming_message(
                     telephone=test_phone,
                     message=test_message,
-                    client_id=settings.agency_client_id,
-                    tier=settings.agency_tier,
+                    client_id=client_id,
+                    tier=tier,
                     canal="sms",
                     prenom=test_prenom,
                 )
@@ -373,7 +381,7 @@ if selected_crm == "csv":
                         content = uploaded_file.read().decode("utf-8", errors="replace")
                         leads, count, errors = parse_csv_leads(
                             file_content=content,
-                            client_id=settings.agency_client_id,
+                            client_id=client_id,
                             source_name=uploaded_file.name,
                         )
                         from memory.lead_repository import create_lead
@@ -463,7 +471,7 @@ else:
             try:
                 from integrations.crm.repository import save_crm_connection
                 save_crm_connection(
-                    client_id=settings.agency_client_id,
+                    client_id=client_id,
                     crm_type=selected_crm,
                     api_key=api_key_input,
                     agency_id_crm=agency_id_input or "",
@@ -475,7 +483,7 @@ else:
     # ── Statut sync actuelle ──
     try:
         from integrations.crm.repository import get_crm_connection
-        conn_data = get_crm_connection(settings.agency_client_id, selected_crm)
+        conn_data = get_crm_connection(client_id, selected_crm)
         if conn_data:
             col_stat1, col_stat2, col_stat3 = st.columns(3)
             with col_stat1:
@@ -512,7 +520,7 @@ st.info(
 
 try:
     from integrations.crm.repository import get_crm_connection, save_crm_connection
-    conn_data = get_crm_connection(settings.agency_client_id, selected_crm)
+    conn_data = get_crm_connection(client_id, selected_crm)
     if conn_data:
         col_tog1, col_tog2, col_tog3 = st.columns(3)
         with col_tog1:
@@ -537,7 +545,7 @@ try:
         if st.button("💾 Sauvegarder les préférences de sync", key="save_sync_prefs"):
             try:
                 save_crm_connection(
-                    client_id=settings.agency_client_id,
+                    client_id=client_id,
                     crm_type=selected_crm,
                     api_key=conn_data.get("api_key", ""),
                     agency_id_crm=conn_data.get("agency_id_crm", ""),
@@ -556,9 +564,9 @@ except Exception:
 st.markdown("---")
 with st.expander("🔧 Configuration actuelle (lecture seule)"):
     config_display = {
-        "Agence": settings.agency_name,
-        "Tier": settings.agency_tier,
-        "Client ID": settings.agency_client_id,
+        "Agence": agency_name,
+        "Tier": tier,
+        "Client ID": client_id,
         "Modèle Claude": settings.claude_model,
         "Twilio disponible": "✅ Oui" if settings.twilio_available else "⚠️ Mode mock",
         "Anthropic disponible": "✅ Oui" if settings.anthropic_available else "⚠️ Mode mock",

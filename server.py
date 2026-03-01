@@ -142,11 +142,23 @@ async def auth_signup(body: _SignupRequest):
 
 @app.post("/auth/login", tags=["auth"])
 async def auth_login(body: _LoginRequest):
-    """Authentifie un utilisateur et retourne un JWT Bearer token."""
+    """Authentifie un utilisateur et retourne un JWT Bearer token + infos compte."""
     from memory.auth import login
+    from memory.database import get_connection
     try:
         token = login(body.email, body.password)
-        return JSONResponse({"access_token": token, "token_type": "bearer"})
+        with get_connection() as conn:
+            row = conn.execute(
+                "SELECT id, agency_name, plan FROM users WHERE email = ?",
+                (body.email,),
+            ).fetchone()
+        return JSONResponse({
+            "access_token": token,
+            "token_type": "bearer",
+            "user_id": row["id"] if row else "",
+            "agency_name": row["agency_name"] if row else "",
+            "plan": row["plan"] if row else "Starter",
+        })
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
 
