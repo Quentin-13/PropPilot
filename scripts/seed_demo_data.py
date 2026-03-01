@@ -297,11 +297,12 @@ def seed_listings(client_id: str):
     with get_connection() as conn:
         for listing in listings:
             conn.execute(
-                """INSERT OR IGNORE INTO listings
+                """INSERT INTO listings
                    (id, lead_id, client_id, type_bien, adresse, surface, nb_pieces, prix, dpe,
                     titre, description_longue, description_courte, points_forts, mentions_legales,
                     mots_cles_seo, images_urls)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                   ON CONFLICT (id) DO NOTHING""",
                 tuple(listing.values()),
             )
 
@@ -348,12 +349,13 @@ def seed_estimations(client_id: str):
     with get_connection() as conn:
         for est in estimations:
             conn.execute(
-                """INSERT OR IGNORE INTO estimations
+                """INSERT INTO estimations
                    (id, lead_id, client_id, adresse, surface, type_bien,
                     prix_estime_bas, prix_estime_central, prix_estime_haut, prix_m2_net,
                     loyer_mensuel_estime, rentabilite_brute, delai_vente_estime_semaines,
                     justification, mention_legale)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                   ON CONFLICT (id) DO NOTHING""",
                 tuple(est.values()),
             )
 

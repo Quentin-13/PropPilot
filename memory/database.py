@@ -1,32 +1,68 @@
 """
-Initialisation SQLite, migrations, connexion.
-PostgreSQL-ready : remplacer sqlite3 par psycopg2 + adapter les placeholders.
+Initialisation PostgreSQL, migrations, connexion.
+Utilise psycopg2 avec un wrapper compatible avec l'interface sqlite3 existante
+(conn.execute(), placeholders ?, row_factory dict-like).
 """
 from __future__ import annotations
 
-import sqlite3
 from contextlib import contextmanager
-from datetime import datetime
-from pathlib import Path
 from typing import Generator
+
+import psycopg2
+import psycopg2.extras
 
 from config.settings import get_settings
 
 
-def get_db_path() -> Path:
-    settings = get_settings()
-    settings.ensure_data_dir()
-    return Path(settings.database_path)
+# ─── Wrapper de compatibilité ─────────────────────────────────────────────────
 
+class _PgConnection:
+    """
+    Wraps a psycopg2 connection + DictCursor pour imiter l'interface sqlite3 :
+      - conn.execute(sql, params) → retourne un curseur fetchable
+      - conn.executescript(sql)   → exécute plusieurs instructions DDL
+      - Conversion automatique des placeholders ? → %s
+    """
+
+    def __init__(self, conn: psycopg2.extensions.connection) -> None:
+        self._conn = conn
+        self._cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    def execute(self, sql: str, params=None):
+        sql = sql.replace("?", "%s")
+        if params is not None:
+            self._cur.execute(sql, params)
+        else:
+            self._cur.execute(sql)
+        return self._cur
+
+    def executescript(self, sql: str) -> None:
+        """Exécute un script SQL multi-instructions (DDL uniquement)."""
+        for stmt in sql.split(";"):
+            stmt = stmt.strip()
+            if stmt:
+                self._cur.execute(stmt)
+
+    def commit(self) -> None:
+        self._conn.commit()
+
+    def rollback(self) -> None:
+        self._conn.rollback()
+
+    def close(self) -> None:
+        self._cur.close()
+        self._conn.close()
+
+
+# ─── Connexion ────────────────────────────────────────────────────────────────
 
 @contextmanager
-def get_connection() -> Generator[sqlite3.Connection, None, None]:
-    """Context manager pour connexion SQLite avec row_factory dict-like."""
-    db_path = get_db_path()
-    conn = sqlite3.connect(str(db_path))
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA foreign_keys=ON")
+def get_connection() -> Generator[_PgConnection, None, None]:
+    """Context manager — connexion PostgreSQL avec interface sqlite3-compatible."""
+    settings = get_settings()
+    raw_conn = psycopg2.connect(settings.database_url)
+    raw_conn.autocommit = False
+    conn = _PgConnection(raw_conn)
     try:
         yield conn
         conn.commit()
@@ -37,8 +73,21 @@ def get_connection() -> Generator[sqlite3.Connection, None, None]:
         conn.close()
 
 
+# ─── Schéma ───────────────────────────────────────────────────────────────────
+
 SCHEMA = """
--- Leads
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    agency_name TEXT DEFAULT '',
+    plan TEXT DEFAULT 'Starter' CHECK (plan IN ('Starter', 'Pro', 'Elite')),
+    plan_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
 CREATE TABLE IF NOT EXISTS leads (
     id TEXT PRIMARY KEY,
     client_id TEXT NOT NULL,
@@ -69,7 +118,6 @@ CREATE TABLE IF NOT EXISTS leads (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Conversations
 CREATE TABLE IF NOT EXISTS conversations (
     id TEXT PRIMARY KEY,
     lead_id TEXT NOT NULL,
@@ -82,9 +130,8 @@ CREATE TABLE IF NOT EXISTS conversations (
     FOREIGN KEY (lead_id) REFERENCES leads(id)
 );
 
--- Usage tracking (jamais exposé avec coûts côté client)
 CREATE TABLE IF NOT EXISTS usage_tracking (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     client_id TEXT NOT NULL,
     month TEXT NOT NULL,
     leads_count INTEGER DEFAULT 0,
@@ -101,9 +148,8 @@ CREATE TABLE IF NOT EXISTS usage_tracking (
     UNIQUE(client_id, month)
 );
 
--- Logs API (back-office admin uniquement — JAMAIS exposé au client)
 CREATE TABLE IF NOT EXISTS api_actions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     client_id TEXT NOT NULL,
     action_type TEXT NOT NULL,
     provider TEXT DEFAULT '',
@@ -117,7 +163,6 @@ CREATE TABLE IF NOT EXISTS api_actions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Appels
 CREATE TABLE IF NOT EXISTS calls (
     id TEXT PRIMARY KEY,
     lead_id TEXT NOT NULL,
@@ -135,7 +180,6 @@ CREATE TABLE IF NOT EXISTS calls (
     FOREIGN KEY (lead_id) REFERENCES leads(id)
 );
 
--- Annonces générées
 CREATE TABLE IF NOT EXISTS listings (
     id TEXT PRIMARY KEY,
     lead_id TEXT DEFAULT '',
@@ -156,7 +200,6 @@ CREATE TABLE IF NOT EXISTS listings (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Estimations
 CREATE TABLE IF NOT EXISTS estimations (
     id TEXT PRIMARY KEY,
     lead_id TEXT DEFAULT '',
@@ -176,9 +219,8 @@ CREATE TABLE IF NOT EXISTS estimations (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Métriques ROI (calculées et mises en cache)
 CREATE TABLE IF NOT EXISTS roi_metrics (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     client_id TEXT NOT NULL,
     month TEXT NOT NULL,
     rdv_count INTEGER DEFAULT 0,
@@ -196,9 +238,8 @@ CREATE TABLE IF NOT EXISTS roi_metrics (
     UNIQUE(client_id, month)
 );
 
--- CRM Connections (config par client PropPilot)
 CREATE TABLE IF NOT EXISTS crm_connections (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     client_id TEXT NOT NULL,
     crm_type TEXT NOT NULL,
     api_key TEXT DEFAULT '',
@@ -213,7 +254,6 @@ CREATE TABLE IF NOT EXISTS crm_connections (
     UNIQUE(client_id, crm_type)
 );
 
--- Indexes
 CREATE INDEX IF NOT EXISTS idx_leads_client ON leads(client_id);
 CREATE INDEX IF NOT EXISTS idx_leads_statut ON leads(statut);
 CREATE INDEX IF NOT EXISTS idx_leads_score ON leads(score);
@@ -222,21 +262,28 @@ CREATE INDEX IF NOT EXISTS idx_conversations_lead ON conversations(lead_id);
 CREATE INDEX IF NOT EXISTS idx_usage_client_month ON usage_tracking(client_id, month);
 CREATE INDEX IF NOT EXISTS idx_api_actions_client ON api_actions(client_id);
 CREATE INDEX IF NOT EXISTS idx_calls_lead ON calls(lead_id);
-CREATE INDEX IF NOT EXISTS idx_crm_connections_client ON crm_connections(client_id);
+CREATE INDEX IF NOT EXISTS idx_crm_connections_client ON crm_connections(client_id)
 """
 
+
+# ─── Init / Reset ─────────────────────────────────────────────────────────────
 
 def init_database() -> None:
     """Initialise la base de données avec le schéma complet."""
     with get_connection() as conn:
         conn.executescript(SCHEMA)
-    print(f"✅ Base de données initialisée : {get_db_path()}")
+    settings = get_settings()
+    print(f"✅ Base de données PostgreSQL initialisée : {settings.database_url}")
 
 
 def reset_database() -> None:
     """Remet à zéro la base de données (usage dev/démo uniquement)."""
-    db_path = get_db_path()
-    if db_path.exists():
-        db_path.unlink()
+    tables = [
+        "api_actions", "conversations", "calls", "listings", "estimations",
+        "roi_metrics", "crm_connections", "usage_tracking", "leads", "users",
+    ]
+    with get_connection() as conn:
+        for table in tables:
+            conn.execute(f"DROP TABLE IF EXISTS {table} CASCADE")
     init_database()
     print("✅ Base de données réinitialisée.")

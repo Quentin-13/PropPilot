@@ -11,8 +11,17 @@ from memory.database import get_connection
 from memory.models import Canal, Conversation, Lead, LeadStatus, NurturingSequence, ProjetType
 
 
+def _parse_dt(val) -> Optional[datetime]:
+    """Convertit une valeur timestamp (datetime ou str) en datetime, ou None."""
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        return val
+    return datetime.fromisoformat(str(val))
+
+
 def _row_to_lead(row: dict) -> Lead:
-    """Convertit une ligne SQLite en Lead dataclass."""
+    """Convertit une ligne DB en Lead dataclass."""
     return Lead(
         id=row["id"],
         client_id=row["client_id"],
@@ -34,13 +43,13 @@ def _row_to_lead(row: dict) -> Lead:
         statut=LeadStatus(row.get("statut", "entrant")),
         nurturing_sequence=NurturingSequence(row["nurturing_sequence"]) if row.get("nurturing_sequence") else None,
         nurturing_step=row.get("nurturing_step", 0),
-        prochain_followup=datetime.fromisoformat(row["prochain_followup"]) if row.get("prochain_followup") else None,
-        rdv_date=datetime.fromisoformat(row["rdv_date"]) if row.get("rdv_date") else None,
-        mandat_date=datetime.fromisoformat(row["mandat_date"]) if row.get("mandat_date") else None,
+        prochain_followup=_parse_dt(row.get("prochain_followup")),
+        rdv_date=_parse_dt(row.get("rdv_date")),
+        mandat_date=_parse_dt(row.get("mandat_date")),
         resume=row.get("resume", ""),
         notes_agent=row.get("notes_agent", ""),
-        created_at=datetime.fromisoformat(row["created_at"]) if row.get("created_at") else datetime.now(),
-        updated_at=datetime.fromisoformat(row["updated_at"]) if row.get("updated_at") else datetime.now(),
+        created_at=_parse_dt(row.get("created_at")) or datetime.now(),
+        updated_at=_parse_dt(row.get("updated_at")) or datetime.now(),
     )
 
 
@@ -216,7 +225,7 @@ def get_conversation_history(lead_id: str, limit: int = 50) -> list[Conversation
                 role=d["role"],
                 contenu=d["contenu"],
                 metadata=json.loads(d.get("metadata", "{}")),
-                created_at=datetime.fromisoformat(d["created_at"]),
+                created_at=_parse_dt(d.get("created_at")) or datetime.now(),
             )
         )
     return result
@@ -237,7 +246,7 @@ def get_pipeline_stats(client_id: str, month: Optional[str] = None) -> dict:
             count = conn.execute(
                 """SELECT COUNT(*) FROM leads
                    WHERE client_id = ? AND statut = ?
-                   AND strftime('%Y-%m', created_at) = ?""",
+                   AND TO_CHAR(created_at, 'YYYY-MM') = ?""",
                 (client_id, statut.value, month),
             ).fetchone()[0]
             stats[statut.value] = count
@@ -246,7 +255,7 @@ def get_pipeline_stats(client_id: str, month: Optional[str] = None) -> dict:
         rdv_count = conn.execute(
             """SELECT COUNT(*) FROM leads
                WHERE client_id = ? AND rdv_date IS NOT NULL
-               AND strftime('%Y-%m', rdv_date) = ?""",
+               AND TO_CHAR(rdv_date, 'YYYY-MM') = ?""",
             (client_id, month),
         ).fetchone()[0]
 
@@ -254,7 +263,7 @@ def get_pipeline_stats(client_id: str, month: Optional[str] = None) -> dict:
         mandat_count = conn.execute(
             """SELECT COUNT(*) FROM leads
                WHERE client_id = ? AND statut IN ('mandat', 'vendu')
-               AND strftime('%Y-%m', created_at) = ?""",
+               AND TO_CHAR(created_at, 'YYYY-MM') = ?""",
             (client_id, month),
         ).fetchone()[0]
 

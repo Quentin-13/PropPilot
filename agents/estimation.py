@@ -461,12 +461,13 @@ class EstimationAgent:
     ) -> None:
         with get_connection() as conn:
             conn.execute(
-                """INSERT OR IGNORE INTO estimations
+                """INSERT INTO estimations
                    (id, lead_id, client_id, adresse, surface, type_bien,
                     prix_estime_bas, prix_estime_central, prix_estime_haut, prix_m2_net,
                     loyer_mensuel_estime, rentabilite_brute, delai_vente_estime_semaines,
                     justification, mention_legale)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                   ON CONFLICT (id) DO NOTHING""",
                 (
                     estimation_id, lead_id, self.client_id, adresse, surface, type_bien,
                     data.get("prix_estime_bas", 0),

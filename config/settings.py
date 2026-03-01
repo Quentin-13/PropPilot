@@ -52,6 +52,12 @@ class Settings(BaseSettings):
 
     # Base de données
     database_path: str = Field(default="./data/agency.db", alias="DATABASE_PATH")
+    database_url: str = Field(default="postgresql://localhost/proppilot", alias="DATABASE_URL")
+
+    # JWT
+    jwt_secret_key: str = Field(default="change-this-secret-in-production", alias="JWT_SECRET_KEY")
+    jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
+    jwt_expire_hours: int = Field(default=24, alias="JWT_EXPIRE_HOURS")
 
     # Configuration Agence
     agency_name: str = Field(default="Mon Agence PropPilot", alias="AGENCY_NAME")

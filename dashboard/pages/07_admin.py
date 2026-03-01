@@ -168,7 +168,7 @@ with st.expander("🔍 Dernières actions API (50 lignes)"):
                       tokens_input, tokens_output, cost_euros,
                       success, mock_used, created_at
                FROM api_actions
-               WHERE strftime('%Y-%m', created_at) = ?
+               WHERE TO_CHAR(created_at, 'YYYY-MM') = ?
                ORDER BY created_at DESC LIMIT 50""",
             (selected_month,),
         ).fetchall()

@@ -122,7 +122,7 @@ def get_cost_report_admin(month: Optional[str] = None, client_id: Optional[str] 
             f"""SELECT provider, SUM(cost_euros) as total_cost, COUNT(*) as nb_actions,
                        SUM(CASE WHEN mock_used=1 THEN 1 ELSE 0 END) as mocks
                 FROM api_actions
-                WHERE strftime('%Y-%m', created_at) = ? {filter_client}
+                WHERE TO_CHAR(created_at, 'YYYY-MM') = ? {filter_client}
                 GROUP BY provider""",
             params,
         ).fetchall()
@@ -131,7 +131,7 @@ def get_cost_report_admin(month: Optional[str] = None, client_id: Optional[str] 
         by_client = conn.execute(
             f"""SELECT client_id, SUM(cost_euros) as total_cost, COUNT(*) as nb_actions
                 FROM api_actions
-                WHERE strftime('%Y-%m', created_at) = ? {filter_client}
+                WHERE TO_CHAR(created_at, 'YYYY-MM') = ? {filter_client}
                 GROUP BY client_id""",
             params,
         ).fetchall()

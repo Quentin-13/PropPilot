@@ -17,6 +17,7 @@ from typing import Optional
 from fastapi import BackgroundTasks, FastAPI, Form, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 from config.settings import get_settings
 from memory.database import init_database
@@ -57,6 +58,42 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def jwt_middleware(request: Request, call_next):
+    """Vérifie le JWT Bearer token sur toutes les routes /api/*."""
+    if request.url.path.startswith("/api/"):
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return JSONResponse(
+                {"detail": "Token d'authentification manquant"},
+                status_code=401,
+            )
+        token = auth_header[7:]
+        from memory.auth import verify_token
+        payload = verify_token(token)
+        if not payload:
+            return JSONResponse(
+                {"detail": "Token invalide ou expiré"},
+                status_code=401,
+            )
+        request.state.user_id = payload["user_id"]
+        request.state.tier = payload["plan"]
+    return await call_next(request)
+
+
+# ─── Modèles auth ─────────────────────────────────────────────────────────────
+
+class _SignupRequest(BaseModel):
+    email: str
+    password: str
+    agency_name: str = ""
+
+
+class _LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
 def _get_client_settings() -> tuple[str, str]:
     """Retourne (client_id, tier) depuis la config."""
     settings = get_settings()
@@ -88,6 +125,30 @@ async def health():
         "openai": settings.openai_available,
         "elevenlabs": settings.elevenlabs_available,
     }
+
+
+# ─── Auth ─────────────────────────────────────────────────────────────────────
+
+@app.post("/auth/signup", tags=["auth"], status_code=201)
+async def auth_signup(body: _SignupRequest):
+    """Crée un nouveau compte. Retourne les informations du compte créé."""
+    from memory.auth import signup
+    try:
+        user = signup(body.email, body.password, body.agency_name)
+        return JSONResponse(user, status_code=201)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/auth/login", tags=["auth"])
+async def auth_login(body: _LoginRequest):
+    """Authentifie un utilisateur et retourne un JWT Bearer token."""
+    from memory.auth import login
+    try:
+        token = login(body.email, body.password)
+        return JSONResponse({"access_token": token, "token_type": "bearer"})
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
 
 
 # ─── Webhooks SMS (Twilio) ─────────────────────────────────────────────────────
@@ -421,18 +482,19 @@ async def portal_webhook(portal_name: str, request: Request):
 # ─── API interne (back-office) ─────────────────────────────────────────────────
 
 @app.get("/api/status", tags=["api"])
-async def api_status():
+async def api_status(request: Request):
     """Statut global du système — usage et pipeline."""
-    settings = get_settings()
+    client_id = request.state.user_id
+    tier = request.state.tier
     from memory.lead_repository import get_pipeline_stats
     from memory.usage_tracker import get_usage_summary
 
-    stats = get_pipeline_stats(settings.agency_client_id)
-    usage = get_usage_summary(settings.agency_client_id, settings.agency_tier)
+    stats = get_pipeline_stats(client_id)
+    usage = get_usage_summary(client_id, tier)
 
     return JSONResponse({
-        "agency": settings.agency_name,
-        "tier": settings.agency_tier,
+        "client_id": client_id,
+        "tier": tier,
         "pipeline": stats,
         "usage": usage,
     })
@@ -454,14 +516,15 @@ async def api_simulate_lead(request: Request):
     prenom = body.get("prenom", "")
     canal = body.get("canal", "sms")
 
-    settings = get_settings()
+    client_id = request.state.user_id
+    tier = request.state.tier
     from orchestrator import process_incoming_message
 
     result = process_incoming_message(
         telephone=telephone,
         message=message,
-        client_id=settings.agency_client_id,
-        tier=settings.agency_tier,
+        client_id=client_id,
+        tier=tier,
         canal=canal,
         prenom=prenom,
     )
@@ -476,15 +539,14 @@ async def api_simulate_lead(request: Request):
 
 
 @app.post("/api/nurturing/process", tags=["api"])
-async def api_process_nurturing():
+async def api_process_nurturing(request: Request):
     """
     Déclenche le traitement de tous les follow-ups nurturing dus.
     À appeler via un cron job (ex. toutes les heures).
     """
-    settings = get_settings()
     from agents.nurturing import NurturingAgent
 
-    agent = NurturingAgent(client_id=settings.agency_client_id, tier=settings.agency_tier)
+    agent = NurturingAgent(client_id=request.state.user_id, tier=request.state.tier)
     results = agent.process_due_followups()
 
     sent = len([r for r in results if r.get("sent")])
@@ -496,15 +558,14 @@ async def api_process_nurturing():
 
 
 @app.post("/api/voice/call-hot-leads", tags=["api"])
-async def api_call_hot_leads():
+async def api_call_hot_leads(request: Request):
     """
     Déclenche des appels sortants vers les leads chauds non joignables.
     À appeler via un cron job (ex. toutes les 30 min en heures ouvrables).
     """
-    settings = get_settings()
     from agents.voice_call import VoiceCallAgent
 
-    agent = VoiceCallAgent(client_id=settings.agency_client_id, tier=settings.agency_tier)
+    agent = VoiceCallAgent(client_id=request.state.user_id, tier=request.state.tier)
     results = agent.call_leads_not_responded(min_score=7, sms_delay_min=30)
 
     initiated = len([r for r in results if r.get("success")])

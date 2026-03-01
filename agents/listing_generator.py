@@ -347,11 +347,12 @@ class ListingGeneratorAgent:
     ) -> None:
         with get_connection() as conn:
             conn.execute(
-                """INSERT OR IGNORE INTO listings
+                """INSERT INTO listings
                    (id, lead_id, client_id, type_bien, adresse, surface, nb_pieces, prix, dpe,
                     titre, description_longue, description_courte, points_forts,
                     mentions_legales, mots_cles_seo, images_urls)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                   ON CONFLICT (id) DO NOTHING""",
                 (
                     listing_id, lead_id, self.client_id, type_bien, adresse, surface, nb_pieces, prix, dpe,
                     data.get("titre", ""),

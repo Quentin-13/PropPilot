@@ -2,6 +2,25 @@ version: "3.9"
 
 services:
 
+  # ─── PostgreSQL ────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: proppilot_db
+    environment:
+      POSTGRES_USER: proppilot
+      POSTGRES_PASSWORD: proppilot
+      POSTGRES_DB: proppilot
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U proppilot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ─── API FastAPI (webhooks + back-office) ─────────────────────────────────
   api:
     build: .
@@ -88,4 +107,6 @@ services:
 
 volumes:
   data:
+    driver: local
+  pgdata:
     driver: local

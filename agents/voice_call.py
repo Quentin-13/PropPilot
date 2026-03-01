@@ -339,9 +339,10 @@ Retourne UNIQUEMENT ce JSON :
     ) -> None:
         with get_connection() as conn:
             conn.execute(
-                """INSERT OR IGNORE INTO calls
+                """INSERT INTO calls
                    (id, lead_id, client_id, retell_call_id, direction, statut)
-                   VALUES (?, ?, ?, ?, ?, ?)""",
+                   VALUES (?, ?, ?, ?, ?, ?)
+                   ON CONFLICT (id) DO NOTHING""",
                 (call_id, lead_id, self.client_id, call_id, direction, statut),
             )
 

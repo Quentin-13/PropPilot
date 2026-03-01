@@ -88,7 +88,7 @@ def get_duplicate_stats(client_id: str) -> dict:
             """SELECT telephone, COUNT(*) as cnt
                FROM leads
                WHERE client_id = ? AND telephone != ''
-               GROUP BY telephone HAVING cnt > 1""",
+               GROUP BY telephone HAVING COUNT(*) > 1""",
             (client_id,),
         ).fetchall()
 
@@ -96,7 +96,7 @@ def get_duplicate_stats(client_id: str) -> dict:
             """SELECT email, COUNT(*) as cnt
                FROM leads
                WHERE client_id = ? AND email != ''
-               GROUP BY email HAVING cnt > 1""",
+               GROUP BY email HAVING COUNT(*) > 1""",
             (client_id,),
         ).fetchall()
 
