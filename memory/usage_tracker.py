@@ -4,14 +4,16 @@ check_and_consume() DOIT être appelé avant chaque action coûteuse.
 """
 from __future__ import annotations
 
-import json
+import logging
 from datetime import datetime
 from typing import Optional
 
-from config.tier_limits import ACTION_TO_FIELD, get_limit_for_action, get_upgrade_message
+from config.tier_limits import ACTION_TO_FIELD, ALERT_ACTIONS, get_limit_for_action, get_upgrade_message
 from memory.database import get_connection
 
-# Mapping action → colonne SQLite dans usage_tracking
+logger = logging.getLogger(__name__)
+
+# Mapping action → colonne dans usage_tracking
 ACTION_TO_DB_COLUMN: dict[str, str] = {
     "lead": "leads_count",
     "voice_minute": "voice_minutes",
@@ -50,11 +52,51 @@ def _get_or_create_usage(conn, client_id: str, month: str, tier: str) -> dict:
     return dict(row)
 
 
+def _send_quota_alert(
+    action: str,
+    tier: str,
+    contact_email: str,
+    contact_name: str,
+    pct: float,
+) -> None:
+    """Envoie un email d'alerte quand le quota d'une ressource critique atteint 80%."""
+    try:
+        from tools.email_tool import EmailTool
+        from config.tier_limits import ACTION_LABELS
+        action_label = ACTION_LABELS.get(action, action)
+        email = EmailTool()
+        subject = f"⚠️ {int(pct):.0f}% de votre quota {action_label} utilisé"
+        body = f"""Bonjour {contact_name},
+
+Vous avez utilisé {pct:.0f}% de votre quota mensuel de {action_label} sur votre forfait {tier}.
+
+À ce rythme, vous pourriez atteindre votre limite avant la fin du mois.
+Pour éviter toute interruption de service, pensez à passer au forfait supérieur.
+
+Pour upgrader ou toute question : contact@proppilot.fr
+
+À bientôt,
+L'équipe PropPilot"""
+        email.send(
+            to_email=contact_email,
+            to_name=contact_name,
+            subject=subject,
+            body_text=body,
+            cta_url="mailto:contact@proppilot.fr?subject=Upgrade forfait PropPilot",
+            cta_label="Contacter l'équipe PropPilot",
+        )
+        logger.info(f"[QUOTA ALERT] Email envoyé à {contact_email} — {action_label} à {pct:.0f}%")
+    except Exception as e:
+        logger.error(f"Erreur envoi alerte quota : {e}")
+
+
 def check_and_consume(
     client_id: str,
     action: str,
     amount: float = 1.0,
     tier: str = "Starter",
+    contact_email: Optional[str] = None,
+    contact_name: Optional[str] = None,
 ) -> dict:
     """
     Vérifie la limite d'usage et consomme si autorisé.
@@ -64,6 +106,8 @@ def check_and_consume(
         action: Type d'action (lead, voice_minute, image, token, followup, listing, estimation)
         amount: Quantité à consommer (défaut 1)
         tier: Tier du client
+        contact_email: Email du contact pour les alertes 80% (optionnel)
+        contact_name: Nom du contact pour les alertes 80% (optionnel)
 
     Returns:
         {
@@ -95,7 +139,7 @@ def check_and_consume(
         db_col = ACTION_TO_DB_COLUMN.get(action, field)
         current = usage.get(db_col, 0) or 0
 
-        # Illimité si limit is None (Elite sur certaines features)
+        # Illimité si limit is None
         if limit is None:
             _increment_usage(conn, client_id, month, db_col, amount, tier)
             return {
@@ -116,7 +160,7 @@ def check_and_consume(
                 "remaining": max(0, int(limit - current)),
                 "current_usage": current,
                 "limit": limit,
-                "upgrade_url": "https://proppilot.fr/upgrade",
+                "upgrade_url": "mailto:contact@proppilot.fr?subject=Upgrade forfait PropPilot",
             }
 
         # Consommation
@@ -126,11 +170,28 @@ def check_and_consume(
         # Messages d'alerte progressifs
         pct = (current + amount) / limit * 100
         if pct >= 95:
-            msg = f"⚠️ Vous arriverez bientôt à votre limite — il vous reste {remaining} utilisation(s) ce mois."
+            msg = (
+                f"⚠️ Vous arriverez bientôt à votre limite — il vous reste {remaining} utilisation(s) ce mois. "
+                f"Pour upgrader : contact@proppilot.fr"
+            )
         elif pct >= 80:
-            msg = f"Vous approchez de votre limite — il vous reste {remaining} utilisation(s) ce mois."
+            msg = (
+                f"Vous approchez de votre limite — il vous reste {remaining} utilisation(s) ce mois. "
+                f"Pour upgrader : contact@proppilot.fr"
+            )
         else:
             msg = f"OK — {remaining} utilisation(s) restante(s) ce mois."
+
+        # Alerte email automatique à la traversée du seuil de 80%
+        prev_pct = current / limit * 100
+        if (
+            action in ALERT_ACTIONS
+            and prev_pct < 80
+            and pct >= 80
+            and contact_email
+            and contact_name
+        ):
+            _send_quota_alert(action, tier, contact_email, contact_name, pct)
 
         return {
             "allowed": True,
@@ -138,7 +199,7 @@ def check_and_consume(
             "remaining": remaining,
             "current_usage": current + amount,
             "limit": limit,
-            "upgrade_url": "https://proppilot.fr/upgrade",
+            "upgrade_url": "mailto:contact@proppilot.fr?subject=Upgrade forfait PropPilot",
         }
 
 
@@ -164,7 +225,7 @@ def get_usage_summary(client_id: str, tier: str, month: Optional[str] = None) ->
     with get_connection() as conn:
         usage = _get_or_create_usage(conn, client_id, month, tier)
 
-    from config.tier_limits import TIERS, get_tier_limits
+    from config.tier_limits import get_tier_limits
     limits = get_tier_limits(tier)
 
     def pct(current: float, limit: Optional[int]) -> float:

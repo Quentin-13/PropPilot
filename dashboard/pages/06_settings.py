@@ -230,22 +230,24 @@ elif st.session_state.wizard_step == 4:
     st.markdown("## Étape 4 — Forfait & Facturation")
 
     current_tier = tier
-    tier_prices = {"Starter": 790, "Pro": 1490, "Elite": 2990}
+    tier_prices = {"Indépendant": 390, "Starter": 790, "Pro": 1490, "Elite": 2990}
 
-    col_s1, col_s2, col_s3 = st.columns(3)
+    col_s1, col_s2, col_s3, col_s4 = st.columns(4)
 
-    for col, (tier_name, price) in zip([col_s1, col_s2, col_s3], tier_prices.items()):
+    for col, (tier_name, price) in zip([col_s1, col_s2, col_s3, col_s4], tier_prices.items()):
         with col:
             is_current = tier_name == current_tier
             border_col = "#1a3a5c" if is_current else "#e9ecef"
             badge = " ← Actuel" if is_current else ""
 
             limits = {
-                "Starter": "300 leads · 160 min voix · 50 images",
-                "Pro": "800 leads · 550 min voix · 150 images",
-                "Elite": "Illimité · 500 images · White-label",
+                "Indépendant": "600 min voix · 3 000 SMS · 1 utilisateur",
+                "Starter": "1 500 min voix · 8 000 SMS · 3 utilisateurs",
+                "Pro": "3 000 min voix · 15 000 SMS · 6 utilisateurs",
+                "Elite": "Illimité · White-label · Agents custom",
             }
             garantie = {
+                "Indépendant": "Garantie ROI 60j — remboursement 50%",
                 "Starter": "Garantie ROI 60j — remboursement 50%",
                 "Pro": "Garantie ROI 60j — remboursement 50%",
                 "Elite": "Garantie ROI 60j — remboursement 100%",

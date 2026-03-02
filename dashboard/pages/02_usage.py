@@ -28,7 +28,7 @@ require_auth()
 render_sidebar_logout()
 
 client_id = st.session_state.get("user_id", settings.agency_client_id)
-tier = st.session_state.get("plan", tier)
+tier = st.session_state.get("plan", settings.agency_tier)
 agency_name = st.session_state.get("agency_name", settings.agency_name)
 
 st.title("📊 Utilisation mensuelle")
@@ -49,11 +49,10 @@ max_pct = max(
 if max_pct >= 100:
     st.markdown("""
     <div class="alert-red">
-    🚫 <strong>Limite atteinte</strong> — Certains de vos agents sont en pause.
-    Pour reprendre immédiatement, passez au forfait supérieur.
+    🚫 <strong>Limite atteinte</strong> — Certains de vos agents sont en pause.<br>
+    Pour reprendre immédiatement, contactez-nous : <a href="mailto:contact@proppilot.fr?subject=Upgrade forfait PropPilot" style="color: white; font-weight: 700;">contact@proppilot.fr</a>
     </div>
     """, unsafe_allow_html=True)
-    st.error("", icon="🚫")  # Force re-render
 elif max_pct >= 95:
     days_left = 30 - datetime.now().day
     st.markdown(f"""
@@ -237,33 +236,36 @@ with st.expander("📋 Détail complet de l'utilisation"):
 st.markdown("---")
 st.markdown("### Votre forfait actuel")
 
-tier_col1, tier_col2, tier_col3 = st.columns(3)
+tier_col1, tier_col2, tier_col3, tier_col4 = st.columns(4)
 
 tiers_display = {
-    "Starter": {"prix": "790€/mois", "leads": "300 leads", "voix": "160 min", "highlight": tier == "Starter"},
-    "Pro": {"prix": "1 490€/mois", "leads": "800 leads", "voix": "550 min", "highlight": tier == "Pro"},
-    "Elite": {"prix": "2 990€/mois", "leads": "Illimité", "voix": "Illimité", "highlight": tier == "Elite"},
+    "Indépendant": {"prix": "390€/mois", "voix": "600 min", "sms": "3 000 SMS", "highlight": tier == "Indépendant"},
+    "Starter": {"prix": "790€/mois", "voix": "1 500 min", "sms": "8 000 SMS", "highlight": tier == "Starter"},
+    "Pro": {"prix": "1 490€/mois", "voix": "3 000 min", "sms": "15 000 SMS", "highlight": tier == "Pro"},
+    "Elite": {"prix": "2 990€/mois", "voix": "Illimité", "sms": "Illimité", "highlight": tier == "Elite"},
 }
 
-for col, (tier_name, info) in zip([tier_col1, tier_col2, tier_col3], tiers_display.items()):
+for col, (tier_name, info) in zip([tier_col1, tier_col2, tier_col3, tier_col4], tiers_display.items()):
     with col:
         border_color = "#1a3a5c" if info["highlight"] else "#e9ecef"
         badge = " ✓ Votre forfait" if info["highlight"] else ""
-        upgrade_txt = "" if info["highlight"] else f"<a href='mailto:upgrade@proppilot.fr?subject=Upgrade vers {tier_name}' style='color: #e67e22;'>Passer à {tier_name} →</a>"
+        upgrade_txt = "" if info["highlight"] else f"<a href='mailto:contact@proppilot.fr?subject=Upgrade vers {tier_name}' style='color: #e67e22;'>Passer à {tier_name} →</a>"
 
         st.markdown(f"""
         <div style="border: 2px solid {border_color}; border-radius: 10px; padding: 20px; text-align: center;">
             <div style="font-size: 18px; font-weight: 700;">{tier_name}{badge}</div>
             <div style="font-size: 24px; font-weight: 800; color: #1a3a5c; margin: 8px 0;">{info['prix']}</div>
             <div style="color: #666; font-size: 14px;">
-                {info['leads']} · {info['voix']} voix
+                {info['voix']} voix · {info['sms']}
             </div>
             <div style="margin-top: 12px;">{upgrade_txt}</div>
         </div>
         """, unsafe_allow_html=True)
 
-# Gain concret si pas Elite
-if tier == "Starter":
-    st.info("💡 **Passer Pro** → 800 leads/mois au lieu de 300, 550 min voix au lieu de 160. Contactez-nous : upgrade@proppilot.fr")
+# Gain concret selon tier
+if tier == "Indépendant":
+    st.info("💡 **Passer Starter** → 1 500 min voix au lieu de 600, 8 000 SMS au lieu de 3 000, jusqu'à 3 utilisateurs. Contactez-nous : contact@proppilot.fr")
+elif tier == "Starter":
+    st.info("💡 **Passer Pro** → 3 000 min voix au lieu de 1 500, 15 000 SMS au lieu de 8 000, jusqu'à 6 utilisateurs. Contactez-nous : contact@proppilot.fr")
 elif tier == "Pro":
-    st.info("💡 **Passer Elite** → Leads illimités, voix illimitée, white-label, Slack dédié. Contactez-nous : upgrade@proppilot.fr")
+    st.info("💡 **Passer Elite** → Voix et SMS illimités, white-label, agents custom, account manager dédié. Contactez-nous : contact@proppilot.fr")

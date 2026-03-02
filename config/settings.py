@@ -61,7 +61,7 @@ class Settings(BaseSettings):
 
     # Configuration Agence
     agency_name: str = Field(default="Mon Agence PropPilot", alias="AGENCY_NAME")
-    agency_tier: Literal["Starter", "Pro", "Elite"] = Field(default="Starter", alias="AGENCY_TIER")
+    agency_tier: Literal["Indépendant", "Starter", "Pro", "Elite"] = Field(default="Starter", alias="AGENCY_TIER")
     agency_client_id: str = Field(default="client_demo", alias="AGENCY_CLIENT_ID")
     agency_commission_rate: float = Field(default=0.05, alias="AGENCY_COMMISSION_RATE")
     agency_average_price: float = Field(default=280000.0, alias="AGENCY_AVERAGE_PRICE")
@@ -75,18 +75,19 @@ class Settings(BaseSettings):
     # Mode
     debug: bool = Field(default=False, alias="DEBUG")
     mock_mode: Literal["auto", "always", "never"] = Field(default="auto", alias="MOCK_MODE")
+    testing: bool = Field(default=False, alias="TESTING")
 
     @field_validator("agency_tier", mode="before")
     @classmethod
     def validate_tier(cls, v: str) -> str:
-        valid = {"Starter", "Pro", "Elite"}
+        valid = {"Indépendant", "Starter", "Pro", "Elite"}
         if v not in valid:
             return "Starter"
         return v
 
     @property
     def twilio_available(self) -> bool:
-        if self.mock_mode == "always":
+        if self.testing or self.mock_mode == "always":
             return False
         if self.mock_mode == "never":
             return True
@@ -102,19 +103,19 @@ class Settings(BaseSettings):
 
     @property
     def elevenlabs_available(self) -> bool:
-        if self.mock_mode == "always":
+        if self.testing or self.mock_mode == "always":
             return False
         return bool(self.elevenlabs_api_key)
 
     @property
     def retell_available(self) -> bool:
-        if self.mock_mode == "always":
+        if self.testing or self.mock_mode == "always":
             return False
         return bool(self.retell_api_key)
 
     @property
     def sendgrid_available(self) -> bool:
-        if self.mock_mode == "always":
+        if self.testing or self.mock_mode == "always":
             return False
         return bool(self.sendgrid_api_key)
 

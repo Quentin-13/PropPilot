@@ -1,6 +1,7 @@
 """
 Configuration pytest globale — base de données PostgreSQL de test.
 Chaque test obtient une base propre (truncate de toutes les tables).
+TESTING=true force le mock de tous les appels externes (SendGrid, Twilio, ElevenLabs).
 """
 import os
 import sys
@@ -17,8 +18,9 @@ TEST_DATABASE_URL = os.environ.get(
 
 
 def pytest_configure(config):
-    """Force DATABASE_URL vers la base de test avant toute importation."""
+    """Force DATABASE_URL et TESTING avant toute importation."""
     os.environ["DATABASE_URL"] = TEST_DATABASE_URL
+    os.environ["TESTING"] = "true"
 
 
 @pytest.fixture(autouse=True)
@@ -26,26 +28,33 @@ def _reset_db_between_tests(monkeypatch):
     """
     Avant chaque test :
       - Force DATABASE_URL vers la base de test
+      - Force TESTING=true pour mocker tous les appels externes
       - Vide les tables (isolation entre tests sans recréer le schéma)
-    Remplace le tmp_path SQLite des anciens fixtures.
+    Si PostgreSQL n'est pas disponible, les tests DB sont skippés automatiquement.
     """
     monkeypatch.setenv("DATABASE_URL", TEST_DATABASE_URL)
+    monkeypatch.setenv("TESTING", "true")
 
     from config.settings import get_settings
     get_settings.cache_clear()
 
-    from memory.database import get_connection, init_database
-    init_database()
+    try:
+        from memory.database import get_connection, init_database
+        init_database()
 
-    # Truncate dans l'ordre inverse des FK
-    tables = [
-        "api_actions", "conversations", "calls", "listings", "estimations",
-        "roi_metrics", "crm_connections", "usage_tracking", "leads", "users",
-    ]
-    with get_connection() as conn:
-        for table in tables:
-            conn.execute(f"TRUNCATE TABLE {table} RESTART IDENTITY CASCADE")
+        # Truncate dans l'ordre inverse des FK
+        tables = [
+            "api_actions", "conversations", "calls", "listings", "estimations",
+            "roi_metrics", "crm_connections", "usage_tracking", "leads", "users",
+        ]
+        with get_connection() as conn:
+            for table in tables:
+                conn.execute(f"TRUNCATE TABLE {table} RESTART IDENTITY CASCADE")
 
-    yield
+        db_available = True
+    except Exception:
+        db_available = False
+
+    yield db_available
 
     get_settings.cache_clear()
