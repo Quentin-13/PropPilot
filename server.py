@@ -31,11 +31,18 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s — %(message)s")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialisation au démarrage du serveur."""
-    init_database()
     settings = get_settings()
-    logger.info(f"PropPilot — {settings.agency_name} | Tier {settings.agency_tier}")
-    logger.info(f"Claude: {'✅' if settings.anthropic_available else '⚠️ mock'} | "
-                f"Twilio: {'✅' if settings.twilio_available else '⚠️ mock'}")
+    try:
+        init_database()
+        logger.info(f"PropPilot — {settings.agency_name} | Tier {settings.agency_tier}")
+        logger.info(f"Claude: {'✅' if settings.anthropic_available else '⚠️ mock'} | "
+                    f"Twilio: {'✅' if settings.twilio_available else '⚠️ mock'} | "
+                    f"Stripe: {'✅' if settings.stripe_available else '⚠️ mock'}")
+    except Exception as e:
+        if settings.testing:
+            logger.warning(f"DB non disponible (mode test) : {e}")
+        else:
+            raise
     yield
 
 
@@ -60,7 +67,7 @@ app.add_middleware(
 
 @app.middleware("http")
 async def jwt_middleware(request: Request, call_next):
-    """Vérifie le JWT Bearer token sur toutes les routes /api/*."""
+    """Vérifie le JWT Bearer token et plan_active sur toutes les routes /api/*."""
     if request.url.path.startswith("/api/"):
         auth_header = request.headers.get("Authorization", "")
         if not auth_header.startswith("Bearer "):
@@ -78,6 +85,18 @@ async def jwt_middleware(request: Request, call_next):
             )
         request.state.user_id = payload["user_id"]
         request.state.tier = payload["plan"]
+
+        # Vérification plan actif en temps réel (résiliation, impayé)
+        try:
+            from memory.stripe_billing import is_plan_active
+            if not is_plan_active(payload["user_id"]):
+                return JSONResponse(
+                    {"detail": "Abonnement inactif. Souscrivez à un forfait PropPilot pour continuer."},
+                    status_code=402,
+                )
+        except Exception:
+            pass  # DB indisponible → on laisse passer (tests sans PostgreSQL)
+
     return await call_next(request)
 
 
@@ -586,3 +605,183 @@ async def api_call_hot_leads(request: Request):
         "calls_initiated": initiated,
         "results": results,
     })
+
+
+# ─── Stripe ───────────────────────────────────────────────────────────────────
+
+class _CheckoutRequest(BaseModel):
+    plan: str
+    success_url: str = ""
+    cancel_url: str = ""
+
+
+def _extract_user_id(request: Request) -> Optional[str]:
+    """Extrait l'user_id depuis le Bearer token JWT de la requête."""
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None
+    token = auth_header[7:]
+    from memory.auth import verify_token
+    payload = verify_token(token)
+    return payload["user_id"] if payload else None
+
+
+@app.get("/stripe/plans", tags=["stripe"])
+async def stripe_plans():
+    """Retourne la liste des 4 forfaits avec prix, features et price_id Stripe."""
+    from memory.stripe_billing import PLAN_FEATURES, STRIPE_PRICE_IDS
+    from config.tier_limits import TIERS
+
+    plans = []
+    for plan_name in ("Indépendant", "Starter", "Pro", "Elite"):
+        tier = TIERS[plan_name]
+        features = PLAN_FEATURES.get(plan_name, {})
+        plans.append({
+            "name": plan_name,
+            "price_id": STRIPE_PRICE_IDS[plan_name],
+            "prix_mensuel": tier.prix_mensuel,
+            "prix_affiche": features.get("prix", f"{tier.prix_mensuel}€/mois"),
+            "features": features.get("features", []),
+            "utilisateurs": tier.utilisateurs,
+            "voix": features.get("voix", ""),
+            "sms": features.get("sms", ""),
+        })
+    return JSONResponse({"plans": plans})
+
+
+@app.post("/stripe/create-checkout-session", tags=["stripe"])
+async def stripe_create_checkout(request: Request, body: _CheckoutRequest):
+    """
+    Crée une session Stripe Checkout pour le forfait choisi.
+    Requiert un JWT Bearer token.
+    """
+    user_id = _extract_user_id(request)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentification requise")
+
+    from memory.stripe_billing import create_checkout_session, get_user_subscription_info
+    settings = get_settings()
+
+    user_info = get_user_subscription_info(user_id)
+    customer_email = user_info["email"] if user_info else ""
+
+    base_url = settings.api_url.rstrip("/")
+    success_url = body.success_url or f"{base_url}/stripe/success"
+    cancel_url = body.cancel_url or f"{base_url}/stripe/cancel"
+
+    result = create_checkout_session(
+        user_id=user_id,
+        plan_name=body.plan,
+        customer_email=customer_email,
+        success_url=success_url,
+        cancel_url=cancel_url,
+    )
+
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return JSONResponse(result)
+
+
+@app.get("/stripe/portal", tags=["stripe"])
+async def stripe_portal(request: Request):
+    """
+    Crée et retourne l'URL du portail client Stripe pour gérer l'abonnement.
+    Requiert un JWT Bearer token.
+    """
+    user_id = _extract_user_id(request)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentification requise")
+
+    from memory.stripe_billing import create_portal_session
+    settings = get_settings()
+    return_url = f"{settings.api_url}/"
+
+    result = create_portal_session(user_id=user_id, return_url=return_url)
+
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return JSONResponse(result)
+
+
+@app.post("/stripe/webhook", tags=["stripe"])
+async def stripe_webhook(
+    request: Request,
+    stripe_signature: Optional[str] = Header(None, alias="stripe-signature"),
+):
+    """
+    Webhook Stripe — reçoit les événements d'abonnement.
+    Configurez dans Stripe Dashboard > Webhooks > Endpoint URL.
+    Événements : checkout.session.completed, customer.subscription.deleted, invoice.payment_failed
+    """
+    import json as _json
+
+    raw_body = await request.body()
+    settings = get_settings()
+
+    # Vérification signature Stripe (désactivée en mode test)
+    if settings.stripe_available and settings.stripe_webhook_secret and stripe_signature:
+        import stripe as _stripe
+        _stripe.api_key = settings.stripe_secret_key
+        try:
+            event = _stripe.Webhook.construct_event(
+                raw_body, stripe_signature, settings.stripe_webhook_secret
+            )
+        except Exception as e:
+            logger.warning(f"[STRIPE] Signature webhook invalide : {e}")
+            raise HTTPException(status_code=400, detail=f"Signature invalide : {e}")
+    else:
+        try:
+            event = _json.loads(raw_body)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Payload JSON invalide")
+
+    event_type = event.get("type", "")
+    data_obj = event.get("data", {}).get("object", {})
+    logger.info(f"[STRIPE] Webhook : {event_type}")
+
+    if event_type == "checkout.session.completed":
+        user_id = (
+            data_obj.get("client_reference_id")
+            or data_obj.get("metadata", {}).get("user_id", "")
+        )
+        plan_name = data_obj.get("metadata", {}).get("plan", "Starter")
+        stripe_customer_id = data_obj.get("customer", "")
+        stripe_subscription_id = data_obj.get("subscription", "")
+
+        if user_id:
+            from memory.stripe_billing import activate_subscription
+            activate_subscription(user_id, plan_name, stripe_customer_id, stripe_subscription_id)
+
+    elif event_type == "customer.subscription.deleted":
+        stripe_subscription_id = data_obj.get("id", "")
+        if stripe_subscription_id:
+            from memory.stripe_billing import deactivate_subscription
+            deactivate_subscription(stripe_subscription_id)
+
+    elif event_type == "invoice.payment_failed":
+        stripe_customer_id = data_obj.get("customer", "")
+        customer_email = data_obj.get("customer_email", "")
+
+        if stripe_customer_id:
+            from memory.stripe_billing import set_past_due
+            user_info = set_past_due(stripe_customer_id)
+
+            if user_info and customer_email:
+                from tools.email_tool import EmailTool
+                email = EmailTool()
+                email.send(
+                    to_email=customer_email,
+                    to_name=user_info.get("agency_name", ""),
+                    subject="⚠️ Échec de paiement — PropPilot",
+                    body_text=(
+                        f"Bonjour {user_info.get('agency_name', '')},\n\n"
+                        "Nous n'avons pas pu traiter votre paiement mensuel PropPilot.\n\n"
+                        "Pour éviter toute interruption de service, merci de mettre à jour "
+                        "vos informations de paiement en cliquant sur le bouton ci-dessous.\n\n"
+                        "À bientôt,\nL'équipe PropPilot"
+                    ),
+                    cta_url="https://billing.stripe.com/",
+                    cta_label="Mettre à jour mon moyen de paiement",
+                )
+
+    return JSONResponse({"status": "ok", "event": event_type})

@@ -69,6 +69,11 @@ class Settings(BaseSettings):
     # URL de l'API FastAPI (pour le dashboard)
     api_url: str = Field(default="http://localhost:8000", alias="API_URL")
 
+    # Stripe
+    stripe_secret_key: Optional[str] = Field(default=None, alias="STRIPE_SECRET_KEY")
+    stripe_publishable_key: Optional[str] = Field(default=None, alias="STRIPE_PUBLISHABLE_KEY")
+    stripe_webhook_secret: Optional[str] = Field(default=None, alias="STRIPE_WEBHOOK_SECRET")
+
     # Admin
     admin_password: str = Field(default="changeme", alias="ADMIN_PASSWORD")
 
@@ -118,6 +123,12 @@ class Settings(BaseSettings):
         if self.testing or self.mock_mode == "always":
             return False
         return bool(self.sendgrid_api_key)
+
+    @property
+    def stripe_available(self) -> bool:
+        if self.testing or self.mock_mode == "always":
+            return False
+        return bool(self.stripe_secret_key)
 
     def ensure_data_dir(self) -> Path:
         """Crée le répertoire data si inexistant."""

@@ -81,8 +81,12 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     agency_name TEXT DEFAULT '',
-    plan TEXT DEFAULT 'Starter' CHECK (plan IN ('Starter', 'Pro', 'Elite')),
+    plan TEXT DEFAULT 'Starter' CHECK (plan IN ('Indépendant', 'Starter', 'Pro', 'Elite')),
     plan_active BOOLEAN DEFAULT TRUE,
+    stripe_customer_id TEXT,
+    stripe_subscription_id TEXT,
+    subscription_status TEXT DEFAULT 'inactive',
+    trial_ends_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -266,12 +270,66 @@ CREATE INDEX IF NOT EXISTS idx_crm_connections_client ON crm_connections(client_
 """
 
 
+# ─── Migrations ───────────────────────────────────────────────────────────────
+
+def _run_migrations(conn) -> None:
+    """
+    Migrations PostgreSQL cumulatives et idempotentes.
+    Appelé après CREATE TABLE IF NOT EXISTS pour les bases existantes.
+    """
+    # Colonnes Stripe sur users (ADD COLUMN IF NOT EXISTS — PostgreSQL 9.6+)
+    for col_sql in [
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'inactive'",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMP",
+    ]:
+        conn.execute(col_sql)
+
+    # Mise à jour de la contrainte CHECK plan pour inclure 'Indépendant'
+    # Étape 1 : supprimer l'ancienne contrainte si elle n'inclut pas encore 'Indépendant'
+    conn.execute("""
+        DO $$
+        DECLARE
+            v_conname TEXT;
+            v_has_independant BOOLEAN;
+        BEGIN
+            SELECT EXISTS(
+                SELECT 1 FROM pg_constraint c
+                JOIN pg_class t ON c.conrelid = t.oid
+                WHERE t.relname = 'users' AND c.contype = 'c'
+                  AND pg_get_constraintdef(c.oid) LIKE '%Ind%'
+            ) INTO v_has_independant;
+
+            IF NOT v_has_independant THEN
+                SELECT conname INTO v_conname
+                FROM pg_constraint c
+                JOIN pg_class t ON c.conrelid = t.oid
+                WHERE t.relname = 'users' AND c.contype = 'c' AND conname LIKE '%plan%'
+                LIMIT 1;
+
+                IF v_conname IS NOT NULL THEN
+                    EXECUTE format('ALTER TABLE users DROP CONSTRAINT %I', v_conname);
+                END IF;
+
+                BEGIN
+                    ALTER TABLE users ADD CONSTRAINT users_plan_check
+                    CHECK (plan IN ('Indépendant', 'Starter', 'Pro', 'Elite'));
+                EXCEPTION WHEN duplicate_object THEN NULL;
+                END;
+            END IF;
+        EXCEPTION WHEN OTHERS THEN NULL;
+        END $$
+    """)
+
+
 # ─── Init / Reset ─────────────────────────────────────────────────────────────
 
 def init_database() -> None:
     """Initialise la base de données avec le schéma complet."""
     with get_connection() as conn:
         conn.executescript(SCHEMA)
+        _run_migrations(conn)
     settings = get_settings()
     print(f"✅ Base de données PostgreSQL initialisée : {settings.database_url}")
 
