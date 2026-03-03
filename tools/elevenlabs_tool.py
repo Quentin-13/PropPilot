@@ -46,11 +46,10 @@ class ElevenLabsTool:
     Génère des fichiers audio MP3 pour les appels voix.
     """
 
-    DEFAULT_MODEL = "eleven_multilingual_v2"  # Meilleur pour le français
-
     def __init__(self):
         self.settings = get_settings()
         self.mock_mode = not self.settings.elevenlabs_available
+        self.model = self.settings.elevenlabs_model_id  # eleven_multilingual_v2 par défaut
         self._client = None
         if self.mock_mode:
             logger.info("[ElevenLabs] Mode mock activé")
@@ -83,6 +82,12 @@ class ElevenLabsTool:
             {"success": bool, "audio_path": str, "duration_s": float, "mock": bool}
         """
         voice_config = FRENCH_VOICES.get(voice_name, FRENCH_VOICES["sophie"])
+        # Pour la voix Sophie, le voice_id peut être surchargé via ELEVENLABS_VOICE_ID (env)
+        voice_id = (
+            self.settings.elevenlabs_voice_id
+            if voice_name == "sophie"
+            else voice_config["id"]
+        )
 
         if not output_path:
             AUDIO_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -108,8 +113,8 @@ class ElevenLabsTool:
             client = self._get_client()
             audio_generator = client.generate(
                 text=text,
-                voice=voice_config["id"],
-                model=self.DEFAULT_MODEL,
+                voice=voice_id,
+                model=self.model,
                 voice_settings={
                     "stability": stability,
                     "similarity_boost": similarity_boost,

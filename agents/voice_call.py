@@ -20,6 +20,7 @@ from memory.lead_repository import (
 from memory.models import Call, Canal, Lead, LeadStatus
 from memory.usage_tracker import check_and_consume
 from tools.calendar_tool import CalendarTool
+from tools.elevenlabs_tool import ElevenLabsTool
 from tools.retell_tool import RetellTool
 from tools.twilio_tool import TwilioTool
 
@@ -41,12 +42,47 @@ class VoiceCallAgent:
         self.tier = tier
         self.settings = get_settings()
         self._anthropic_client = None
+        self._tts: Optional[ElevenLabsTool] = None
 
     def _get_anthropic(self):
         if self._anthropic_client is None and self.settings.anthropic_available:
             import anthropic
             self._anthropic_client = anthropic.Anthropic(api_key=self.settings.anthropic_api_key)
         return self._anthropic_client
+
+    def _get_tts(self) -> ElevenLabsTool:
+        if self._tts is None:
+            self._tts = ElevenLabsTool()
+        return self._tts
+
+    # ─── Synthèse vocale Sophie ───────────────────────────────────────────────
+
+    def synthesize_sophie_intro(self, lead: Optional[Lead] = None) -> dict:
+        """
+        Génère l'audio d'introduction de Sophie pour un appel sortant.
+        Voix naturelle en français, ton professionnel et chaleureux.
+
+        Args:
+            lead: Lead concerné (optionnel — générique si absent)
+
+        Returns:
+            {"success": bool, "audio_path": str, "duration_s": float,
+             "script": str, "mock": bool}
+        """
+        prenom = lead.prenom if lead and lead.prenom else "cher contact"
+        projet = lead.projet.value if lead and lead.projet else "immobilier"
+        localisation = f" sur {lead.localisation}" if lead and lead.localisation else ""
+        agence = self.settings.agency_name
+
+        script = (
+            f"Bonjour {prenom}, je suis Sophie, assistante de {agence}. "
+            f"J'appelle concernant votre projet {projet}{localisation}. "
+            "Est-ce que vous avez quelques minutes pour en parler ?"
+        )
+
+        tts = self._get_tts()
+        result = tts.text_to_speech(text=script, voice_name="sophie")
+        return {**result, "script": script}
 
     # ─── Appels sortants ──────────────────────────────────────────────────────
 

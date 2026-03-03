@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     # ElevenLabs
     elevenlabs_api_key: Optional[str] = Field(default=None, alias="ELEVENLABS_API_KEY")
     elevenlabs_voice_id: str = Field(default="EXAVITQu4vr4xnSDxMaL", alias="ELEVENLABS_VOICE_ID")
+    elevenlabs_model_id: str = Field(default="eleven_multilingual_v2", alias="ELEVENLABS_MODEL_ID")
 
     # Retell
     retell_api_key: Optional[str] = Field(default=None, alias="RETELL_API_KEY")
