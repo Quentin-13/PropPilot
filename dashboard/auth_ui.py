@@ -127,7 +127,11 @@ def _show_plan_selection() -> None:
                     headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
                     timeout=10.0,
                 )
-                return resp.json()
+                data = resp.json()
+                # FastAPI renvoie {"detail": "..."} sur les erreurs HTTP — normalisation
+                if not resp.is_success:
+                    return {"error": data.get("detail", f"Erreur HTTP {resp.status_code}")}
+                return data
             except Exception as e:
                 return {"error": str(e)}
 
@@ -166,10 +170,11 @@ def _show_plan_selection() -> None:
                              use_container_width=True, type="primary"):
                     with st.spinner(f"Préparation du paiement {plan_name}…"):
                         result = _create_checkout(plan_name)
-                    if "error" in result:
-                        st.error(f"Erreur : {result['error']}")
+                    checkout_url = result.get("checkout_url")
+                    if "error" in result or not checkout_url:
+                        st.error(f"Erreur : {result.get('error', 'Réponse inattendue du serveur.')}")
                     else:
-                        _redirect(result["checkout_url"])
+                        _redirect(checkout_url)
 
         st.markdown("")
         st.markdown("""

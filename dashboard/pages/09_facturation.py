@@ -51,7 +51,10 @@ def _create_checkout(plan_name: str) -> dict:
             headers=_api_headers(),
             timeout=10.0,
         )
-        return resp.json()
+        data = resp.json()
+        if not resp.is_success:
+            return {"error": data.get("detail", f"Erreur HTTP {resp.status_code}")}
+        return data
     except Exception as e:
         return {"error": str(e)}
 
@@ -64,7 +67,10 @@ def _get_portal() -> dict:
             headers=_api_headers(),
             timeout=10.0,
         )
-        return resp.json()
+        data = resp.json()
+        if not resp.is_success:
+            return {"error": data.get("detail", f"Erreur HTTP {resp.status_code}")}
+        return data
     except Exception as e:
         return {"error": str(e)}
 
@@ -110,10 +116,11 @@ with col_portal:
     if st.button("🔧 Gérer mon abonnement Stripe", use_container_width=True):
         with st.spinner("Ouverture du portail Stripe…"):
             result = _get_portal()
-        if "error" in result:
-            st.error(f"Erreur : {result['error']}")
+        portal_url = result.get("portal_url")
+        if "error" in result or not portal_url:
+            st.error(f"Erreur : {result.get('error', 'Réponse inattendue du serveur.')}")
         else:
-            _redirect(result["portal_url"])
+            _redirect(portal_url)
 
 st.markdown("---")
 
@@ -160,10 +167,11 @@ for col, plan_name in zip(cols, plan_names):
             if st.button(btn_label, key=f"checkout_{plan_name}", use_container_width=True, type="primary"):
                 with st.spinner(f"Préparation du paiement {plan_name}…"):
                     result = _create_checkout(plan_name)
-                if "error" in result:
-                    st.error(f"Erreur : {result['error']}")
+                checkout_url = result.get("checkout_url")
+                if "error" in result or not checkout_url:
+                    st.error(f"Erreur : {result.get('error', 'Réponse inattendue du serveur.')}")
                 else:
-                    _redirect(result["checkout_url"])
+                    _redirect(checkout_url)
         else:
             st.button(btn_label, key=f"checkout_{plan_name}", use_container_width=True, disabled=True)
 
