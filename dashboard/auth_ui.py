@@ -121,8 +121,8 @@ def _show_plan_selection() -> None:
                     f"{base}/stripe/create-checkout-session",
                     json={
                         "plan": plan_name,
-                        "success_url": "http://localhost:8501/10_success",
-                        "cancel_url": "http://localhost:8501/",
+                        "success_url": "https://proppilot-dashboard-production.up.railway.app/10_success",
+                        "cancel_url": "https://proppilot-dashboard-production.up.railway.app/",
                     },
                     headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
                     timeout=10.0,

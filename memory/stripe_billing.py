@@ -7,6 +7,8 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
+from urllib.parse import quote
+
 from config.settings import get_settings
 from memory.database import get_connection
 
@@ -224,7 +226,7 @@ def create_checkout_session(
             customer_email=customer_email or None,
             client_reference_id=user_id,
             metadata={"user_id": user_id, "plan": plan_name},
-            success_url=success_url + "?session_id={CHECKOUT_SESSION_ID}&plan=" + plan_name,
+            success_url=success_url + "?session_id={CHECKOUT_SESSION_ID}&plan=" + quote(plan_name, safe=""),
             cancel_url=cancel_url,
         )
         return {"checkout_url": session.url, "session_id": session.id, "mock": False}

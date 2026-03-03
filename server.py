@@ -14,6 +14,8 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Optional
 
+from urllib.parse import quote
+
 from fastapi import BackgroundTasks, FastAPI, Form, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -731,9 +733,12 @@ async def stripe_create_checkout(request: Request, body: _CheckoutRequest):
     user_info = get_user_subscription_info(user_id)
     customer_email = user_info["email"] if user_info else ""
 
-    base_url = settings.api_url.rstrip("/")
-    success_url = body.success_url or f"{base_url}/stripe/success"
-    cancel_url = body.cancel_url or f"{base_url}/stripe/cancel"
+    _dashboard = "https://proppilot-dashboard-production.up.railway.app"
+    success_url = body.success_url or f"{_dashboard}/10_success"
+    cancel_url = body.cancel_url or f"{_dashboard}/"
+    # Encoder les caractères non-ASCII éventuels (ex : accents dans les URLs custom)
+    success_url = quote(success_url, safe=":/?=&#%+@!$,;")
+    cancel_url = quote(cancel_url, safe=":/?=&#%+@!$,;")
 
     result = create_checkout_session(
         user_id=user_id,

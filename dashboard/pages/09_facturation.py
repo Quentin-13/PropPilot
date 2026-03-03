@@ -45,8 +45,8 @@ def _create_checkout(plan_name: str) -> dict:
             f"{base}/stripe/create-checkout-session",
             json={
                 "plan": plan_name,
-                "success_url": "http://localhost:8501/10_success",
-                "cancel_url": "http://localhost:8501/09_facturation",
+                "success_url": "https://proppilot-dashboard-production.up.railway.app/10_success",
+                "cancel_url": "https://proppilot-dashboard-production.up.railway.app/09_facturation",
             },
             headers=_api_headers(),
             timeout=10.0,
