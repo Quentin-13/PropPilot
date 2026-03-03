@@ -16,11 +16,16 @@ import streamlit.components.v1 as components
 st.set_page_config(page_title="Bienvenue — PropPilot", layout="centered", page_icon="🎉")
 
 from dashboard.auth_ui import require_auth
-require_auth()
+require_auth(require_active_plan=False)
 
 # ─── Paramètres URL ───────────────────────────────────────────────────────────
 
 plan = st.query_params.get("plan", "votre forfait")
+
+# Mise à jour session après paiement réussi
+if plan in ("Indépendant", "Starter", "Pro", "Elite"):
+    st.session_state["plan"] = plan
+    st.session_state["plan_active"] = True
 mock = st.query_params.get("mock", "false") == "true"
 
 # ─── Messages par forfait ─────────────────────────────────────────────────────

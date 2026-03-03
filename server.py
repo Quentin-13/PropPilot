@@ -154,6 +154,7 @@ async def auth_signup(body: _SignupRequest):
     from memory.auth import signup
     try:
         user = signup(body.email, body.password, body.agency_name)
+        # user already contains plan_active from auth.signup()
         return JSONResponse(user, status_code=201)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -168,7 +169,7 @@ async def auth_login(body: _LoginRequest):
         token = login(body.email, body.password)
         with get_connection() as conn:
             row = conn.execute(
-                "SELECT id, agency_name, plan FROM users WHERE email = ?",
+                "SELECT id, agency_name, plan, plan_active FROM users WHERE email = ?",
                 (body.email,),
             ).fetchone()
         return JSONResponse({
@@ -177,6 +178,7 @@ async def auth_login(body: _LoginRequest):
             "user_id": row["id"] if row else "",
             "agency_name": row["agency_name"] if row else "",
             "plan": row["plan"] if row else "Starter",
+            "plan_active": bool(row["plan_active"]) if row else False,
         })
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
@@ -749,8 +751,32 @@ async def stripe_webhook(
         stripe_subscription_id = data_obj.get("subscription", "")
 
         if user_id:
-            from memory.stripe_billing import activate_subscription
+            from memory.stripe_billing import activate_subscription, get_user_subscription_info
             activate_subscription(user_id, plan_name, stripe_customer_id, stripe_subscription_id)
+
+            # Email de bienvenue
+            user_info = get_user_subscription_info(user_id)
+            if user_info and user_info.get("email"):
+                from tools.email_tool import EmailTool
+                email_tool = EmailTool()
+                agency = user_info.get("agency_name", "")
+                dashboard_url = "https://proppilot-dashboard-production.up.railway.app/"
+                email_tool.send(
+                    to_email=user_info["email"],
+                    to_name=agency,
+                    subject=f"Bienvenue sur PropPilot {agency} 🎉",
+                    body_text=(
+                        f"Bonjour {agency},\n\n"
+                        f"Votre forfait **{plan_name}** est maintenant actif.\n\n"
+                        "Vos agents IA sont prêts à qualifier vos leads, rédiger vos annonces "
+                        "et booster votre CA dès aujourd'hui.\n\n"
+                        "Accédez à votre tableau de bord en cliquant sur le bouton ci-dessous.\n\n"
+                        "Pour toute question : contact@proppilot.fr\n\n"
+                        "L'équipe PropPilot"
+                    ),
+                    cta_url=dashboard_url,
+                    cta_label="Accéder à mon tableau de bord →",
+                )
 
     elif event_type == "customer.subscription.deleted":
         stripe_subscription_id = data_obj.get("id", "")

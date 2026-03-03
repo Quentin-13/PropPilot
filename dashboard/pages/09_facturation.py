@@ -19,7 +19,7 @@ from memory.stripe_billing import PLAN_FEATURES, STRIPE_PRICE_IDS
 st.set_page_config(page_title="Facturation — PropPilot", layout="wide", page_icon="💳")
 
 from dashboard.auth_ui import require_auth, render_sidebar_logout
-require_auth()
+require_auth(require_active_plan=False)
 render_sidebar_logout()
 
 settings = get_settings()

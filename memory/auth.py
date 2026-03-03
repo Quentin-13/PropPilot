@@ -35,10 +35,14 @@ def signup(email: str, password: str, agency_name: str) -> dict:
         user_id = str(uuid.uuid4())
         password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
+        # En mode test, on active le plan directement pour faciliter les tests
+        settings = get_settings()
+        initial_active = settings.testing
+
         conn.execute(
             """INSERT INTO users (id, email, password_hash, agency_name, plan, plan_active)
-               VALUES (?, ?, ?, ?, 'Starter', TRUE)""",
-            (user_id, email, password_hash, agency_name),
+               VALUES (?, ?, ?, ?, 'Starter', ?)""",
+            (user_id, email, password_hash, agency_name, initial_active),
         )
 
     return {
@@ -46,6 +50,7 @@ def signup(email: str, password: str, agency_name: str) -> dict:
         "email": email,
         "agency_name": agency_name,
         "plan": "Starter",
+        "plan_active": initial_active,
     }
 
 
@@ -69,9 +74,6 @@ def login(email: str, password: str) -> str:
 
     if not bcrypt.checkpw(password.encode("utf-8"), row["password_hash"].encode("utf-8")):
         raise ValueError("Email ou mot de passe incorrect.")
-
-    if not row["plan_active"]:
-        raise ValueError("Compte inactif. Contactez le support PropPilot.")
 
     settings = get_settings()
     expiry = datetime.now(tz=timezone.utc) + timedelta(hours=settings.jwt_expire_hours)
