@@ -28,6 +28,39 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s — %(message)s")
 
 # ─── Lifespan ─────────────────────────────────────────────────────────────────
 
+def _send_weekly_reports_job() -> None:
+    """Job APScheduler — envoie le rapport hebdo à tous les utilisateurs actifs."""
+    from datetime import datetime, timedelta
+    from memory.database import get_connection
+    from memory.lead_repository import get_weekly_stats
+    from tools.email_tool import EmailTool
+
+    week_start = (datetime.now() - timedelta(days=7)).strftime("%d/%m/%Y")
+    logger.info(f"[CRON] Rapport hebdomadaire — semaine du {week_start}")
+
+    try:
+        with get_connection() as conn:
+            rows = conn.execute(
+                "SELECT id, email, agency_name, plan FROM users WHERE plan_active = TRUE"
+            ).fetchall()
+    except Exception as e:
+        logger.error(f"[CRON] Impossible de lire les utilisateurs : {e}")
+        return
+
+    email_tool = EmailTool()
+    for row in rows:
+        try:
+            stats = get_weekly_stats(row["id"])
+            email_tool.send_weekly_report(
+                to_email=row["email"],
+                agency_name=row["agency_name"] or row["email"],
+                week_start=week_start,
+                stats=stats,
+            )
+        except Exception as e:
+            logger.error(f"[CRON] Rapport hebdo non envoyé à {row['email']} : {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialisation au démarrage du serveur."""
@@ -43,7 +76,30 @@ async def lifespan(app: FastAPI):
             logger.warning(f"DB non disponible (mode test) : {e}")
         else:
             raise
+
+    # APScheduler — rapport hebdomadaire le lundi à 8h (pas en mode test)
+    scheduler = None
+    if not settings.testing:
+        try:
+            from apscheduler.schedulers.background import BackgroundScheduler
+            from apscheduler.triggers.cron import CronTrigger
+            scheduler = BackgroundScheduler(timezone="Europe/Paris")
+            scheduler.add_job(
+                _send_weekly_reports_job,
+                CronTrigger(day_of_week="mon", hour=8, minute=0),
+                id="weekly_report",
+                replace_existing=True,
+            )
+            scheduler.start()
+            logger.info("APScheduler démarré — rapport hebdo lundi 8h (Europe/Paris)")
+        except Exception as e:
+            logger.warning(f"APScheduler non démarré : {e}")
+
     yield
+
+    if scheduler and scheduler.running:
+        scheduler.shutdown(wait=False)
+        logger.info("APScheduler arrêté.")
 
 
 # ─── App ──────────────────────────────────────────────────────────────────────
@@ -154,7 +210,15 @@ async def auth_signup(body: _SignupRequest):
     from memory.auth import signup
     try:
         user = signup(body.email, body.password, body.agency_name)
-        # user already contains plan_active from auth.signup()
+        # Email de bienvenue (avant paiement)
+        try:
+            from tools.email_tool import EmailTool
+            EmailTool().send_welcome_signup(
+                to_email=body.email,
+                agency_name=body.agency_name or body.email,
+            )
+        except Exception as _e:
+            logger.warning(f"Email bienvenue non envoyé : {_e}")
         return JSONResponse(user, status_code=201)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -754,35 +818,29 @@ async def stripe_webhook(
             from memory.stripe_billing import activate_subscription, get_user_subscription_info
             activate_subscription(user_id, plan_name, stripe_customer_id, stripe_subscription_id)
 
-            # Email de bienvenue
+            # Email confirmation paiement
             user_info = get_user_subscription_info(user_id)
             if user_info and user_info.get("email"):
                 from tools.email_tool import EmailTool
-                email_tool = EmailTool()
-                agency = user_info.get("agency_name", "")
-                dashboard_url = "https://proppilot-dashboard-production.up.railway.app/"
-                email_tool.send(
+                EmailTool().send_payment_confirmed(
                     to_email=user_info["email"],
-                    to_name=agency,
-                    subject=f"Bienvenue sur PropPilot {agency} 🎉",
-                    body_text=(
-                        f"Bonjour {agency},\n\n"
-                        f"Votre forfait **{plan_name}** est maintenant actif.\n\n"
-                        "Vos agents IA sont prêts à qualifier vos leads, rédiger vos annonces "
-                        "et booster votre CA dès aujourd'hui.\n\n"
-                        "Accédez à votre tableau de bord en cliquant sur le bouton ci-dessous.\n\n"
-                        "Pour toute question : contact@proppilot.fr\n\n"
-                        "L'équipe PropPilot"
-                    ),
-                    cta_url=dashboard_url,
-                    cta_label="Accéder à mon tableau de bord →",
+                    agency_name=user_info.get("agency_name", ""),
+                    plan=plan_name,
                 )
 
     elif event_type == "customer.subscription.deleted":
         stripe_subscription_id = data_obj.get("id", "")
         if stripe_subscription_id:
-            from memory.stripe_billing import deactivate_subscription
-            deactivate_subscription(stripe_subscription_id)
+            from memory.stripe_billing import deactivate_subscription, get_user_subscription_info
+            cancelled_user_id = deactivate_subscription(stripe_subscription_id)
+            if cancelled_user_id:
+                user_info = get_user_subscription_info(cancelled_user_id)
+                if user_info and user_info.get("email"):
+                    from tools.email_tool import EmailTool
+                    EmailTool().send_subscription_cancelled(
+                        to_email=user_info["email"],
+                        agency_name=user_info.get("agency_name", ""),
+                    )
 
     elif event_type == "invoice.payment_failed":
         stripe_customer_id = data_obj.get("customer", "")
@@ -794,20 +852,10 @@ async def stripe_webhook(
 
             if user_info and customer_email:
                 from tools.email_tool import EmailTool
-                email = EmailTool()
-                email.send(
+                EmailTool().send_payment_failed(
                     to_email=customer_email,
-                    to_name=user_info.get("agency_name", ""),
-                    subject="⚠️ Échec de paiement — PropPilot",
-                    body_text=(
-                        f"Bonjour {user_info.get('agency_name', '')},\n\n"
-                        "Nous n'avons pas pu traiter votre paiement mensuel PropPilot.\n\n"
-                        "Pour éviter toute interruption de service, merci de mettre à jour "
-                        "vos informations de paiement en cliquant sur le bouton ci-dessous.\n\n"
-                        "À bientôt,\nL'équipe PropPilot"
-                    ),
-                    cta_url="https://billing.stripe.com/",
-                    cta_label="Mettre à jour mon moyen de paiement",
+                    agency_name=user_info.get("agency_name", ""),
+                    portal_url="https://billing.stripe.com/",
                 )
 
     return JSONResponse({"status": "ok", "event": event_type})

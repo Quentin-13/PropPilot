@@ -271,3 +271,65 @@ def get_pipeline_stats(client_id: str, month: Optional[str] = None) -> dict:
     stats["mandat_count"] = mandat_count
     stats["total"] = sum(stats.get(s.value, 0) for s in LeadStatus)
     return stats
+
+
+def get_weekly_stats(client_id: str, days: int = 7) -> dict:
+    """
+    Statistiques des 7 derniers jours pour le rapport hebdomadaire.
+    Retourne: leads_recus, leads_qualifies, appels, rdv, mandats, roi_estime
+    """
+    from datetime import timedelta
+    cutoff = datetime.now() - timedelta(days=days)
+
+    with get_connection() as conn:
+        leads_recus = conn.execute(
+            "SELECT COUNT(*) FROM leads WHERE client_id = ? AND created_at >= ?",
+            (client_id, cutoff),
+        ).fetchone()[0]
+
+        leads_qualifies = conn.execute(
+            """SELECT COUNT(*) FROM leads
+               WHERE client_id = ? AND created_at >= ?
+               AND statut NOT IN ('nouveau', 'disqualifié')""",
+            (client_id, cutoff),
+        ).fetchone()[0]
+
+        appels = conn.execute(
+            "SELECT COUNT(*) FROM calls WHERE client_id = ? AND created_at >= ?",
+            (client_id, cutoff),
+        ).fetchone()[0] if _table_exists(conn, "calls") else 0
+
+        rdv = conn.execute(
+            """SELECT COUNT(*) FROM leads
+               WHERE client_id = ? AND rdv_date >= ?""",
+            (client_id, cutoff),
+        ).fetchone()[0]
+
+        mandats = conn.execute(
+            """SELECT COUNT(*) FROM leads
+               WHERE client_id = ? AND statut IN ('mandat', 'vendu')
+               AND created_at >= ?""",
+            (client_id, cutoff),
+        ).fetchone()[0]
+
+    from config.settings import get_settings
+    settings = get_settings()
+    roi_estime = mandats * settings.agency_average_price * settings.agency_commission_rate
+
+    return {
+        "leads_recus": leads_recus,
+        "leads_qualifies": leads_qualifies,
+        "appels": appels,
+        "rdv": rdv,
+        "mandats": mandats,
+        "roi_estime": roi_estime,
+    }
+
+
+def _table_exists(conn, table_name: str) -> bool:
+    """Vérifie qu'une table existe dans la base."""
+    try:
+        conn.execute(f"SELECT 1 FROM {table_name} LIMIT 1")
+        return True
+    except Exception:
+        return False

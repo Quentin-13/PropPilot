@@ -53,6 +53,7 @@ class EmailTool:
 
     def __init__(self):
         self.settings = get_settings()
+        # TESTING=true force toujours le mock, même si SENDGRID_API_KEY est présente
         self.mock_mode = not self.settings.sendgrid_available
 
     def send(
@@ -125,6 +126,110 @@ class EmailTool:
         except Exception as e:
             logger.error(f"Erreur envoi email : {e}")
             return {"success": False, "error": str(e), "mock": False}
+
+    # ─── Méthodes typées (utilisent email_templates.py) ───────────────────────
+
+    def send_welcome_signup(self, to_email: str, agency_name: str) -> dict:
+        """Email 1 — Bienvenue après inscription (avant paiement)."""
+        from tools.email_templates import welcome_signup
+        t = welcome_signup(agency_name)
+        return self.send(
+            to_email=to_email,
+            to_name=agency_name,
+            subject=t["subject"],
+            body_text=t["text"],
+            body_html=t["html"],
+        )
+
+    def send_payment_confirmed(
+        self,
+        to_email: str,
+        agency_name: str,
+        plan: str,
+        renewal_date: Optional[str] = None,
+    ) -> dict:
+        """Email 2 — Confirmation de paiement Stripe."""
+        from tools.email_templates import payment_confirmed
+        t = payment_confirmed(agency_name, plan, renewal_date)
+        return self.send(
+            to_email=to_email,
+            to_name=agency_name,
+            subject=t["subject"],
+            body_text=t["text"],
+            body_html=t["html"],
+        )
+
+    def send_quota_alert_80(
+        self,
+        to_email: str,
+        agency_name: str,
+        action_label: str,
+        used: float,
+        limit: float,
+        tier: str,
+    ) -> dict:
+        """Email 3 — Alerte quota à 80%."""
+        from tools.email_templates import quota_alert_80
+        t = quota_alert_80(agency_name, action_label, used, limit, tier)
+        return self.send(
+            to_email=to_email,
+            to_name=agency_name,
+            subject=t["subject"],
+            body_text=t["text"],
+            body_html=t["html"],
+        )
+
+    def send_payment_failed(
+        self,
+        to_email: str,
+        agency_name: str,
+        portal_url: str = "https://billing.stripe.com/",
+    ) -> dict:
+        """Email 4 — Échec de paiement Stripe."""
+        from tools.email_templates import payment_failed
+        t = payment_failed(agency_name, portal_url)
+        return self.send(
+            to_email=to_email,
+            to_name=agency_name,
+            subject=t["subject"],
+            body_text=t["text"],
+            body_html=t["html"],
+        )
+
+    def send_subscription_cancelled(
+        self,
+        to_email: str,
+        agency_name: str,
+        end_date: Optional[str] = None,
+    ) -> dict:
+        """Email 5 — Abonnement annulé."""
+        from tools.email_templates import subscription_cancelled
+        t = subscription_cancelled(agency_name, end_date)
+        return self.send(
+            to_email=to_email,
+            to_name=agency_name,
+            subject=t["subject"],
+            body_text=t["text"],
+            body_html=t["html"],
+        )
+
+    def send_weekly_report(
+        self,
+        to_email: str,
+        agency_name: str,
+        week_start: str,
+        stats: dict,
+    ) -> dict:
+        """Email 6 — Rapport hebdomadaire (cron lundi 8h)."""
+        from tools.email_templates import weekly_report
+        t = weekly_report(agency_name, week_start, stats)
+        return self.send(
+            to_email=to_email,
+            to_name=agency_name,
+            subject=t["subject"],
+            body_text=t["text"],
+            body_html=t["html"],
+        )
 
     def send_limit_alert(self, to_email: str, to_name: str, action: str, tier: str) -> dict:
         """Email automatique quand un client atteint 100% de son quota."""

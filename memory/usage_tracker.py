@@ -58,6 +58,8 @@ def _send_quota_alert(
     contact_email: str,
     contact_name: str,
     pct: float,
+    current: float = 0,
+    limit: float = 0,
 ) -> None:
     """Envoie un email d'alerte quand le quota d'une ressource critique atteint 80%."""
     try:
@@ -65,25 +67,13 @@ def _send_quota_alert(
         from config.tier_limits import ACTION_LABELS
         action_label = ACTION_LABELS.get(action, action)
         email = EmailTool()
-        subject = f"⚠️ {int(pct):.0f}% de votre quota {action_label} utilisé"
-        body = f"""Bonjour {contact_name},
-
-Vous avez utilisé {pct:.0f}% de votre quota mensuel de {action_label} sur votre forfait {tier}.
-
-À ce rythme, vous pourriez atteindre votre limite avant la fin du mois.
-Pour éviter toute interruption de service, pensez à passer au forfait supérieur.
-
-Pour upgrader ou toute question : contact@proppilot.fr
-
-À bientôt,
-L'équipe PropPilot"""
-        email.send(
+        email.send_quota_alert_80(
             to_email=contact_email,
-            to_name=contact_name,
-            subject=subject,
-            body_text=body,
-            cta_url="mailto:contact@proppilot.fr?subject=Upgrade forfait PropPilot",
-            cta_label="Contacter l'équipe PropPilot",
+            agency_name=contact_name,
+            action_label=action_label,
+            used=current,
+            limit=limit,
+            tier=tier,
         )
         logger.info(f"[QUOTA ALERT] Email envoyé à {contact_email} — {action_label} à {pct:.0f}%")
     except Exception as e:
@@ -191,7 +181,7 @@ def check_and_consume(
             and contact_email
             and contact_name
         ):
-            _send_quota_alert(action, tier, contact_email, contact_name, pct)
+            _send_quota_alert(action, tier, contact_email, contact_name, pct, current + amount, limit)
 
         return {
             "allowed": True,
