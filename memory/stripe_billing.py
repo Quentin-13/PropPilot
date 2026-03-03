@@ -222,6 +222,7 @@ def create_checkout_session(
     try:
         session = stripe.checkout.Session.create(
             mode="subscription",
+            payment_method_types=["card"],
             line_items=[{"price": price_id, "quantity": 1}],
             customer_email=customer_email or None,
             client_reference_id=user_id,

@@ -359,33 +359,107 @@
     .pricing-features li::before { content: '✓'; color: var(--marc); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
     .pricing-note { text-align: center; margin-top: 32px; font-size: 0.85rem; color: var(--muted); }
 
-    /* ─── TESTIMONIALS ───────────────────────────────────────── */
-    .testimonials { background: var(--bg2); }
-    .testimonials-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 20px;
+    /* ─── HOW IT WORKS ───────────────────────────────────────── */
+    .how-it-works { background: var(--bg2); }
+    .steps-track {
+      display: flex;
+      gap: 0;
+      position: relative;
     }
-    .testimonial-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 16px; padding: 28px 24px;
-      display: flex; flex-direction: column; gap: 18px;
+    .steps-track::before {
+      content: '';
+      position: absolute;
+      top: 44px;
+      left: calc(12.5% + 32px);
+      right: calc(12.5% + 32px);
+      height: 2px;
+      background: linear-gradient(90deg, var(--blue) 0%, rgba(59,130,246,0.2) 100%);
+      z-index: 0;
+    }
+    .step {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 0 16px;
+      position: relative;
+      z-index: 1;
+    }
+    .step-bubble {
+      width: 88px; height: 88px;
+      border-radius: 50%;
+      background: var(--card);
+      border: 2px solid var(--blue);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem;
+      margin-bottom: 24px;
+      position: relative;
+      box-shadow: 0 0 0 6px rgba(59,130,246,0.08);
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .step:hover .step-bubble {
+      transform: scale(1.08);
+      box-shadow: 0 0 0 10px rgba(59,130,246,0.14), 0 8px 24px rgba(59,130,246,0.25);
+    }
+    .step-num {
+      position: absolute;
+      top: -6px; right: -6px;
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: var(--blue);
+      color: #fff;
+      font-size: 0.72rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step-title {
+      font-size: 1rem; font-weight: 700;
+      color: #fff; margin-bottom: 10px;
+    }
+    .step-desc {
+      font-size: 0.88rem; color: var(--muted);
+      line-height: 1.65; max-width: 200px;
+    }
+    @media (max-width: 768px) {
+      .steps-track { flex-direction: column; gap: 36px; }
+      .steps-track::before { display: none; }
+      .step { flex-direction: row; text-align: left; gap: 20px; align-items: flex-start; }
+      .step-bubble { flex-shrink: 0; width: 64px; height: 64px; font-size: 1.5rem; margin-bottom: 0; }
+      .step-desc { max-width: none; }
+    }
+
+    /* ─── COUNTERS ───────────────────────────────────────────── */
+    .counters { background: var(--bg); }
+    .counters-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 2px;
+    }
+    .counter-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px 24px;
+      text-align: center;
       transition: border-color 0.2s, transform 0.2s;
     }
-    .testimonial-card:hover { border-color: rgba(255,255,255,0.15); transform: translateY(-3px); }
-    .testimonial-quote { font-size: 1.4rem; color: var(--blue); line-height: 0; }
-    .testimonial-text { font-size: 0.95rem; color: var(--text); line-height: 1.75; flex: 1; font-style: italic; }
-    .testimonial-author { display: flex; align-items: center; gap: 12px; }
-    .testimonial-avatar {
-      width: 42px; height: 42px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 800; font-size: 1rem; color: #fff; flex-shrink: 0;
+    .counter-card:hover { border-color: rgba(59,130,246,0.4); transform: translateY(-3px); }
+    .counter-value {
+      font-size: clamp(2.4rem, 5vw, 3.6rem);
+      font-weight: 900;
+      color: var(--blue);
+      line-height: 1;
+      margin-bottom: 8px;
+      font-variant-numeric: tabular-nums;
     }
-    .testimonial-name { font-weight: 700; color: #fff; font-size: 0.92rem; }
-    .testimonial-meta { font-size: 0.8rem; color: var(--muted); }
-    .testimonial-agent-tag {
-      display: inline-flex; align-items: center; gap: 5px;
-      font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 100px;
+    .counter-suffix { color: var(--blue); }
+    .counter-label {
+      font-size: 0.9rem; color: var(--muted);
+      font-weight: 500; line-height: 1.4;
+    }
+    @media (max-width: 768px) {
+      .counters-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+      .counter-card { padding: 28px 16px; }
     }
 
     /* ─── GUARANTEE ──────────────────────────────────────────── */
@@ -762,84 +836,80 @@
     </div>
   </section>
 
-  <!-- ─── TESTIMONIALS ──────────────────────────────────────────── -->
-  <section class="testimonials" id="temoignages">
+  <!-- ─── HOW IT WORKS ─────────────────────────────────────────── -->
+  <section class="how-it-works" id="comment-ca-marche">
     <div class="container">
       <div class="section-header centered fade-up">
-        <span class="section-label">Témoignages</span>
-        <h2 class="section-title">Ils ont recruté l'équipe.<br />Voilà ce que ça change.</h2>
-        <div class="divider"></div>
+        <span class="section-label">Comment ça marche</span>
+        <h2 class="section-title">De l'arrivée du lead<br />au RDV booké, automatiquement.</h2>
+        <p class="section-subtitle">4 étapes. Aucune action de votre part. PropPilot s'en charge.</p>
       </div>
-      <div class="testimonials-grid">
-        <div class="testimonial-card fade-up fade-up-delay-1">
-          <div style="display:flex;align-items:center;justify-content:space-between;">
-            <div class="testimonial-quote">"</div>
-            <span class="testimonial-agent-tag" style="background:rgba(59,130,246,0.12);color:var(--lea);">🎯 Léa</span>
+      <div class="steps-track">
+        <div class="step fade-up fade-up-delay-1">
+          <div class="step-bubble">
+            🎯
+            <span class="step-num">1</span>
           </div>
-          <p class="testimonial-text">Léa a répondu à mon lead SeLoger à 23h47. Le lendemain matin j'avais un RDV booké. +4 mandats en 45 jours. ROI x8 dès le 2ème mois.</p>
-          <div class="testimonial-author">
-            <div class="testimonial-avatar" style="background:linear-gradient(135deg,#2563eb,#8b5cf6);">C</div>
-            <div>
-              <div class="testimonial-name">Claire M.</div>
-              <div class="testimonial-meta">Directrice Agence Centrale Lyon</div>
-            </div>
-          </div>
+          <div class="step-title">Un lead arrive</div>
+          <p class="step-desc">SeLoger, LeBonCoin, votre site… PropPilot reçoit le lead instantanément.</p>
         </div>
-        <div class="testimonial-card fade-up fade-up-delay-2">
-          <div style="display:flex;align-items:center;justify-content:space-between;">
-            <div class="testimonial-quote">"</div>
-            <span class="testimonial-agent-tag" style="background:rgba(16,185,129,0.12);color:var(--marc);">📱 Marc</span>
+        <div class="step fade-up fade-up-delay-2">
+          <div class="step-bubble">
+            🤖
+            <span class="step-num">2</span>
           </div>
-          <p class="testimonial-text">Marc relance mes prospects froids depuis 3 mois. J'ai signé 2 mandats avec des contacts que j'avais complètement oubliés. CA +35% en 60 jours.</p>
-          <div class="testimonial-author">
-            <div class="testimonial-avatar" style="background:linear-gradient(135deg,#059669,#06b6d4);">T</div>
-            <div>
-              <div class="testimonial-name">Thomas R.</div>
-              <div class="testimonial-meta">Mandataire IAD Bordeaux</div>
-            </div>
-          </div>
+          <div class="step-title">Léa qualifie en 2 minutes</div>
+          <p class="step-desc">Notre IA analyse le projet, le budget, la timeline. Score de qualité automatique.</p>
         </div>
-        <div class="testimonial-card fade-up fade-up-delay-3">
-          <div style="display:flex;align-items:center;justify-content:space-between;">
-            <div class="testimonial-quote">"</div>
-            <span class="testimonial-agent-tag" style="background:rgba(139,92,246,0.12);color:var(--sophie);">📞 Sophie</span>
+        <div class="step fade-up fade-up-delay-3">
+          <div class="step-bubble">
+            📞
+            <span class="step-num">3</span>
           </div>
-          <p class="testimonial-text">Sophie gère 80% de nos appels entrants. On a économisé 4 200€/mois en téléopérateurs avec une meilleure qualification des leads.</p>
-          <div class="testimonial-author">
-            <div class="testimonial-avatar" style="background:linear-gradient(135deg,#7c3aed,#ec4899);">A</div>
-            <div>
-              <div class="testimonial-name">Directeur</div>
-              <div class="testimonial-meta">Agence Prestige Côte d'Azur</div>
-            </div>
-          </div>
+          <div class="step-title">Sophie appelle, Marc relance</div>
+          <p class="step-desc">Rappel en moins de 5 min. Si pas de réponse : séquence SMS sur 30 jours.</p>
         </div>
-        <div class="testimonial-card fade-up fade-up-delay-4">
-          <div style="display:flex;align-items:center;justify-content:space-between;">
-            <div class="testimonial-quote">"</div>
-            <span class="testimonial-agent-tag" style="background:rgba(245,158,11,0.12);color:var(--hugo);">📝 Hugo</span>
+        <div class="step fade-up fade-up-delay-4">
+          <div class="step-bubble">
+            📅
+            <span class="step-num">4</span>
           </div>
-          <p class="testimonial-text">Hugo rédige mieux que moi et 100x plus vite. Mes biens se vendent 15% plus vite depuis que les annonces sont optimisées SEO.</p>
-          <div class="testimonial-author">
-            <div class="testimonial-avatar" style="background:linear-gradient(135deg,#d97706,#f59e0b);">S</div>
-            <div>
-              <div class="testimonial-name">Sophie L.</div>
-              <div class="testimonial-meta">Gérante Immo Services Toulouse</div>
-            </div>
-          </div>
+          <div class="step-title">Le RDV est booké</div>
+          <p class="step-desc">Sophie propose des créneaux et réserve directement dans votre Google Calendar.</p>
         </div>
-        <div class="testimonial-card fade-up fade-up-delay-5">
-          <div style="display:flex;align-items:center;justify-content:space-between;">
-            <div class="testimonial-quote">"</div>
-            <span class="testimonial-agent-tag" style="background:rgba(239,68,68,0.12);color:var(--julie);">🔍 Julie</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── COUNTERS ───────────────────────────────────────────────── -->
+  <section class="counters">
+    <div class="container">
+      <div class="counters-grid">
+        <div class="counter-card fade-up fade-up-delay-1">
+          <div class="counter-value" data-target="135" data-suffix="">
+            <span class="counter-display">0</span>
+            <span class="counter-suffix"></span>
           </div>
-          <p class="testimonial-text">Julie a détecté un problème de financement sur un dossier que j'allais signer. Elle m'a évité 3 mois de procédure et une perte sèche de 8 000€.</p>
-          <div class="testimonial-author">
-            <div class="testimonial-avatar" style="background:linear-gradient(135deg,#dc2626,#f97316);">M</div>
-            <div>
-              <div class="testimonial-name">Marc D.</div>
-              <div class="testimonial-meta">Mandataire Safti Paris</div>
-            </div>
+          <div class="counter-label">tests validés</div>
+        </div>
+        <div class="counter-card fade-up fade-up-delay-2">
+          <div class="counter-value" data-target="7" data-suffix="">
+            <span class="counter-display">0</span>
+            <span class="counter-suffix"></span>
           </div>
+          <div class="counter-label">agents IA spécialisés</div>
+        </div>
+        <div class="counter-card fade-up fade-up-delay-3">
+          <div class="counter-value" data-target="5" data-prefix="&lt; " data-suffix=" min">
+            <span class="counter-prefix" style="font-size:0.6em;opacity:0.7;">&lt;&nbsp;</span><span class="counter-display">0</span><span class="counter-suffix" style="font-size:0.55em;opacity:0.7;">&nbsp;min</span>
+          </div>
+          <div class="counter-label">de temps de réponse</div>
+        </div>
+        <div class="counter-card fade-up fade-up-delay-4">
+          <div class="counter-value" data-target="24" data-suffix="">
+            <span class="counter-display">0</span><span class="counter-suffix" style="font-size:0.55em;opacity:0.7;">h/24&nbsp;7j/7</span>
+          </div>
+          <div class="counter-label">disponibilité garantie</div>
         </div>
       </div>
     </div>
@@ -968,6 +1038,7 @@
   </footer>
 
   <script>
+    /* ─── Fade-up au scroll ─────────────────────────────────────── */
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -978,6 +1049,37 @@
     }, { threshold: 0.1, rootMargin: '0px 0px -48px 0px' });
     document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
 
+    /* ─── Compteurs animés ──────────────────────────────────────── */
+    function animateCounter(el) {
+      const target = parseInt(el.dataset.target, 10);
+      const display = el.querySelector('.counter-display');
+      if (!display) return;
+      const duration = 1400;
+      const steps = 50;
+      const step = duration / steps;
+      let current = 0;
+      const increment = target / steps;
+      const timer = setInterval(() => {
+        current += increment;
+        if (current >= target) {
+          current = target;
+          clearInterval(timer);
+        }
+        display.textContent = Math.round(current);
+      }, step);
+    }
+
+    const counterObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          animateCounter(entry.target);
+          counterObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.3 });
+    document.querySelectorAll('.counter-value[data-target]').forEach(el => counterObserver.observe(el));
+
+    /* ─── FAQ ────────────────────────────────────────────────────── */
     function toggleFaq(btn) {
       const item = btn.closest('.faq-item');
       const isOpen = item.classList.contains('open');
