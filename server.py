@@ -126,7 +126,9 @@ app.add_middleware(
 @app.middleware("http")
 async def jwt_middleware(request: Request, call_next):
     """Vérifie le JWT Bearer token et plan_active sur toutes les routes /api/*."""
-    if request.url.path.startswith("/api/"):
+    # /api/calendar/callback est une redirection Google — pas de JWT
+    _exempt = {"/api/calendar/callback"}
+    if request.url.path.startswith("/api/") and request.url.path not in _exempt:
         auth_header = request.headers.get("Authorization", "")
         if not auth_header.startswith("Bearer "):
             return JSONResponse(
@@ -864,3 +866,234 @@ async def stripe_webhook(
                 )
 
     return JSONResponse({"status": "ok", "event": event_type})
+
+
+# ─── Modèles Google Calendar ───────────────────────────────────────────────────
+
+class _CalendarBookRequest(BaseModel):
+    slot_start: str          # ISO datetime
+    lead_email: Optional[str] = None
+    lead_name: str = ""
+    lead_projet: str = "projet immobilier"
+    lead_budget: str = ""
+    lead_localisation: str = ""
+    duration_min: int = 30
+
+
+# ─── Google Calendar OAuth ─────────────────────────────────────────────────────
+
+_DASHBOARD = "https://proppilot-dashboard-production.up.railway.app"
+
+
+@app.get("/api/calendar/auth", tags=["calendar"])
+async def calendar_auth(request: Request):
+    """
+    Génère l'URL d'autorisation Google OAuth 2.0.
+    Le paramètre state = user_id (pour identifier l'utilisateur au retour).
+    """
+    settings = get_settings()
+    user_id = request.state.user_id
+
+    if not settings.google_oauth_available:
+        # Mode mock : retourne une URL de callback local simulée
+        mock_url = (
+            f"{settings.api_url.rstrip('/')}/api/calendar/callback"
+            f"?code=mock_code&state={user_id}"
+        )
+        return {"auth_url": mock_url, "mock": True}
+
+    try:
+        from google_auth_oauthlib.flow import Flow
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": settings.google_client_id,
+                    "client_secret": settings.google_client_secret,
+                    "redirect_uris": [settings.google_redirect_uri],
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                }
+            },
+            scopes=settings.google_scopes,
+        )
+        flow.redirect_uri = settings.google_redirect_uri
+        auth_url, _ = flow.authorization_url(
+            access_type="offline",
+            include_granted_scopes="true",
+            state=user_id,
+            prompt="consent",
+        )
+        return {"auth_url": auth_url, "mock": False}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur OAuth Google : {e}")
+
+
+@app.get("/api/calendar/callback", tags=["calendar"])
+async def calendar_callback(
+    code: Optional[str] = None,
+    state: Optional[str] = None,
+    error: Optional[str] = None,
+):
+    """
+    Reçoit le code OAuth Google, échange contre un token et le stocke en DB.
+    Redirige vers le dashboard après.
+    """
+    from fastapi.responses import RedirectResponse
+    import json as _json
+
+    if error:
+        return RedirectResponse(f"{_DASHBOARD}/08_calendar?calendar_error={error}")
+    if not code or not state:
+        return RedirectResponse(f"{_DASHBOARD}/08_calendar?calendar_error=missing_params")
+
+    user_id = state
+    settings = get_settings()
+
+    # Mode mock (TESTING=true ou pas de clés OAuth)
+    if not settings.google_oauth_available:
+        token_data = {"access_token": "mock_token", "token_type": "Bearer", "mock": True}
+        try:
+            from memory.database import get_connection
+            with get_connection() as conn:
+                conn.execute(
+                    "UPDATE users SET google_calendar_token = ? WHERE id = ?",
+                    (_json.dumps(token_data), user_id),
+                )
+        except Exception:
+            pass  # DB indisponible en tests
+        return RedirectResponse(f"{_DASHBOARD}/08_calendar?calendar_connected=true")
+
+    try:
+        from google_auth_oauthlib.flow import Flow
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": settings.google_client_id,
+                    "client_secret": settings.google_client_secret,
+                    "redirect_uris": [settings.google_redirect_uri],
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                }
+            },
+            scopes=settings.google_scopes,
+        )
+        flow.redirect_uri = settings.google_redirect_uri
+        flow.fetch_token(code=code)
+        creds = flow.credentials
+
+        token_data = {
+            "access_token": creds.token,
+            "refresh_token": creds.refresh_token,
+            "token_uri": creds.token_uri,
+            "client_id": creds.client_id,
+            "client_secret": creds.client_secret,
+            "scopes": list(creds.scopes) if creds.scopes else settings.google_scopes,
+            "mock": False,
+        }
+        from memory.database import get_connection
+        with get_connection() as conn:
+            conn.execute(
+                "UPDATE users SET google_calendar_token = ? WHERE id = ?",
+                (_json.dumps(token_data), user_id),
+            )
+        return RedirectResponse(f"{_DASHBOARD}/08_calendar?calendar_connected=true")
+    except Exception as e:
+        return RedirectResponse(f"{_DASHBOARD}/08_calendar?calendar_error={quote(str(e), safe='')}")
+
+
+@app.get("/api/calendar/slots", tags=["calendar"])
+async def calendar_slots(request: Request, days_ahead: int = 7):
+    """
+    Retourne les créneaux disponibles des N prochains jours.
+    Jours ouvrés uniquement, 9h–19h, créneaux de 30 min.
+    """
+    user_id = request.state.user_id
+    from tools.calendar_tool import CalendarTool
+
+    cal = CalendarTool()
+    slots = cal.get_available_slots(
+        days_ahead=days_ahead,
+        start_hour=9,
+        end_hour=19,
+        user_id=user_id,
+    )
+    return {
+        "slots": [
+            {
+                "start": s["start"].isoformat(),
+                "end": s["end"].isoformat(),
+                "label": s["label"],
+                "label_short": s["label_short"],
+            }
+            for s in slots
+        ],
+        "count": len(slots),
+    }
+
+
+@app.get("/api/calendar/status", tags=["calendar"])
+async def calendar_status(request: Request):
+    """Retourne si l'utilisateur a connecté Google Calendar."""
+    import json as _json
+    user_id = request.state.user_id
+    try:
+        from memory.database import get_connection
+        with get_connection() as conn:
+            row = conn.execute(
+                "SELECT google_calendar_token FROM users WHERE id = ?",
+                (user_id,),
+            ).fetchone()
+        if row and row["google_calendar_token"]:
+            token_data = _json.loads(row["google_calendar_token"])
+            return {"connected": True, "mock": token_data.get("mock", False)}
+        return {"connected": False, "mock": False}
+    except Exception:
+        return {"connected": False, "mock": False}
+
+
+@app.post("/api/calendar/book", tags=["calendar"])
+async def calendar_book(request: Request, body: _CalendarBookRequest):
+    """
+    Crée un événement Google Calendar + envoie email de confirmation au lead.
+    """
+    import json as _json
+    from datetime import datetime as _dt
+    user_id = request.state.user_id
+
+    try:
+        start_dt = _dt.fromisoformat(body.slot_start)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="slot_start doit être un ISO datetime valide")
+
+    from tools.calendar_tool import CalendarTool, SLOT_DURATION_MIN
+
+    slot = {
+        "start": start_dt,
+        "end": start_dt + __import__("datetime").timedelta(minutes=body.duration_min),
+        "label": start_dt.strftime("%A %d/%m à %H:%M"),
+        "label_short": start_dt.strftime("%Hh%M"),
+    }
+
+    # Objet lead minimal pour CalendarTool
+    class _MiniLead:
+        prenom = body.lead_name
+        nom_complet = body.lead_name
+        email = body.lead_email
+        budget = body.lead_budget
+        localisation = body.lead_localisation
+
+        class projet:
+            value = body.lead_projet
+
+    cal = CalendarTool()
+    result = cal.book_appointment(
+        lead=_MiniLead(),
+        slot=slot,
+        user_id=user_id,
+        send_email=bool(body.lead_email),
+    )
+
+    if not result.get("success"):
+        raise HTTPException(status_code=500, detail=result.get("error", "Erreur booking"))
+
+    return result

@@ -50,6 +50,16 @@ class Settings(BaseSettings):
     # Google Calendar
     google_calendar_id: str = Field(default="primary", alias="GOOGLE_CALENDAR_ID")
     google_service_account_json: Optional[str] = Field(default=None, alias="GOOGLE_SERVICE_ACCOUNT_JSON")
+    google_client_id: Optional[str] = Field(default=None, alias="GOOGLE_CLIENT_ID")
+    google_client_secret: Optional[str] = Field(default=None, alias="GOOGLE_CLIENT_SECRET")
+    google_redirect_uri: str = Field(
+        default="http://localhost:8000/api/calendar/callback",
+        alias="GOOGLE_REDIRECT_URI",
+    )
+    google_scopes: list[str] = Field(
+        default=["https://www.googleapis.com/auth/calendar"],
+        alias="GOOGLE_SCOPES",
+    )
 
     # Base de données
     database_path: str = Field(default="./data/agency.db", alias="DATABASE_PATH")
@@ -106,6 +116,12 @@ class Settings(BaseSettings):
     @property
     def openai_available(self) -> bool:
         return bool(self.openai_api_key)
+
+    @property
+    def google_oauth_available(self) -> bool:
+        if self.testing or self.mock_mode == "always":
+            return False
+        return bool(self.google_client_id and self.google_client_secret)
 
     @property
     def elevenlabs_available(self) -> bool:

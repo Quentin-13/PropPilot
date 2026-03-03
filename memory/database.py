@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS users (
     stripe_subscription_id TEXT,
     subscription_status TEXT DEFAULT 'inactive',
     trial_ends_at TIMESTAMP,
+    google_calendar_token TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -283,6 +284,7 @@ def _run_migrations(conn) -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'inactive'",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMP",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS google_calendar_token TEXT",
     ]:
         conn.execute(col_sql)
 

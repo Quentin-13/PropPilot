@@ -109,11 +109,12 @@ class VoiceCallAgent:
         if not usage_check["allowed"]:
             return {"success": False, "message": usage_check["message"], "limit_reached": True}
 
-        # Slots disponibles pour le script d'appel
+        # Slots disponibles pour le script d'appel (Sophie propose 3 créneaux)
         calendar = CalendarTool()
-        slots = calendar.get_next_slots_for_voice(n=2)
+        slots = calendar.get_next_slots_for_voice(n=3)
         slot_1 = slots[0] if len(slots) > 0 else "mardi à 10h"
         slot_2 = slots[1] if len(slots) > 1 else "jeudi à 14h"
+        slot_3 = slots[2] if len(slots) > 2 else "vendredi à 11h"
 
         # Variables dynamiques pour l'agent Retell
         dynamic_vars = {
@@ -125,6 +126,7 @@ class VoiceCallAgent:
             "budget": lead.budget or "",
             "creneau_1": slot_1,
             "creneau_2": slot_2,
+            "creneau_3": slot_3,
             "score": str(lead.score),
         }
 
@@ -348,24 +350,28 @@ Retourne UNIQUEMENT ce JSON :
             return f"Appel traité — durée {lead.score}/10.", lead.score, False, []
 
     def _auto_book_rdv(self, lead: Lead, summary: str) -> Optional[dict]:
-        """Book automatiquement un RDV si détecté dans l'appel."""
+        """
+        Book automatiquement un RDV si détecté dans l'appel.
+        Utilise book_appointment (OAuth ou Service Account) + envoie email de confirmation.
+        """
         calendar = CalendarTool()
-        slots = calendar.get_available_slots(days_ahead=7)
+        slots = calendar.get_available_slots(days_ahead=7, user_id=self.client_id)
 
         if not slots:
             return None
 
         slot = slots[0]
-        title = f"RDV {self.settings.agency_name} — {lead.nom_complet} ({lead.projet.value})"
-        description = f"Lead qualifié via appel IA.\n\nRésumé : {summary}\n\nBudget : {lead.budget}\nLocalisation : {lead.localisation}"
-
-        result = calendar.book_slot(
-            start_dt=slot["start"],
-            title=title,
-            description=description,
-            attendee_email=lead.email if lead.email else None,
-            attendee_name=lead.nom_complet,
+        result = calendar.book_appointment(
+            lead=lead,
+            slot=slot,
+            user_id=self.client_id,
+            send_email=bool(lead.email),
         )
+        if result.get("success"):
+            logger.info(
+                f"RDV booké — lead={lead.id} slot={slot['label']} "
+                f"email_confirmation={'✓' if result.get('email_sent') else '✗'}"
+            )
         return result
 
     # ─── DB helpers ──────────────────────────────────────────────────────────
