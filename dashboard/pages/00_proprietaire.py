@@ -341,11 +341,12 @@ if df_clients.empty:
     st.info("Aucun client enregistré.")
 else:
     def _highlight(row):
+        base = "color: #000000; "
         if "🔴" in str(row.get("Statut", "")):
-            return ["background-color: #fee2e2"] * len(row)
+            return [base + "background-color: #fee2e2"] * len(row)
         if "🟠" in str(row.get("Statut", "")):
-            return ["background-color: #fef3c7"] * len(row)
-        return [""] * len(row)
+            return [base + "background-color: #fef3c7"] * len(row)
+        return [base] * len(row)
 
     display_cols = ["Email", "Agence", "Forfait", "Statut", "Abonnement",
                     "Voix (min)", "SMS", "Leads", "Quota %", "Dernière activité", "Inscrit le"]
