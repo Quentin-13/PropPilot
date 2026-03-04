@@ -1,5 +1,5 @@
 """
-Dashboard Admin PropPilot — Vue business complète pour Quentin (fondateur).
+Dashboard Propriétaire PropPilot — Vue business complète pour Quentin (fondateur).
 Accessible UNIQUEMENT si is_admin=True dans la session.
 """
 from __future__ import annotations
@@ -19,7 +19,7 @@ from config.settings import get_settings
 from memory.database import get_connection
 
 st.set_page_config(
-    page_title="Admin — PropPilot",
+    page_title="Propriétaire — PropPilot",
     page_icon="🔐",
     layout="wide",
 )
@@ -77,8 +77,8 @@ def _exec(sql: str, params: tuple = ()) -> bool:
 
 # ─── Header ───────────────────────────────────────────────────────────────────
 
-st.title("🔐 Admin PropPilot")
-st.markdown(f"Dashboard propriétaire · {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+st.title("🔐 PropPilot — Vue Propriétaire")
+st.markdown(f"Dashboard fondateur · {datetime.now().strftime('%d/%m/%Y %H:%M')}")
 st.markdown("---")
 
 
@@ -255,7 +255,7 @@ st.markdown("---")
 
 st.markdown("## 👥 Gestion clients")
 
-clients = _safe_query(f"""
+clients = _safe_query("""
     SELECT u.id,
            u.email,
            u.agency_name,
@@ -286,7 +286,6 @@ last_activity: dict[str, datetime] = {
 }
 
 now = datetime.now()
-seuil_inactif = now - timedelta(days=7)
 
 from config.tier_limits import TIERS
 
@@ -312,7 +311,6 @@ for c in clients:
     days_inactive = (now - last_act).days if last_act else 999
     quota_pct = _quota_pct(c["plan"], c["voice_minutes"], c["sms_count"])
 
-    status_flag = ""
     if days_inactive > 7:
         status_flag = "🔴 Inactif"
     elif quota_pct >= 80:
@@ -342,7 +340,6 @@ df_clients = pd.DataFrame(rows_display)
 if df_clients.empty:
     st.info("Aucun client enregistré.")
 else:
-    # Coloration selon statut
     def _highlight(row):
         if "🔴" in str(row.get("Statut", "")):
             return ["background-color: #fee2e2"] * len(row)
@@ -367,17 +364,17 @@ else:
     client_emails = [r["Email"] for r in rows_display]
 
     with col_sel:
-        selected_email = st.selectbox("Sélectionner un client", ["—"] + client_emails, key="admin_client_sel")
+        selected_email = st.selectbox("Sélectionner un client", ["—"] + client_emails, key="prop_client_sel")
 
     with col_action:
-        action = st.selectbox("Action", ["Activer plan", "Désactiver plan", "Changer forfait"], key="admin_action")
+        action = st.selectbox("Action", ["Activer plan", "Désactiver plan", "Changer forfait"], key="prop_action")
 
     with col_plan:
-        new_plan = st.selectbox("Nouveau forfait", ["Indépendant", "Starter", "Pro", "Elite"], key="admin_new_plan")
+        new_plan = st.selectbox("Nouveau forfait", ["Indépendant", "Starter", "Pro", "Elite"], key="prop_new_plan")
 
     with col_btn:
         st.markdown("<div style='margin-top: 28px;'>", unsafe_allow_html=True)
-        apply = st.button("Appliquer", type="primary", key="admin_apply")
+        apply = st.button("Appliquer", type="primary", key="prop_apply")
         st.markdown("</div>", unsafe_allow_html=True)
 
     if apply and selected_email and selected_email != "—":
@@ -487,10 +484,10 @@ with alert_cols[2]:
 
 st.markdown("---")
 
-# ─── Footer admin ────────────────────────────────────────────────────────────
+# ─── Footer ──────────────────────────────────────────────────────────────────
 st.markdown(
     "<div style='text-align: center; color: #888; font-size: 11px;'>"
-    "🔐 PropPilot Admin · Accès restreint — Données confidentielles"
+    "🔐 PropPilot · Vue Propriétaire · Accès restreint — Données confidentielles"
     "</div>",
     unsafe_allow_html=True,
 )
