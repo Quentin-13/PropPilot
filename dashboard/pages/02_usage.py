@@ -239,7 +239,7 @@ st.markdown("### Votre forfait actuel")
 tier_col1, tier_col2, tier_col3, tier_col4 = st.columns(4)
 
 tiers_display = {
-    "Indépendant": {"prix": "390€/mois", "voix": "600 min", "sms": "3 000 SMS", "highlight": tier == "Indépendant"},
+    "Indépendant": {"prix": "290€/mois", "voix": "600 min", "sms": "3 000 SMS", "highlight": tier == "Indépendant"},
     "Starter": {"prix": "790€/mois", "voix": "1 500 min", "sms": "8 000 SMS", "highlight": tier == "Starter"},
     "Pro": {"prix": "1 490€/mois", "voix": "3 000 min", "sms": "15 000 SMS", "highlight": tier == "Pro"},
     "Elite": {"prix": "2 990€/mois", "voix": "Illimité", "sms": "Illimité", "highlight": tier == "Elite"},

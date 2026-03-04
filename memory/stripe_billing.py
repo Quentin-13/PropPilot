@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 # ─── Constantes ───────────────────────────────────────────────────────────────
 
 STRIPE_PRICE_IDS: dict[str, str] = {
-    "Indépendant": "price_1T6U2dL2FehJuqYZsSHK11T7",
+    "Indépendant": "price_1T7HCOL2FehJuqYZbPX1cpIK",
     "Starter":     "price_1T6U3DL2FehJuqYZSnHDZRcF",
     "Pro":         "price_1T6U3PL2FehJuqYZ5xK5YDJ3",
     "Elite":       "price_1T6U3dL2FehJuqYZ7VoAwlGn",
@@ -26,7 +26,7 @@ STRIPE_PRICE_IDS: dict[str, str] = {
 
 PLAN_FEATURES: dict[str, dict] = {
     "Indépendant": {
-        "prix": "390€/mois",
+        "prix": "290€/mois",
         "voix": "600 min",
         "sms": "3 000 SMS",
         "utilisateurs": "1 utilisateur",

@@ -230,7 +230,7 @@ elif st.session_state.wizard_step == 4:
     st.markdown("## Étape 4 — Forfait & Facturation")
 
     current_tier = tier
-    tier_prices = {"Indépendant": 390, "Starter": 790, "Pro": 1490, "Elite": 2990}
+    tier_prices = {"Indépendant": 290, "Starter": 790, "Pro": 1490, "Elite": 2990}
 
     col_s1, col_s2, col_s3, col_s4 = st.columns(4)
 
