@@ -81,6 +81,10 @@ from dashboard.auth_ui import render_sidebar_logout, require_auth
 
 require_auth()
 
+# ─── Redirect admin vers page Propriétaire ────────────────────────────────────
+if st.session_state.get("is_admin", False):
+    st.switch_page("pages/00_proprietaire.py")
+
 # ─── Sidebar ──────────────────────────────────────────────────────────────────
 render_sidebar_logout()
 

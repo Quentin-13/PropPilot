@@ -349,11 +349,21 @@ def render_sidebar_logout() -> None:
     is_admin = st.session_state.get("is_admin", False)
 
     with st.sidebar:
-        # Masquer le lien Admin dans la nav pour les utilisateurs non-admin
-        if not is_admin:
+        if is_admin:
+            # Admin : sidebar réduite à la seule page Propriétaire
+            # 07_admin (nth-child 8) masqué aussi pour éviter la confusion
             st.markdown("""
             <style>
-            [data-testid="stSidebarNav"] li:first-child { display: none !important; }
+            [data-testid="stSidebarNav"] li { display: none !important; }
+            [data-testid="stSidebarNav"] li:nth-child(1) { display: block !important; }
+            </style>
+            """, unsafe_allow_html=True)
+        else:
+            # Client : masquer Propriétaire (admin only) et 07_admin (obsolète)
+            st.markdown("""
+            <style>
+            [data-testid="stSidebarNav"] li:nth-child(1) { display: none !important; }
+            [data-testid="stSidebarNav"] li:nth-child(8) { display: none !important; }
             </style>
             """, unsafe_allow_html=True)
 
