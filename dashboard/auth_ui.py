@@ -85,7 +85,19 @@ def _show_plan_selection() -> None:
     agency_name = st.session_state.get("agency_name", "Mon Agence")
 
     st.markdown("""
-    <style>[data-testid="stSidebarNav"] { display: none; }</style>
+    <style>
+    [data-testid="stSidebarNav"] { display: none; }
+    /* Boutons forfait : bleu #3b82f6 */
+    [data-testid="stButton"] > button[kind="primary"] {
+        background-color: #3b82f6 !important;
+        border-color: #3b82f6 !important;
+        color: white !important;
+    }
+    [data-testid="stButton"] > button[kind="primary"]:hover {
+        background-color: #2563eb !important;
+        border-color: #2563eb !important;
+    }
+    </style>
     """, unsafe_allow_html=True)
 
     _, col, _ = st.columns([1, 4, 1])
@@ -93,8 +105,8 @@ def _show_plan_selection() -> None:
         st.markdown("""
         <div style="text-align: center; padding: 32px 0 24px 0;">
             <span style="font-size: 48px;">🏠</span>
-            <h1 style="margin: 8px 0 4px 0; font-size: 1.8rem;">Choisissez votre forfait</h1>
-            <p style="color: #64748b; margin: 0;">
+            <h1 style="margin: 8px 0 4px 0; font-size: 1.8rem; color: white;">Choisissez votre forfait</h1>
+            <p style="color: #cbd5e1; margin: 0;">
                 Tous les agents IA inclus dès le premier forfait.<br>
                 Seules les limites mensuelles diffèrent.
             </p>
@@ -144,22 +156,22 @@ def _show_plan_selection() -> None:
 
         for col, plan_name in zip(cols, plan_names):
             features = PLAN_FEATURES[plan_name]
-            border = "#1a3a5c" if plan_name == "Starter" else "#e9ecef"
+            border = "#3b82f6" if plan_name == "Starter" else "#475569"
 
             with col:
                 st.markdown(f"""
                 <div style="border: 2px solid {border}; border-radius: 10px; padding: 20px;
-                            text-align: center; min-height: 340px;">
-                    <div style="font-size: 17px; font-weight: 800; color: #1a3a5c;">
+                            text-align: center; min-height: 340px; background: rgba(255,255,255,0.04);">
+                    <div style="font-size: 17px; font-weight: 800; color: white;">
                         {plan_name}
                     </div>
-                    <div style="font-size: 26px; font-weight: 900; color: #e67e22; margin: 8px 0;">
+                    <div style="font-size: 26px; font-weight: 900; color: #f59e0b; margin: 8px 0;">
                         {features['prix']}
                     </div>
-                    <div style="font-size: 12px; color: #555; margin-bottom: 10px;">
+                    <div style="font-size: 12px; color: #cbd5e1; margin-bottom: 10px;">
                         {features['voix']} voix · {features['sms']}
                     </div>
-                    <div style="text-align: left; font-size: 12px; color: #333;">
+                    <div style="text-align: left; font-size: 12px; color: #e2e8f0;">
                         {''.join(f"<div>✅ {f}</div>" for f in features['features'][:5])}
                     </div>
                 </div>
@@ -180,7 +192,7 @@ def _show_plan_selection() -> None:
         st.markdown("""
         <div style="text-align: center; color: #94a3b8; font-size: 12px; margin-top: 16px;">
             Garantie ROI 60 jours · Paiement sécurisé Stripe ·
-            <a href="mailto:contact@proppilot.fr">contact@proppilot.fr</a>
+            <a href="mailto:contact@proppilot.fr" style="color: #94a3b8;">contact@proppilot.fr</a>
         </div>
         """, unsafe_allow_html=True)
 
