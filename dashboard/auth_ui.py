@@ -61,13 +61,21 @@ def _do_signup(email: str, password: str, agency_name: str) -> dict:
         return {"error": str(e)}
 
 
-def _set_session(token: str, user_id: str, agency_name: str, plan: str, plan_active: bool = True) -> None:
+def _set_session(
+    token: str,
+    user_id: str,
+    agency_name: str,
+    plan: str,
+    plan_active: bool = True,
+    is_admin: bool = False,
+) -> None:
     st.session_state["authenticated"] = True
     st.session_state["token"] = token
     st.session_state["user_id"] = user_id
     st.session_state["agency_name"] = agency_name or "Mon Agence"
     st.session_state["plan"] = plan or "Starter"
     st.session_state["plan_active"] = plan_active
+    st.session_state["is_admin"] = is_admin
 
 
 # ─── Sélection de forfait inline ──────────────────────────────────────────────
@@ -251,6 +259,7 @@ def show_auth_page() -> None:
                             agency_name=result.get("agency_name", email),
                             plan=result.get("plan", "Starter"),
                             plan_active=plan_active,
+                            is_admin=result.get("is_admin", False),
                         )
                         if not plan_active:
                             st.session_state["plan_inactive_reason"] = "inactive"
@@ -288,6 +297,7 @@ def show_auth_page() -> None:
                                 agency_name=agency_name,
                                 plan=login_result.get("plan", "Starter"),
                                 plan_active=plan_active,
+                                is_admin=login_result.get("is_admin", False),
                             )
                             if not plan_active:
                                 st.session_state["plan_inactive_reason"] = "new_signup"
@@ -336,7 +346,17 @@ def render_sidebar_logout() -> None:
     agency_name = st.session_state.get("agency_name", "Mon Agence")
     plan = st.session_state.get("plan", "Starter")
 
+    is_admin = st.session_state.get("is_admin", False)
+
     with st.sidebar:
+        # Masquer le lien Admin dans la nav pour les utilisateurs non-admin
+        if not is_admin:
+            st.markdown("""
+            <style>
+            [data-testid="stSidebarNav"] li:first-child { display: none !important; }
+            </style>
+            """, unsafe_allow_html=True)
+
         st.markdown(f"""
         <div style="padding: 8px 0 20px 0;">
             <div style="font-size: 24px;">🏠</div>

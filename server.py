@@ -237,7 +237,7 @@ async def auth_login(body: _LoginRequest):
         token = login(body.email, body.password)
         with get_connection() as conn:
             row = conn.execute(
-                "SELECT id, agency_name, plan, plan_active FROM users WHERE email = ?",
+                "SELECT id, agency_name, plan, plan_active, is_admin FROM users WHERE email = ?",
                 (body.email,),
             ).fetchone()
         return JSONResponse({
@@ -247,6 +247,7 @@ async def auth_login(body: _LoginRequest):
             "agency_name": row["agency_name"] if row else "",
             "plan": row["plan"] if row else "Starter",
             "plan_active": bool(row["plan_active"]) if row else False,
+            "is_admin": bool(row["is_admin"]) if row else False,
         })
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
