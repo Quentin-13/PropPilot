@@ -19,6 +19,29 @@ import streamlit as st
 from config.settings import get_settings
 
 
+# ─── Logo inline SVG ──────────────────────────────────────────────────────────
+
+_LOGO_SVG = """
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 116" width="{size}" height="{size}">
+  <defs>
+    <linearGradient id="lg{uid}" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#1e3a5f"/>
+    </linearGradient>
+  </defs>
+  <polygon points="50,2 97,27 97,77 50,102 3,77 3,27" fill="url(#lg{uid})"/>
+  <line x1="50" y1="2" x2="97" y2="27" stroke="#60a5fa" stroke-width="3.5" stroke-linecap="round"/>
+  <text x="50" y="70" font-family="Arial Black, Arial, sans-serif"
+        font-size="40" font-weight="900" fill="white" text-anchor="middle"
+        letter-spacing="-1">PP</text>
+</svg>"""
+
+
+def _logo(size: int = 48, uid: str = "a") -> str:
+    """Retourne l'inline SVG du logo PropPilot prêt pour st.markdown."""
+    return _LOGO_SVG.format(size=size, uid=uid)
+
+
 # ─── Helpers API ──────────────────────────────────────────────────────────────
 
 def _api_url() -> str:
@@ -110,9 +133,9 @@ def _show_plan_selection() -> None:
 
     _, col, _ = st.columns([1, 4, 1])
     with col:
-        st.markdown("""
+        st.markdown(f"""
         <div style="text-align: center; padding: 32px 0 24px 0;">
-            <span style="font-size: 48px;">🏠</span>
+            {_logo(56, "ps")}
             <h1 style="margin: 8px 0 4px 0; font-size: 1.8rem; color: white;">Choisissez votre forfait</h1>
             <p style="color: #cbd5e1; margin: 0;">
                 Tous les agents IA inclus dès le premier forfait.<br>
@@ -222,9 +245,9 @@ def show_auth_page() -> None:
     auth_param = st.query_params.get("auth", "login")
 
     with col:
-        st.markdown("""
+        st.markdown(f"""
         <div style="text-align: center; padding: 40px 0 24px 0;">
-            <span style="font-size: 48px;">🏠</span>
+            {_logo(56, "lp")}
             <h1 style="margin: 8px 0 4px 0; font-size: 2rem;">PropPilot</h1>
             <p style="color: #64748b; margin: 0;">L'IA pour les agences immobilières françaises</p>
         </div>
@@ -368,10 +391,12 @@ def render_sidebar_logout() -> None:
             """, unsafe_allow_html=True)
 
         st.markdown(f"""
-        <div style="padding: 8px 0 20px 0;">
-            <div style="font-size: 24px;">🏠</div>
-            <div style="font-size: 18px; font-weight: 700; color: white;">{agency_name}</div>
-            <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">Forfait {plan}</div>
+        <div style="padding: 8px 0 20px 0; display: flex; align-items: center; gap: 10px;">
+            {_logo(36, "sb")}
+            <div>
+              <div style="font-size: 16px; font-weight: 700; color: white;">{agency_name}</div>
+              <div style="font-size: 12px; color: #94a3b8;">Forfait {plan}</div>
+            </div>
         </div>
         """, unsafe_allow_html=True)
 

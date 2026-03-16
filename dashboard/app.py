@@ -22,7 +22,7 @@ settings = get_settings()
 # ─── Configuration Streamlit ───────────────────────────────────────────────────
 st.set_page_config(
     page_title="PropPilot",
-    page_icon="🏠",
+    page_icon="https://proppilot-production.up.railway.app/static/favicon.svg",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -94,7 +94,7 @@ tier = st.session_state.get("plan", settings.agency_tier)
 agency_name = st.session_state.get("agency_name", settings.agency_name)
 
 # ─── Page d'accueil ───────────────────────────────────────────────────────────
-st.title(f"🏠 PropPilot — {agency_name}")
+st.title(f"PropPilot — {agency_name}")
 st.markdown(f"**Forfait {tier}** · Bienvenue dans votre tableau de bord")
 
 st.markdown("---")

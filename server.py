@@ -17,6 +17,7 @@ from typing import Optional
 from urllib.parse import quote
 
 from fastapi import BackgroundTasks, FastAPI, Form, Header, HTTPException, Request, Response
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
@@ -121,6 +122,8 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.middleware("http")
