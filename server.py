@@ -910,6 +910,7 @@ class _CheckoutRequest(BaseModel):
     plan: str
     success_url: str = ""
     cancel_url: str = ""
+    engagement: bool = True
 
 
 def _extract_user_id(request: Request) -> Optional[str]:
@@ -975,6 +976,7 @@ async def stripe_create_checkout(request: Request, body: _CheckoutRequest):
         customer_email=customer_email,
         success_url=success_url,
         cancel_url=cancel_url,
+        engagement=body.engagement,
     )
 
     if "error" in result:

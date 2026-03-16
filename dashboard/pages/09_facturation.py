@@ -14,7 +14,7 @@ import httpx
 import streamlit as st
 
 from config.settings import get_settings
-from memory.stripe_billing import PLAN_FEATURES, STRIPE_PRICE_IDS
+from memory.stripe_billing import PLAN_FEATURES
 
 st.set_page_config(page_title="Facturation — PropPilot", layout="wide", page_icon="💳")
 
@@ -38,13 +38,14 @@ def _api_headers() -> dict:
     return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
 
-def _create_checkout(plan_name: str) -> dict:
+def _create_checkout(plan_name: str, engagement: bool = True) -> dict:
     base = settings.api_url.rstrip("/")
     try:
         resp = httpx.post(
             f"{base}/stripe/create-checkout-session",
             json={
                 "plan": plan_name,
+                "engagement": engagement,
                 "success_url": "https://proppilot-dashboard-production.up.railway.app/10_success",
                 "cancel_url": "https://proppilot-dashboard-production.up.railway.app/09_facturation",
             },
@@ -130,6 +131,31 @@ st.markdown("### Choisir un forfait")
 st.markdown("Tous les agents IA inclus dès le premier forfait. Seules les limites mensuelles diffèrent.")
 st.markdown("")
 
+# ── Toggle engagement ──────────────────────────────────────────────────────────
+engagement_option = st.radio(
+    "Type d'engagement",
+    options=["Engagement 1 an", "Sans engagement"],
+    index=0,
+    horizontal=True,
+    label_visibility="collapsed",
+)
+engagement = engagement_option == "Engagement 1 an"
+
+if engagement:
+    st.markdown(
+        '<div style="background:#d4edda;color:#155724;padding:10px 18px;border-radius:8px;'
+        'margin-bottom:16px;font-weight:600;">💰 Économisez jusqu\'à 7 200€/an avec l\'engagement 1 an</div>',
+        unsafe_allow_html=True,
+    )
+else:
+    st.markdown(
+        '<div style="background:#fff3cd;color:#856404;padding:10px 18px;border-radius:8px;'
+        'margin-bottom:16px;font-weight:600;">🔓 Résiliable à tout moment — sans frais</div>',
+        unsafe_allow_html=True,
+    )
+
+st.markdown("")
+
 col1, col2, col3, col4 = st.columns(4)
 cols = [col1, col2, col3, col4]
 plan_names = ["Indépendant", "Starter", "Pro", "Elite"]
@@ -140,15 +166,29 @@ for col, plan_name in zip(cols, plan_names):
     border = "#1a3a5c" if is_current else "#e9ecef"
     badge = " ✓ Actuel" if is_current else ""
 
+    prix_affiche = features["prix_engagement"] if engagement else features["prix_no_commit"]
+    economie = features["economie_annuelle"]
+    engagement_label = "Engagement 12 mois" if engagement else "Sans engagement"
+    badge_economie = (
+        f'<div style="background:#d4edda;color:#155724;font-size:11px;font-weight:700;'
+        f'border-radius:5px;padding:3px 8px;display:inline-block;margin-bottom:6px;">'
+        f'Économie {economie}</div>'
+        if engagement else ""
+    )
+
     with col:
         st.markdown(f"""
         <div style="border: 2px solid {border}; border-radius: 10px; padding: 20px;
-                    text-align: center; min-height: 360px;">
+                    text-align: center; min-height: 380px;">
             <div style="font-size: 18px; font-weight: 800; color: #1a3a5c;">
                 {plan_name}{badge}
             </div>
-            <div style="font-size: 28px; font-weight: 900; color: #e67e22; margin: 10px 0;">
-                {features['prix']}
+            {badge_economie}
+            <div style="font-size: 28px; font-weight: 900; color: #e67e22; margin: 10px 0 2px 0;">
+                {prix_affiche}
+            </div>
+            <div style="font-size: 11px; color: #888; margin-bottom: 10px;">
+                {engagement_label}
             </div>
             <div style="font-size: 13px; color: #555; margin-bottom: 12px;">
                 {features['voix']} voix · {features['sms']}
@@ -166,7 +206,7 @@ for col, plan_name in zip(cols, plan_names):
         if not btn_disabled:
             if st.button(btn_label, key=f"checkout_{plan_name}", use_container_width=True, type="primary"):
                 with st.spinner(f"Préparation du paiement {plan_name}…"):
-                    result = _create_checkout(plan_name)
+                    result = _create_checkout(plan_name, engagement=engagement)
                 checkout_url = result.get("checkout_url")
                 if "error" in result or not checkout_url:
                     st.error(f"Erreur : {result.get('error', 'Réponse inattendue du serveur.')}")

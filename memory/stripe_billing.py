@@ -17,16 +17,35 @@ logger = logging.getLogger(__name__)
 
 # ─── Constantes ───────────────────────────────────────────────────────────────
 
+# ── Prix avec engagement 1 an ────────────────────
 STRIPE_PRICE_IDS: dict[str, str] = {
-    "Indépendant": "price_1T7HCOL2FehJuqYZbPX1cpIK",
-    "Starter":     "price_1T6U3DL2FehJuqYZSnHDZRcF",
-    "Pro":         "price_1T6U3PL2FehJuqYZ5xK5YDJ3",
-    "Elite":       "price_1T6U3dL2FehJuqYZ7VoAwlGn",
+    "Indépendant": "price_1TBYHLL2FehJuqYZzGbLB6Yo",  # 250€/mois
+    "Starter":     "price_1TBYIVL2FehJuqYZIN0Ide2e",  # 790€/mois
+    "Pro":         "price_1TBYJpL2FehJuqYZINa8AS3q",  # 1490€/mois
+    "Elite":       "price_1TBYKlL2FehJuqYZ24KzL7oJ",  # 2990€/mois
 }
+
+# ── Prix sans engagement ─────────────────────────
+STRIPE_PRICE_IDS_NO_COMMIT: dict[str, str] = {
+    "Indépendant": "price_1TBYHLL2FehJuqYZL7TL1A8O",  # 320€/mois
+    "Starter":     "price_1TBYIVL2FehJuqYZqbL6KCnP",  # 950€/mois
+    "Pro":         "price_1TBYJpL2FehJuqYZIZujbFgj",  # 1790€/mois
+    "Elite":       "price_1TBYKlL2FehJuqYZEw0Rwzrd",  # 3590€/mois
+}
+
+
+def get_price_id(plan_name: str, engagement: bool = True) -> str:
+    """Retourne le Price ID selon plan et engagement."""
+    if engagement:
+        return STRIPE_PRICE_IDS.get(plan_name, "")
+    return STRIPE_PRICE_IDS_NO_COMMIT.get(plan_name, "")
 
 PLAN_FEATURES: dict[str, dict] = {
     "Indépendant": {
-        "prix": "290€/mois",
+        "prix": "250€/mois",
+        "prix_engagement": "250€/mois",
+        "prix_no_commit": "320€/mois",
+        "economie_annuelle": "840€/an",
         "voix": "600 min",
         "sms": "3 000 SMS",
         "utilisateurs": "1 utilisateur",
@@ -42,6 +61,9 @@ PLAN_FEATURES: dict[str, dict] = {
     },
     "Starter": {
         "prix": "790€/mois",
+        "prix_engagement": "790€/mois",
+        "prix_no_commit": "950€/mois",
+        "economie_annuelle": "1 920€/an",
         "voix": "1 500 min",
         "sms": "8 000 SMS",
         "utilisateurs": "3 utilisateurs",
@@ -58,6 +80,9 @@ PLAN_FEATURES: dict[str, dict] = {
     },
     "Pro": {
         "prix": "1 490€/mois",
+        "prix_engagement": "1 490€/mois",
+        "prix_no_commit": "1 790€/mois",
+        "economie_annuelle": "3 600€/an",
         "voix": "3 000 min",
         "sms": "15 000 SMS",
         "utilisateurs": "6 utilisateurs",
@@ -74,6 +99,9 @@ PLAN_FEATURES: dict[str, dict] = {
     },
     "Elite": {
         "prix": "2 990€/mois",
+        "prix_engagement": "2 990€/mois",
+        "prix_no_commit": "3 590€/mois",
+        "economie_annuelle": "7 200€/an",
         "voix": "Illimité",
         "sms": "Illimité",
         "utilisateurs": "Utilisateurs illimités",
@@ -201,12 +229,16 @@ def create_checkout_session(
     customer_email: str,
     success_url: str,
     cancel_url: str,
+    engagement: bool = True,
 ) -> dict:
     """
     Crée une session Stripe Checkout pour le forfait choisi.
     Mode mock si TESTING=true ou STRIPE_SECRET_KEY absent.
+
+    Args:
+        engagement: True = engagement 1 an (prix réduit), False = sans engagement
     """
-    price_id = STRIPE_PRICE_IDS.get(plan_name)
+    price_id = get_price_id(plan_name, engagement)
     if not price_id:
         return {"error": f"Plan '{plan_name}' inconnu. Plans disponibles : {list(STRIPE_PRICE_IDS.keys())}"}
 
