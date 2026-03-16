@@ -581,6 +581,232 @@ async def portal_webhook(portal_name: str, request: Request):
     return JSONResponse(result)
 
 
+# ─── TwiML Sophie (Twilio appels voix) ────────────────────────────────────────
+
+@app.get("/twiml/sophie/{lead_id}", tags=["twiml"], response_class=Response)
+async def twiml_sophie_intro(lead_id: str):
+    """
+    Endpoint TwiML pour l'intro Sophie lors d'un appel sortant Twilio.
+    Twilio appelle cette URL au début de l'appel.
+    """
+    from memory.lead_repository import get_lead
+    settings = get_settings()
+
+    lead = get_lead(lead_id)
+    prenom = lead.prenom if lead and lead.prenom else "cher contact"
+    projet = lead.projet.value if lead and lead.projet else "immobilier"
+    localisation = f" sur {lead.localisation}" if lead and lead.localisation else ""
+    agence = settings.agency_name
+
+    script = (
+        f"Bonjour {prenom}, je suis Sophie, assistante de {agence}. "
+        f"J'appelle concernant votre projet {projet}{localisation}. "
+        "Est-ce que vous avez quelques minutes pour en parler ?"
+    )
+
+    response_url = f"{settings.api_url.rstrip('/')}/twiml/sophie/{lead_id}/response"
+    twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say language="fr-FR" voice="alice">{script}</Say>
+  <Gather input="speech" language="fr-FR" timeout="5" speechTimeout="auto"
+          action="{response_url}" method="POST">
+    <Say language="fr-FR" voice="alice">Je vous écoute.</Say>
+  </Gather>
+  <Redirect method="POST">{response_url}</Redirect>
+</Response>"""
+    return Response(content=twiml, media_type="text/xml")
+
+
+@app.post("/twiml/sophie/{lead_id}/response", tags=["twiml"], response_class=Response)
+async def twiml_sophie_response(lead_id: str, request: Request):
+    """
+    Reçoit la réponse vocale Twilio <Gather>, génère la réponse Sophie via Claude,
+    synthétise avec ElevenLabs et retourne du TwiML <Say>+<Gather>.
+    Si RDV détecté → book via CalendarTool et raccrocher.
+    """
+    import json as _json
+    form_data = dict(await request.form())
+    speech_result = form_data.get("SpeechResult", "")
+    call_sid = form_data.get("CallSid", "")
+    settings = get_settings()
+
+    from memory.lead_repository import get_lead, add_conversation_message
+    from memory.models import Canal as _Canal
+
+    lead = get_lead(lead_id)
+    if not lead:
+        twiml = """<?xml version="1.0" encoding="UTF-8"?>
+<Response><Say language="fr-FR" voice="alice">Désolée, une erreur est survenue. Au revoir.</Say><Hangup/></Response>"""
+        return Response(content=twiml, media_type="text/xml")
+
+    # Enregistrement de la réponse du prospect
+    if speech_result:
+        add_conversation_message(
+            lead_id=lead_id,
+            client_id=lead.client_id,
+            role="user",
+            contenu=f"[Appel vocal] {speech_result}",
+            canal=_Canal.APPEL,
+        )
+
+    # Détection RDV dans la réponse
+    rdv_keywords = ["oui", "d'accord", "parfait", "bien sûr", "ok", "disponible", "mardi", "jeudi", "vendredi", "lundi", "mercredi"]
+    negative_keywords = ["non", "pas maintenant", "pas intéressé", "rappeler", "occupé"]
+    rdv_detected = any(kw in speech_result.lower() for kw in rdv_keywords) and \
+                   not any(kw in speech_result.lower() for kw in negative_keywords)
+
+    if rdv_detected:
+        # Booking RDV automatique
+        from tools.calendar_tool import CalendarTool
+        from memory.lead_repository import update_lead
+        from memory.models import LeadStatus as _LeadStatus
+        cal = CalendarTool()
+        slots = cal.get_available_slots(days_ahead=7, user_id=lead.client_id)
+        rdv_msg = "Parfait, je note votre disponibilité. Je vous confirme le rendez-vous par SMS. À très bientôt !"
+        if slots:
+            cal.book_appointment(lead=lead, slot=slots[0], user_id=lead.client_id, send_email=bool(lead.email))
+            lead.statut = _LeadStatus.RDV_BOOKÉ
+            update_lead(lead)
+        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response><Say language="fr-FR" voice="alice">{rdv_msg}</Say><Hangup/></Response>"""
+        return Response(content=twiml, media_type="text/xml")
+
+    # Générer une réponse Sophie via Claude
+    reply_text = ""
+    if settings.anthropic_available and speech_result:
+        try:
+            import anthropic as _anthropic
+            client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
+            prenom = lead.prenom or "cher contact"
+            messages_resp = client.messages.create(
+                model=settings.claude_model,
+                max_tokens=150,
+                system=(
+                    f"Tu es Sophie, conseillère de {settings.agency_name}. "
+                    "Réponds en 1-2 phrases courtes, à l'oral, en français naturel. "
+                    "Objectif : proposer un RDV de 15 minutes. Sois chaleureuse et concise."
+                ),
+                messages=[{"role": "user", "content": speech_result}],
+            )
+            reply_text = messages_resp.content[0].text.strip()
+        except Exception as e:
+            logger.warning(f"Erreur Claude voice response : {e}")
+
+    if not reply_text:
+        reply_text = "Je comprends. Seriez-vous disponible pour un échange de 15 minutes cette semaine ?"
+
+    # Enregistrement réponse Sophie
+    add_conversation_message(
+        lead_id=lead_id,
+        client_id=lead.client_id,
+        role="assistant",
+        contenu=f"[Appel vocal Sophie] {reply_text}",
+        canal=_Canal.APPEL,
+    )
+
+    response_url = f"{settings.api_url.rstrip('/')}/twiml/sophie/{lead_id}/response"
+    twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say language="fr-FR" voice="alice">{reply_text}</Say>
+  <Gather input="speech" language="fr-FR" timeout="5" speechTimeout="auto"
+          action="{response_url}" method="POST">
+  </Gather>
+  <Say language="fr-FR" voice="alice">Je n'ai pas entendu votre réponse. Je vous rappellerai. Au revoir !</Say>
+  <Hangup/>
+</Response>"""
+    return Response(content=twiml, media_type="text/xml")
+
+
+@app.post("/webhooks/twilio/call-status", tags=["webhooks"])
+async def twilio_call_status_webhook(request: Request):
+    """
+    Webhook Twilio — statut final de l'appel (completed, failed, no-answer).
+    Configurez dans Twilio Console > Phone Numbers > Voice > Status Callback.
+    """
+    form_data = dict(await request.form())
+    call_sid = form_data.get("CallSid", "")
+    call_status = form_data.get("CallStatus", "")
+    call_duration = int(form_data.get("CallDuration", 0))
+
+    logger.info(f"Twilio call-status : {call_sid} → {call_status} ({call_duration}s)")
+
+    # Retrouver le lead associé à ce call_sid
+    from memory.database import get_connection as _get_conn
+    with _get_conn() as conn:
+        row = conn.execute(
+            "SELECT lead_id, client_id FROM calls WHERE retell_call_id = ? OR id = ?",
+            (call_sid, call_sid),
+        ).fetchone()
+
+    if not row:
+        logger.warning(f"call-status webhook : call_sid {call_sid} non trouvé en DB")
+        return JSONResponse({"status": "ignored", "reason": "call_not_found"})
+
+    lead_id = row["lead_id"]
+    client_id = row["client_id"]
+
+    if call_status == "completed":
+        from agents.voice_call import VoiceCallAgent
+        settings = get_settings()
+        agent = VoiceCallAgent(client_id=client_id, tier=settings.agency_tier)
+        result = agent.process_call_ended(
+            call_id=call_sid,
+            lead_id=lead_id,
+            duration_s=call_duration,
+        )
+        from memory.journey_repository import log_action as _log
+        _log(
+            lead_id=lead_id,
+            client_id=client_id,
+            stage="voice_call",
+            action_done="call_completed",
+            action_result=f"duration={call_duration}s",
+            agent_name="sophie",
+            metadata={"call_sid": call_sid, "rdv_booked": result.get("rdv_booked")},
+        )
+        return JSONResponse({"status": "processed", **result})
+
+    # Appel échoué / non répondu
+    from memory.journey_repository import log_action as _log
+    _log(
+        lead_id=lead_id,
+        client_id=client_id,
+        stage="voice_call",
+        action_done=f"call_{call_status}",
+        action_result=call_status,
+        agent_name="sophie",
+        metadata={"call_sid": call_sid},
+    )
+    return JSONResponse({"status": "logged", "call_status": call_status})
+
+
+@app.post("/webhooks/twilio/sms", tags=["webhooks"], response_class=Response)
+async def twilio_sms_incoming(request: Request, background_tasks: BackgroundTasks):
+    """
+    Reçoit les réponses SMS entrants via Twilio.
+    Appelle process_incoming_message() de l'orchestrateur.
+    """
+    form_data = dict(await request.form())
+    from_number = form_data.get("From", "")
+    body = form_data.get("Body", "")
+    client_id, tier = _get_client_settings()
+
+    def _process():
+        from orchestrator import process_incoming_message
+        process_incoming_message(
+            telephone=from_number,
+            message=body,
+            client_id=client_id,
+            tier=tier,
+            canal="sms",
+        )
+
+    background_tasks.add_task(_process)
+
+    twiml = "<?xml version='1.0' encoding='UTF-8'?><Response></Response>"
+    return Response(content=twiml, media_type="text/xml")
+
+
 # ─── API interne (back-office) ─────────────────────────────────────────────────
 
 @app.get("/api/status", tags=["api"])
@@ -867,6 +1093,196 @@ async def stripe_webhook(
                 )
 
     return JSONResponse({"status": "ok", "event": event_type})
+
+
+# ─── Webhooks leads entrants (sans JWT) ───────────────────────────────────────
+
+class _WebhookLeadPayload(BaseModel):
+    nom: str = ""
+    prenom: str = ""
+    telephone: str = ""
+    email: str = ""
+    source: str = "webhook"
+    bien_ref: Optional[str] = None
+    projet: Optional[str] = None
+
+
+@app.post("/webhooks/{user_id}/leads", tags=["webhooks"])
+async def webhook_leads(
+    user_id: str,
+    body: _WebhookLeadPayload,
+    background_tasks: BackgroundTasks,
+):
+    """
+    Webhook externe pour recevoir des leads (sans JWT).
+    URL unique par compte — à configurer dans les outils externes (SeLoger, portails...).
+    """
+    from memory.database import get_connection as _get_conn
+
+    # Vérification que l'user_id existe
+    with _get_conn() as conn:
+        row = conn.execute(
+            "SELECT id, plan, plan_active FROM users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Compte non trouvé")
+
+    tier = row["plan"] or "Starter"
+
+    # Création du lead + déclenchement orchestrateur en background
+    from memory.lead_repository import create_lead
+    from memory.models import Lead, LeadStatus, ProjetType, Canal
+    from memory.journey_repository import log_action
+
+    projet = ProjetType.INCONNU
+    if body.projet:
+        try:
+            projet = ProjetType(body.projet.lower())
+        except ValueError:
+            pass
+
+    lead = Lead(
+        client_id=user_id,
+        prenom=body.prenom,
+        nom=body.nom,
+        telephone=body.telephone,
+        email=body.email,
+        source=Canal.WEB,
+        statut=LeadStatus.ENTRANT,
+        projet=projet,
+    )
+    saved_lead = create_lead(lead)
+
+    log_action(
+        lead_id=saved_lead.id,
+        client_id=user_id,
+        stage="qualification",
+        action_done="webhook_lead_received",
+        action_result=f"source={body.source}",
+        next_action="process_incoming_message",
+        agent_name="lea",
+        metadata={"source": body.source, "bien_ref": body.bien_ref or ""},
+    )
+
+    def _process():
+        from orchestrator import process_incoming_message
+        intro_msg = f"Nouveau lead {body.source}"
+        if body.bien_ref:
+            intro_msg += f" — réf. bien : {body.bien_ref}"
+        process_incoming_message(
+            telephone=body.telephone,
+            message=intro_msg,
+            client_id=user_id,
+            tier=tier,
+            canal="web",
+            prenom=body.prenom,
+            nom=body.nom,
+            email=body.email,
+            lead_id=saved_lead.id,
+        )
+
+    background_tasks.add_task(_process)
+
+    return JSONResponse({"status": "ok", "lead_id": saved_lead.id})
+
+
+# ─── Import CSV leads (avec JWT) ──────────────────────────────────────────────
+
+@app.post("/api/leads/import", tags=["api"])
+async def api_leads_import(
+    request: Request,
+    background_tasks: BackgroundTasks,
+):
+    """
+    Importe des leads depuis un fichier CSV multipart.
+    Colonnes attendues : nom, prénom, téléphone, email
+    Paramètre form optionnel : source (défaut: csv)
+    """
+    import csv as _csv
+    import io as _io
+
+    client_id = request.state.user_id
+    tier = request.state.tier
+
+    form = await request.form()
+    source = form.get("source", "csv")
+    uploaded = form.get("file")
+
+    if not uploaded:
+        raise HTTPException(status_code=400, detail="Champ 'file' manquant")
+
+    raw_bytes = await uploaded.read()
+    try:
+        text = raw_bytes.decode("utf-8-sig")  # utf-8-sig gère le BOM Excel
+    except UnicodeDecodeError:
+        text = raw_bytes.decode("latin-1")
+
+    reader = _csv.DictReader(_io.StringIO(text))
+
+    # Normalisation des noms de colonnes (minuscules, sans accents)
+    def _norm(s: str) -> str:
+        return s.lower().strip().replace("é", "e").replace("è", "e").replace("ê", "e").replace("ô", "o").replace("â", "a")
+
+    imported = 0
+    errors = []
+
+    from memory.lead_repository import create_lead
+    from memory.models import Lead, LeadStatus, Canal
+    from memory.journey_repository import log_action
+
+    for i, row in enumerate(reader):
+        normed = {_norm(k): v.strip() for k, v in row.items() if k}
+
+        telephone = normed.get("telephone", normed.get("tel", normed.get("phone", "")))
+        if not telephone:
+            errors.append(f"Ligne {i + 2} : téléphone manquant")
+            continue
+
+        lead = Lead(
+            client_id=client_id,
+            prenom=normed.get("prenom", normed.get("prénom", normed.get("firstname", ""))),
+            nom=normed.get("nom", normed.get("lastname", normed.get("name", ""))),
+            telephone=telephone,
+            email=normed.get("email", normed.get("mail", "")),
+            source=Canal.MANUEL,
+            statut=LeadStatus.ENTRANT,
+        )
+
+        try:
+            saved = create_lead(lead)
+            imported += 1
+
+            log_action(
+                lead_id=saved.id,
+                client_id=client_id,
+                stage="qualification",
+                action_done="csv_import",
+                action_result=f"source={source}",
+                next_action="process_incoming_message",
+                agent_name="lea",
+                metadata={"source": source, "row": i + 2},
+            )
+
+            def _process(lead_id=saved.id, tel=telephone, prenom=lead.prenom):
+                from orchestrator import process_incoming_message
+                process_incoming_message(
+                    telephone=tel,
+                    message=f"Lead importé depuis {source}",
+                    client_id=client_id,
+                    tier=tier,
+                    canal="web",
+                    prenom=prenom,
+                    lead_id=lead_id,
+                )
+
+            background_tasks.add_task(_process)
+
+        except Exception as e:
+            errors.append(f"Ligne {i + 2} : {str(e)[:60]}")
+
+    return JSONResponse({"imported": imported, "errors": errors})
 
 
 # ─── Modèles Google Calendar ───────────────────────────────────────────────────

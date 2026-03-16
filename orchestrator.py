@@ -14,6 +14,7 @@ from langgraph.graph.message import add_messages
 from agents.lead_qualifier import LeadQualifierAgent
 from agents.nurturing import NurturingAgent
 from config.settings import get_settings
+from memory.journey_repository import log_action
 from memory.models import Canal, Lead
 
 logger = logging.getLogger(__name__)
@@ -147,12 +148,23 @@ def node_qualify_new_lead(state: AgencyState) -> AgencyState:
             "error": "Limite de leads atteinte ce mois",
         }
 
+    lead_id = result["lead_id"]
+    log_action(
+        lead_id=lead_id,
+        client_id=state["client_id"],
+        stage="qualification",
+        action_done="new_lead_created",
+        action_result=result.get("message", "")[:200],
+        next_action="continue_qualification",
+        agent_name="lea",
+    )
+
     return {
         **state,
-        "lead_id": result["lead_id"],
+        "lead_id": lead_id,
         "message_sortant": result["message"],
         "status": "qualifying",
-        "messages_log": state["messages_log"] + [f"Nouveau lead créé : {result['lead_id']}"],
+        "messages_log": state["messages_log"] + [f"Nouveau lead créé : {lead_id}"],
     }
 
 
@@ -167,13 +179,28 @@ def node_continue_qualification(state: AgencyState) -> AgencyState:
         canal=canal,
     )
 
+    new_score = result.get("score") or state["score"]
+    qualification_complete = result.get("score") is not None
+
+    if state.get("lead_id"):
+        log_action(
+            lead_id=state["lead_id"],
+            client_id=state["client_id"],
+            stage="qualification",
+            action_done="message_sent",
+            action_result=result.get("message", "")[:200],
+            next_action=result["next_action"],
+            agent_name="lea",
+            metadata={"score": new_score, "qualification_complete": qualification_complete},
+        )
+
     return {
         **state,
         "message_sortant": result["message"],
-        "score": result.get("score") or state["score"],
+        "score": new_score,
         "next_action": result["next_action"],
-        "qualification_complete": result.get("score") is not None,
-        "status": "scored" if result.get("score") is not None else "qualifying",
+        "qualification_complete": qualification_complete,
+        "status": "scored" if qualification_complete else "qualifying",
     }
 
 
@@ -184,6 +211,18 @@ def node_route_lead(state: AgencyState) -> AgencyState:
 
     log_msg = f"Lead {state['lead_id']} scoré {score}/10 → {next_action}"
     logger.info(log_msg)
+
+    if state.get("lead_id"):
+        log_action(
+            lead_id=state["lead_id"],
+            client_id=state["client_id"],
+            stage="routing",
+            action_done="lead_scored",
+            action_result=f"score={score}/10 next={next_action}",
+            next_action=next_action,
+            agent_name="orchestrateur",
+            metadata={"score": score, "next_action": next_action},
+        )
 
     return {
         **state,
@@ -202,6 +241,15 @@ def node_trigger_nurturing(state: AgencyState) -> AgencyState:
     if lead and lead.nurturing_sequence:
         result = agent.send_followup(lead)
         log_msg = f"Nurturing activé : {lead.nurturing_sequence.value} — step {lead.nurturing_step}"
+        log_action(
+            lead_id=state["lead_id"],
+            client_id=state["client_id"],
+            stage="nurturing",
+            action_done="sequence_started",
+            action_result=lead.nurturing_sequence.value,
+            agent_name="marc",
+            metadata={"sequence": lead.nurturing_sequence.value, "step": lead.nurturing_step},
+        )
         return {
             **state,
             "status": "nurturing_active",
@@ -243,6 +291,17 @@ def node_propose_rdv(state: AgencyState) -> AgencyState:
     elif canal == Canal.WHATSAPP and lead.telephone:
         twilio.send_whatsapp(to=lead.telephone, body=rdv_msg)
 
+    log_action(
+        lead_id=state["lead_id"],
+        client_id=state["client_id"],
+        stage="rdv_proposal",
+        action_done="rdv_proposed",
+        action_result=rdv_msg[:200],
+        next_action="trigger_voice_call",
+        agent_name="sophie",
+        metadata={"canal": state.get("canal", "sms"), "score": state.get("score", 0)},
+    )
+
     return {
         **state,
         "message_sortant": rdv_msg,
@@ -261,6 +320,17 @@ def node_trigger_voice_call(state: AgencyState) -> AgencyState:
     if not lead_id:
         return {**state, "status": "voice_skipped"}
 
+    # Pas d'appel vocal pour les leads LOCATION
+    try:
+        from memory.lead_repository import get_lead as _get_lead
+        from memory.models import ProjetType as _ProjetType
+        _lead = _get_lead(lead_id)
+        if _lead and _lead.projet == _ProjetType.LOCATION:
+            logger.info(f"Appel voix ignoré — lead LOCATION : {lead_id}")
+            return {**state, "voice_call_triggered": False, "status": "rdv_proposed"}
+    except Exception:
+        pass
+
     try:
         from agents.voice_call import VoiceCallAgent
         voice_agent = VoiceCallAgent(client_id=state["client_id"], tier=state["tier"])
@@ -269,6 +339,15 @@ def node_trigger_voice_call(state: AgencyState) -> AgencyState:
         if result.get("success"):
             call_id = result.get("call_id", "")
             logger.info(f"Appel voix déclenché : {call_id} pour lead {lead_id}")
+            log_action(
+                lead_id=lead_id,
+                client_id=state["client_id"],
+                stage="voice_call",
+                action_done="call_initiated",
+                action_result=call_id,
+                agent_name="sophie",
+                metadata={"call_id": call_id},
+            )
             return {
                 **state,
                 "voice_call_id": call_id,

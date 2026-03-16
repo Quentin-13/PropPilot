@@ -84,6 +84,9 @@ class LeadQualifierAgent:
                 "usage_message": usage_check["message"],
             }
 
+        # Détection du type de projet dès le premier message
+        projet_detecte = self._detect_projet(message_initial)
+
         # Création du lead
         lead = Lead(
             client_id=self.client_id,
@@ -93,6 +96,7 @@ class LeadQualifierAgent:
             email=email,
             source=canal,
             statut=LeadStatus.EN_QUALIFICATION,
+            projet=projet_detecte,
         )
         lead = create_lead(lead)
 
@@ -148,6 +152,13 @@ class LeadQualifierAgent:
         if not lead:
             return {"message": "Désolé, une erreur est survenue.", "next_action": "continue"}
 
+        # Détection projet si encore INCONNU
+        if lead.projet == ProjetType.INCONNU:
+            projet_detecte = self._detect_projet(message)
+            if projet_detecte != ProjetType.INCONNU:
+                lead.projet = projet_detecte
+                update_lead(lead)
+
         # Enregistrement message utilisateur
         add_conversation_message(
             lead_id=lead_id,
@@ -190,6 +201,29 @@ class LeadQualifierAgent:
             "lead": lead,
             "score": lead.score if qualification_complete else None,
         }
+
+    def _detect_projet(self, message: str) -> ProjetType:
+        """
+        Détecte le type de projet dans un message entrant.
+        Retourne ProjetType.INCONNU si aucun signal clair.
+        """
+        msg = message.lower()
+
+        vente_keywords = ["vendre", "vente", "mandat", "mise en vente", "vend", "vendeur", "ma maison", "mon appartement", "mon bien"]
+        achat_keywords = ["acheter", "achat", "cherche", "recherche", "budget", "acquérir", "acquéreur", "acheteur", "trouver"]
+        location_keywords = ["louer", "location", "loyer", "locataire", "bail", "appartement à louer", "maison à louer"]
+        estimation_keywords = ["estimer", "estimation", "valeur", "prix de mon bien", "combien vaut"]
+
+        if any(kw in msg for kw in vente_keywords):
+            return ProjetType.VENTE
+        if any(kw in msg for kw in location_keywords):
+            return ProjetType.LOCATION
+        if any(kw in msg for kw in estimation_keywords):
+            return ProjetType.ESTIMATION
+        if any(kw in msg for kw in achat_keywords):
+            return ProjetType.ACHAT
+
+        return ProjetType.INCONNU
 
     def _generate_welcome_message(self, prenom: str = "") -> str:
         """Génère le message de bienvenue initial."""
@@ -363,9 +397,13 @@ class LeadQualifierAgent:
         lead.financement = scoring.get("financement") or lead.financement
         lead.motivation = scoring.get("motivation") or lead.motivation
 
-        # Routage par score
+        # Routage par score — leads LOCATION : toujours LEAD_FROID, max 3 SMS
         prochaine_action = scoring.get("prochaine_action", "nurturing_30j")
-        if lead.score >= 7:
+        if lead.projet == ProjetType.LOCATION:
+            lead.statut = LeadStatus.NURTURING
+            lead.nurturing_sequence = NurturingSequence.LEAD_FROID
+            lead.prochain_followup = datetime.now() + timedelta(days=7)
+        elif lead.score >= 7:
             lead.statut = LeadStatus.QUALIFIE
             lead.nurturing_sequence = None
             # RDV proposé dans le message → statut RDV booké après confirmation

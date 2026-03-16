@@ -267,7 +267,24 @@ CREATE INDEX IF NOT EXISTS idx_conversations_lead ON conversations(lead_id);
 CREATE INDEX IF NOT EXISTS idx_usage_client_month ON usage_tracking(client_id, month);
 CREATE INDEX IF NOT EXISTS idx_api_actions_client ON api_actions(client_id);
 CREATE INDEX IF NOT EXISTS idx_calls_lead ON calls(lead_id);
-CREATE INDEX IF NOT EXISTS idx_crm_connections_client ON crm_connections(client_id)
+CREATE INDEX IF NOT EXISTS idx_crm_connections_client ON crm_connections(client_id);
+
+CREATE TABLE IF NOT EXISTS lead_journey (
+    id SERIAL PRIMARY KEY,
+    lead_id TEXT NOT NULL,
+    client_id TEXT NOT NULL,
+    stage TEXT NOT NULL,
+    action_done TEXT NOT NULL,
+    action_result TEXT DEFAULT '',
+    next_action TEXT DEFAULT '',
+    next_action_at TIMESTAMP,
+    agent_name TEXT DEFAULT '',
+    metadata TEXT DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (lead_id) REFERENCES leads(id)
+);
+CREATE INDEX IF NOT EXISTS idx_journey_lead ON lead_journey(lead_id);
+CREATE INDEX IF NOT EXISTS idx_journey_next_action ON lead_journey(next_action_at)
 """
 
 
@@ -288,6 +305,11 @@ def _run_migrations(conn) -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE",
     ]:
         conn.execute(col_sql)
+
+    # Migration lead_journey
+    conn.execute(
+        "ALTER TABLE lead_journey ADD COLUMN IF NOT EXISTS metadata TEXT DEFAULT '{}'"
+    )
 
     # Mise à jour de la contrainte CHECK plan pour inclure 'Indépendant'
     # Étape 1 : supprimer l'ancienne contrainte si elle n'inclut pas encore 'Indépendant'

@@ -32,7 +32,7 @@ class TierLimits:
 TIERS: dict[str, TierLimits] = {
     "Indépendant": TierLimits(
         tier="Indépendant",
-        prix_mensuel=290,
+        prix_mensuel=250,
         utilisateurs=1,
         crm_integrations=1,
         leads_par_mois=None,            # Illimité

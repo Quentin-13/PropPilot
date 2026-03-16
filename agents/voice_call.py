@@ -21,7 +21,6 @@ from memory.models import Call, Canal, Lead, LeadStatus
 from memory.usage_tracker import check_and_consume
 from tools.calendar_tool import CalendarTool
 from tools.elevenlabs_tool import ElevenLabsTool
-from tools.retell_tool import RetellTool
 from tools.twilio_tool import TwilioTool
 
 logger = logging.getLogger(__name__)
@@ -116,31 +115,22 @@ class VoiceCallAgent:
         slot_2 = slots[1] if len(slots) > 1 else "jeudi à 14h"
         slot_3 = slots[2] if len(slots) > 2 else "vendredi à 11h"
 
-        # Variables dynamiques pour l'agent Retell
-        dynamic_vars = {
-            "prenom": lead.prenom or "cher contact",
-            "agence_nom": self.settings.agency_name,
-            "conseiller_prenom": "Sophie",
-            "projet": lead.projet.value,
-            "localisation": lead.localisation or "votre secteur",
-            "budget": lead.budget or "",
-            "creneau_1": slot_1,
-            "creneau_2": slot_2,
-            "creneau_3": slot_3,
-            "score": str(lead.score),
-        }
+        # Générer l'audio d'introduction Sophie (ElevenLabs)
+        self.synthesize_sophie_intro(lead)
 
-        retell = RetellTool()
-        result = retell.create_outbound_call(
-            to_phone=lead.telephone,
-            retell_llm_dynamic_variables=dynamic_vars,
-            metadata={"lead_id": lead_id, "client_id": self.client_id},
+        # Lancer l'appel via Twilio avec URL TwiML
+        twiml_url = f"{self.settings.api_url.rstrip('/')}/twiml/sophie/{lead_id}"
+        twilio = TwilioTool()
+        result = twilio.make_outbound_call(
+            to=lead.telephone,
+            twiml_url=twiml_url,
         )
 
         if result["success"]:
+            call_sid = result.get("call_sid", "")
             self._save_call_to_db(
                 lead_id=lead_id,
-                call_id=result["call_id"],
+                call_id=call_sid,
                 direction="outbound",
                 statut="registered",
             )
@@ -148,14 +138,16 @@ class VoiceCallAgent:
                 lead_id=lead_id,
                 client_id=self.client_id,
                 role="assistant",
-                contenu=f"[Appel sortant initié vers {lead.telephone} — call_id: {result['call_id']}]",
+                contenu=f"[Appel sortant initié vers {lead.telephone} — call_sid: {call_sid}]",
                 canal=Canal.APPEL,
             )
-            logger.info(f"Appel sortant initié : {result['call_id']} → {lead.telephone}")
+            logger.info(f"Appel sortant initié : {call_sid} → {lead.telephone}")
+        else:
+            call_sid = ""
 
         return {
             "success": result["success"],
-            "call_id": result.get("call_id", ""),
+            "call_id": call_sid,
             "message": f"Appel initié vers {lead.telephone}" if result["success"] else result.get("error", "Erreur appel"),
         }
 
@@ -195,24 +187,30 @@ class VoiceCallAgent:
 
     # ─── Traitement post-appel ───────────────────────────────────────────────
 
-    def process_call_ended(self, call_id: str, lead_id: str) -> dict:
+    def process_call_ended(
+        self,
+        call_id: str,
+        lead_id: str,
+        transcript: str = "",
+        duration_s: int = 0,
+    ) -> dict:
         """
         Traite un appel terminé : transcription, résumé, scoring, booking RDV.
-        Appelé par le webhook Retell (event: call_ended + call_analyzed).
+        Appelé par le webhook Twilio (call-status callback).
 
         Returns:
             {"lead_updated": bool, "rdv_booked": bool, "anomalies": list, "summary": str}
         """
-        retell = RetellTool()
-        call_data = retell.get_call(call_id)
-
         lead = get_lead(lead_id)
         if not lead:
             return {"lead_updated": False, "error": "Lead introuvable"}
 
-        transcript = call_data.get("transcript", "")
-        duration_s = call_data.get("duration_s", 0)
-        analysis = call_data.get("call_analysis", {})
+        # Récupérer la durée depuis Twilio si non fournie
+        if not duration_s:
+            twilio = TwilioTool()
+            call_status = twilio.get_call_status(call_id)
+            duration_s = call_status.get("duration", 0)
+        analysis = {}
 
         # Résumé + score post-appel via Claude
         summary, post_score, rdv_detected, anomalies = self._analyze_call_transcript(
@@ -386,6 +384,7 @@ Retourne UNIQUEMENT ce JSON :
                    VALUES (?, ?, ?, ?, ?, ?)
                    ON CONFLICT (id) DO NOTHING""",
                 (call_id, lead_id, self.client_id, call_id, direction, statut),
+                # retell_call_id réutilisé pour stocker call_sid Twilio
             )
 
     def _update_call_in_db(
@@ -416,15 +415,6 @@ Retourne UNIQUEMENT ce JSON :
 
     def get_calls_history(self, limit: int = 50) -> list[dict]:
         """Historique des appels pour le dashboard."""
-        retell = RetellTool()
-        # Priorité : données Retell live (plus riches) + fallback DB
-        try:
-            live_calls = retell.list_calls(limit=limit)
-            if live_calls:
-                return live_calls
-        except Exception:
-            pass
-
         with get_connection() as conn:
             rows = conn.execute(
                 """SELECT * FROM calls WHERE client_id = ?
