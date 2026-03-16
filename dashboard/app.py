@@ -1,6 +1,6 @@
 """
-Dashboard Streamlit — Point d'entrée principal.
-Initialise la DB, vérifie l'auth, configure le thème, affiche la navigation.
+Dashboard Streamlit — Page d'accueil client.
+Initialise la DB, vérifie l'auth, affiche le tableau de bord personnalisé.
 """
 from __future__ import annotations
 
@@ -27,52 +27,112 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ─── CSS personnalisé ──────────────────────────────────────────────────────────
+# ─── CSS global ───────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
+.main { background: #0f1117; }
+.block-container { padding-top: 2rem; max-width: 1200px; }
+h1, h2, h3 { color: white !important; }
+
 /* Sidebar */
-[data-testid="stSidebar"] {
-    background: #1a3a5c;
-}
+[data-testid="stSidebar"] { background: #1a3a5c; }
 [data-testid="stSidebar"] .stMarkdown,
 [data-testid="stSidebar"] label,
-[data-testid="stSidebar"] .stRadio label {
-    color: white !important;
+[data-testid="stSidebar"] .stRadio label { color: white !important; }
+
+/* Metric containers */
+.stMetric { background: #1e2130; border-radius: 12px; padding: 16px; }
+[data-testid="metric-container"] {
+    background: #1e2130;
+    border-radius: 12px;
+    padding: 16px;
+    border-left: 4px solid #3b82f6;
 }
 
-/* Metric cards */
-div[data-testid="metric-container"] {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    padding: 16px;
+/* KPI cards */
+.kpi-card {
+    background: #1e2130;
+    border-radius: 12px;
+    padding: 20px 24px;
+    height: 100%;
 }
+.kpi-value {
+    font-size: 2.5rem;
+    font-weight: 800;
+    line-height: 1.1;
+    margin: 4px 0;
+}
+.kpi-label {
+    font-size: 0.85rem;
+    color: #8892a4;
+    margin: 0;
+}
+.kpi-icon {
+    font-size: 1.4rem;
+    margin-bottom: 4px;
+    display: block;
+}
+
+/* Agent cards */
+.agent-card {
+    background: #1e2130;
+    border-radius: 10px;
+    padding: 16px;
+    height: 100%;
+    border-left: 4px solid #334155;
+}
+.agent-card.active { border-left-color: #10b981; }
+.agent-card.pending { border-left-color: #f59e0b; }
+.agent-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 2px;
+}
+.agent-status-active { color: #10b981; font-size: 0.8rem; font-weight: 600; }
+.agent-status-pending { color: #f59e0b; font-size: 0.8rem; font-weight: 600; }
+.agent-desc {
+    font-size: 0.78rem;
+    color: #8892a4;
+    margin-top: 4px;
+}
+
+/* Checklist steps */
+.step-card {
+    background: #1e2130;
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 8px;
+    border-left: 4px solid #475569;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.step-card.done { border-left-color: #10b981; }
 
 /* Score badges */
-.badge-hot { background: #e74c3c; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
-.badge-warm { background: #e67e22; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
-.badge-cold { background: #3498db; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
+.badge-hot  { background:#e74c3c; color:white; padding:2px 8px; border-radius:12px; font-size:12px; }
+.badge-warm { background:#e67e22; color:white; padding:2px 8px; border-radius:12px; font-size:12px; }
+.badge-cold { background:#3498db; color:white; padding:2px 8px; border-radius:12px; font-size:12px; }
 
-/* Progress bars couleur */
-.usage-low { --progress-color: #27ae60; }
-.usage-medium { --progress-color: #f39c12; }
-.usage-high { --progress-color: #e74c3c; }
+/* Progress bars */
+.quota-bar-wrap { margin-bottom: 18px; }
+.quota-label { font-size: 0.85rem; color: #cbd5e1; margin-bottom: 4px; }
+.quota-sub   { font-size: 0.75rem; color: #64748b; }
 
-/* Alert banners */
-.alert-orange {
-    background: #fff3cd;
-    border: 1px solid #ffc107;
-    border-radius: 6px;
-    padding: 12px 16px;
-    margin: 8px 0;
+/* Section titles */
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: white;
+    margin: 0 0 16px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #1e2130;
 }
-.alert-red {
-    background: #f8d7da;
-    border: 1px solid #dc3545;
-    border-radius: 6px;
-    padding: 12px 16px;
-    margin: 8px 0;
-}
+
+/* Plan badge */
+.badge-plan-active   { background:#10b981; color:white; padding:3px 10px; border-radius:20px; font-size:0.8rem; font-weight:600; }
+.badge-plan-inactive { background:#ef4444; color:white; padding:3px 10px; border-radius:20px; font-size:0.8rem; font-weight:600; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -81,103 +141,329 @@ from dashboard.auth_ui import render_sidebar_logout, require_auth
 
 require_auth()
 
-# ─── Redirect admin vers page Propriétaire ────────────────────────────────────
+# Redirect admin
 if st.session_state.get("is_admin", False):
     st.switch_page("pages/00_proprietaire.py")
 
-# ─── Sidebar ──────────────────────────────────────────────────────────────────
 render_sidebar_logout()
 
 # ─── Données de session ────────────────────────────────────────────────────────
-client_id = st.session_state.get("user_id", settings.agency_client_id)
-tier = st.session_state.get("plan", settings.agency_tier)
+client_id  = st.session_state.get("user_id", settings.agency_client_id)
+tier       = st.session_state.get("plan", settings.agency_tier)
 agency_name = st.session_state.get("agency_name", settings.agency_name)
+plan_active = st.session_state.get("plan_active", True)
 
-# ─── Page d'accueil ───────────────────────────────────────────────────────────
-st.title(f"PropPilot — {agency_name}")
-st.markdown(f"**Forfait {tier}** · Bienvenue dans votre tableau de bord")
-
-st.markdown("---")
-
-# KPIs rapides
-from memory.lead_repository import get_pipeline_stats
+# ─── Chargement données ────────────────────────────────────────────────────────
+from memory.lead_repository import get_pipeline_stats, get_leads_by_client
 from memory.usage_tracker import get_usage_summary
 from datetime import datetime
 
-col1, col2, col3, col4 = st.columns(4)
-stats = get_pipeline_stats(client_id)
-usage = get_usage_summary(client_id, tier)
+stats  = get_pipeline_stats(client_id)
+usage  = get_usage_summary(client_id, tier)
+leads  = get_leads_by_client(client_id, limit=5)
+leads_count = stats.get("total", 0)
 
-with col1:
-    total_leads = stats.get("total", 0)
-    st.metric("Leads ce mois", total_leads, delta=None)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# BLOC 1 — Header
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+now = datetime.now()
+date_str = now.strftime("%A %d %B %Y, %H:%M").capitalize()
 
-with col2:
-    rdv = stats.get("rdv_count", 0)
-    st.metric("RDV bookés", rdv, help="RDV pris ce mois")
+badge_class = "badge-plan-active" if plan_active else "badge-plan-inactive"
+badge_label = "Actif" if plan_active else "Inactif"
 
-with col3:
-    mandats = stats.get("mandat_count", 0)
-    st.metric("Mandats", mandats, help="Mandats gagnés ce mois")
+st.markdown(f"""
+<div style="display:flex; align-items:center; justify-content:space-between;
+            flex-wrap:wrap; gap:12px; margin-bottom:28px;">
+  <div>
+    <h2 style="margin:0; font-size:1.8rem;">Bonjour, {agency_name} 👋</h2>
+    <p style="margin:4px 0 0 0; color:#8892a4; font-size:0.9rem;">{date_str}</p>
+  </div>
+  <div style="display:flex; align-items:center; gap:10px;">
+    <span style="color:#cbd5e1; font-size:0.9rem;">Forfait <strong style="color:white;">{tier}</strong></span>
+    <span class="{badge_class}">{badge_label}</span>
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
-with col4:
-    leads_used = usage["leads"]["used"]
-    leads_limit = usage["leads"]["limit"] or "∞"
-    st.metric("Leads qualifiés", f"{leads_used}/{leads_limit}", help="Quota mensuel leads")
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# BLOC 2 — Checklist démarrage (si aucun lead)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if leads_count == 0:
+    st.markdown('<p class="section-title">🚀 Prêt à décoller ? 3 étapes pour démarrer</p>',
+                unsafe_allow_html=True)
 
-st.markdown("---")
+    steps = [
+        {
+            "label": "Connecter votre première source de leads",
+            "page": "pages/11_integrations.py",
+            "page_label": "Intégrations →",
+            "done": False,
+        },
+        {
+            "label": "Configurer votre agence",
+            "page": "pages/06_settings.py",
+            "page_label": "Paramètres →",
+            "done": False,
+        },
+        {
+            "label": "Connecter Google Calendar",
+            "page": "pages/08_calendar.py",
+            "page_label": "Calendrier →",
+            "done": False,
+        },
+    ]
 
-# Navigation rapide
-st.markdown("### Accès rapide")
-col_a, col_b, col_c = st.columns(3)
+    for i, step in enumerate(steps):
+        done = st.checkbox(step["label"], key=f"onboarding_{i}", value=step["done"])
+        done_class = "done" if done else ""
+        color = "#10b981" if done else "#475569"
+        check_icon = "✅" if done else "⬜"
+        st.markdown(f"""
+        <div class="step-card {done_class}" style="border-left-color:{color};">
+            <span style="font-size:1.1rem;">{check_icon}</span>
+            <div style="flex:1;">
+                <span style="color:white; font-size:0.9rem; font-weight:600;">{step['label']}</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-with col_a:
-    st.info("📋 **Pipeline Leads**\nGerez vos leads entrants, qualifiés et en nurturing.\n\n→ *Page Leads*")
+    st.markdown("<div style='margin-bottom:28px;'></div>", unsafe_allow_html=True)
 
-with col_b:
-    st.info("📊 **Usage & Limites**\nSuivez votre consommation mensuelle par fonctionnalité.\n\n→ *Page Usage*")
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# BLOC 3 — KPIs du mois
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+st.markdown('<p class="section-title">📊 Ce mois-ci</p>', unsafe_allow_html=True)
 
-with col_c:
-    st.info("💰 **ROI & Performance**\nMandats, RDV, taux de conversion et garantie remboursement.\n\n→ *Page ROI*")
+total_leads = stats.get("total", 0)
+rdv_count   = stats.get("rdv_count", 0)
+mandat_count = stats.get("mandat_count", 0)
+roi_estime  = mandat_count * 3000
 
-st.markdown("---")
+kpis = [
+    {
+        "icon": "📥",
+        "value": str(total_leads),
+        "label": "leads reçus",
+        "color": "#3b82f6",
+    },
+    {
+        "icon": "📅",
+        "value": str(rdv_count),
+        "label": "rendez-vous confirmés",
+        "color": "#10b981",
+    },
+    {
+        "icon": "📋",
+        "value": str(mandat_count),
+        "label": "mandats signés",
+        "color": "#f59e0b",
+    },
+    {
+        "icon": "💰",
+        "value": f"{roi_estime:,}€".replace(",", " "),
+        "label": "CA généré estimé",
+        "color": "#8b5cf6",
+    },
+]
 
-# Témoignages
-st.markdown("### Ils utilisent PropPilot")
-t_col1, t_col2, t_col3 = st.columns(3)
+cols = st.columns(4)
+for col, kpi in zip(cols, kpis):
+    with col:
+        st.markdown(f"""
+        <div class="kpi-card" style="border-left:4px solid {kpi['color']};">
+            <span class="kpi-icon">{kpi['icon']}</span>
+            <div class="kpi-value" style="color:{kpi['color']};">{kpi['value']}</div>
+            <p class="kpi-label">{kpi['label']}</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-with t_col1:
-    st.markdown("""
-    > *"+4 mandats en 45 jours, zéro configuration de notre côté.
-    Le LeadQualifier répond à 23h quand on dort. ROI x8 dès le 2ème mois."*
+st.markdown("<div style='margin-bottom:32px;'></div>", unsafe_allow_html=True)
 
-    **Claire M.** — Agence Centrale Lyon
-    """)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# BLOC 4 — Statut des 7 agents
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+st.markdown('<p class="section-title">🤖 Vos agents IA</p>', unsafe_allow_html=True)
 
-with t_col2:
-    st.markdown("""
-    > *"Avant je perdais 30% de mes leads faute de temps pour rappeler.
-    Maintenant l'IA qualifie et je n'appelle que les hot leads.
-    CA +35% en 60 jours."*
+_twilio_ok      = settings.twilio_available
+_elevenlabs_ok  = settings.elevenlabs_available
+_openai_ok      = settings.openai_available
+# Google Calendar : actif si token présent en session (OAuth flow)
+_calendar_ok    = bool(st.session_state.get("google_calendar_token"))
 
-    **Thomas R.** — Mandataire IAD Bordeaux
-    """)
+def _agent_card_html(emoji: str, name: str, active: bool, status_label: str, desc: str) -> str:
+    card_class = "active" if active else "pending"
+    status_class = "agent-status-active" if active else "agent-status-pending"
+    return f"""
+    <div class="agent-card {card_class}">
+        <div class="agent-name">{emoji} {name}</div>
+        <div class="{status_class}">{status_label}</div>
+        <div class="agent-desc">{desc}</div>
+    </div>
+    """
 
-with t_col3:
-    st.markdown("""
-    > *"Le ListingGenerator rédige mieux que moi.
-    Chaque annonce est prête en 30 secondes, SEO optimisé,
-    mes biens se vendent 15% plus vite."*
+agents = [
+    {
+        "emoji": "🎯", "name": "Léa",
+        "active": _calendar_ok,
+        "status": "Actif 🟢" if _calendar_ok else "En attente configuration 🟡",
+        "desc": "Qualification leads & prise de RDV automatique",
+    },
+    {
+        "emoji": "💬", "name": "Marc",
+        "active": _twilio_ok,
+        "status": "Actif 🟢" if _twilio_ok else "En attente SIRET Twilio 🟡",
+        "desc": "Nurturing SMS & WhatsApp multi-canal",
+    },
+    {
+        "emoji": "📞", "name": "Sophie",
+        "active": _twilio_ok and _elevenlabs_ok,
+        "status": "Actif 🟢" if (_twilio_ok and _elevenlabs_ok) else "En attente configuration 🟡",
+        "desc": "Appels voix sortants & entrants en français",
+    },
+    {
+        "emoji": "✍️", "name": "Hugo",
+        "active": True,
+        "status": "Actif 🟢",
+        "desc": "Rédaction annonces SEO & compromis Hoguet",
+    },
+    {
+        "emoji": "🏠", "name": "Camille",
+        "active": _openai_ok,
+        "status": "Actif 🟢" if _openai_ok else "Bientôt disponible 🟡",
+        "desc": "Staging virtuel DALL-E — intérieur français 2026",
+    },
+    {
+        "emoji": "📊", "name": "Thomas",
+        "active": True,
+        "status": "Actif 🟢",
+        "desc": "Estimation DVF + rapport PDF loi Hoguet",
+    },
+    {
+        "emoji": "📈", "name": "Julie",
+        "active": True,
+        "status": "Actif 🟢",
+        "desc": "Détection anomalies dossier & alertes financement",
+    },
+]
 
-    **Sophie L.** — Immo Services Toulouse
-    """)
+row1 = st.columns(4)
+row2 = st.columns(3)
 
-# Footer
-st.markdown("---")
+for col, agent in zip(row1, agents[:4]):
+    with col:
+        st.markdown(_agent_card_html(
+            agent["emoji"], agent["name"], agent["active"],
+            agent["status"], agent["desc"]
+        ), unsafe_allow_html=True)
+
+st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
+
+for col, agent in zip(row2, agents[4:]):
+    with col:
+        st.markdown(_agent_card_html(
+            agent["emoji"], agent["name"], agent["active"],
+            agent["status"], agent["desc"]
+        ), unsafe_allow_html=True)
+
+st.markdown("<div style='margin-bottom:32px;'></div>", unsafe_allow_html=True)
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# BLOC 5 — Activité récente (si leads existants)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if leads_count > 0 and leads:
+    st.markdown('<p class="section-title">⚡ Activité récente</p>', unsafe_allow_html=True)
+
+    def _score_badge(score: int | None) -> str:
+        s = score or 0
+        if s >= 7:
+            return f'<span class="badge-hot">{s}</span>'
+        if s >= 4:
+            return f'<span class="badge-warm">{s}</span>'
+        return f'<span class="badge-cold">{s}</span>'
+
+    header = """
+    <div style="display:grid; grid-template-columns:2fr 1.5fr 80px 1.5fr 1.2fr;
+                gap:8px; padding:8px 12px; color:#64748b; font-size:0.78rem;
+                font-weight:600; text-transform:uppercase; letter-spacing:0.05em;
+                border-bottom:1px solid #1e2130; margin-bottom:4px;">
+        <span>Contact</span><span>Source</span><span>Score</span>
+        <span>Statut</span><span>Date</span>
+    </div>
+    """
+    rows_html = ""
+    for lead in leads[:5]:
+        prenom  = lead.prenom or ""
+        nom     = lead.nom or ""
+        source  = lead.source.value if hasattr(lead.source, "value") else str(lead.source)
+        score   = lead.score
+        statut  = lead.statut.value if hasattr(lead.statut, "value") else str(lead.statut)
+        created = lead.created_at.strftime("%d/%m") if lead.created_at else "—"
+
+        rows_html += f"""
+        <div style="display:grid; grid-template-columns:2fr 1.5fr 80px 1.5fr 1.2fr;
+                    gap:8px; padding:10px 12px; background:#1e2130; border-radius:8px;
+                    margin-bottom:4px; align-items:center; font-size:0.88rem; color:#e2e8f0;">
+            <span style="font-weight:600;">{prenom} {nom}</span>
+            <span style="color:#94a3b8;">{source}</span>
+            <span>{_score_badge(score)}</span>
+            <span style="color:#94a3b8;">{statut}</span>
+            <span style="color:#64748b;">{created}</span>
+        </div>
+        """
+
+    st.markdown(header + rows_html, unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom:32px;'></div>", unsafe_allow_html=True)
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# BLOC 6 — Quota bar
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+st.markdown('<p class="section-title">📦 Utilisation du mois</p>', unsafe_allow_html=True)
+
+voice_used  = usage["voice"]["used"]
+voice_limit = usage["voice"]["limit"]
+voice_pct   = usage["voice"]["pct"] / 100
+
+sms_used    = usage["followups"]["used"]
+sms_limit   = usage["followups"]["limit"]
+sms_pct     = usage["followups"]["pct"] / 100
+
+col_v, col_s = st.columns(2)
+
+with col_v:
+    voice_limit_label = f"{int(voice_limit)} min" if voice_limit else "Illimité"
+    st.markdown(f"""
+    <div class="quota-bar-wrap">
+        <div class="quota-label">🎙 Minutes voix
+            <span class="quota-sub" style="float:right;">{voice_used} / {voice_limit_label}</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    if voice_limit:
+        st.progress(min(voice_pct, 1.0))
+    else:
+        st.progress(0.0)
+
+with col_s:
+    sms_limit_label = f"{int(sms_limit)}" if sms_limit else "Illimité"
+    st.markdown(f"""
+    <div class="quota-bar-wrap">
+        <div class="quota-label">💬 Follow-ups SMS
+            <span class="quota-sub" style="float:right;">{sms_used} / {sms_limit_label}</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    if sms_limit:
+        st.progress(min(sms_pct, 1.0))
+    else:
+        st.progress(0.0)
+
+# ─── Footer ───────────────────────────────────────────────────────────────────
+st.markdown("<div style='margin-top:40px;'></div>", unsafe_allow_html=True)
 st.markdown(
-    f"<div style='text-align: center; color: #888; font-size: 12px;'>"
+    f"<div style='text-align:center; color:#475569; font-size:12px;'>"
     f"PropPilot · Forfait {tier} · "
-    f"<a href='mailto:hello@proppilot.fr'>hello@proppilot.fr</a>"
+    f"<a href='mailto:hello@proppilot.fr' style='color:#475569;'>hello@proppilot.fr</a>"
     f"</div>",
     unsafe_allow_html=True,
 )
