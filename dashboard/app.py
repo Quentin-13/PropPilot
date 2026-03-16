@@ -157,12 +157,10 @@ plan_active = st.session_state.get("plan_active", True)
 from memory.lead_repository import get_pipeline_stats, get_leads_by_client
 from memory.usage_tracker import get_usage_summary
 from datetime import datetime
-import locale
 
-try:
-    locale.setlocale(locale.LC_TIME, "fr_FR.UTF-8")
-except Exception:
-    pass
+JOURS = ["lundi","mardi","mercredi","jeudi","vendredi","samedi","dimanche"]
+MOIS  = ["janvier","février","mars","avril","mai","juin",
+         "juillet","août","septembre","octobre","novembre","décembre"]
 
 stats  = get_pipeline_stats(client_id)
 usage  = get_usage_summary(client_id, tier)
@@ -172,35 +170,48 @@ leads_count = stats.get("total", 0)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # BLOC 1 — Header
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-_LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 116" width="48" height="48">
-  <defs>
-    <linearGradient id="lghdr" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#2563eb"/>
-      <stop offset="100%" stop-color="#1e3a5f"/>
-    </linearGradient>
-  </defs>
-  <polygon points="50,2 97,27 97,77 50,102 3,77 3,27" fill="url(#lghdr)"/>
-  <line x1="50" y1="2" x2="97" y2="27" stroke="#60a5fa" stroke-width="3.5" stroke-linecap="round"/>
-  <text x="50" y="70" font-family="Arial Black, Arial, sans-serif"
-        font-size="40" font-weight="900" fill="white" text-anchor="middle"
-        letter-spacing="-1">PP</text>
+_LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 56" width="160" height="45">
+  <g transform="translate(0,0)">
+    <polygon points="28,0 53,14 53,42 28,56 3,42 3,14" fill="#0d1f3c"/>
+    <line x1="3" y1="28" x2="53" y2="28" stroke="#1e3a6e" stroke-width="0.8"/>
+    <line x1="28" y1="0" x2="28" y2="56" stroke="#1e3a6e" stroke-width="0.8"/>
+    <polygon points="28,11 42,24 14,24" fill="none" stroke="white" stroke-width="1.6"/>
+    <rect x="16" y="24" width="25" height="20" fill="none" stroke="white" stroke-width="1.6"/>
+    <rect x="19" y="27" width="8" height="7" fill="#3b82f6" rx="1"/>
+    <rect x="30" y="27" width="8" height="7" fill="#3b82f6" rx="1"/>
+    <rect x="23" y="32" width="11" height="12" fill="#1e40af" rx="1"/>
+    <circle cx="28" cy="16" r="3" fill="#e67e22"/>
+    <circle cx="3" cy="14" r="2" fill="#3b82f6"/>
+    <circle cx="53" cy="14" r="2" fill="#3b82f6"/>
+    <circle cx="3" cy="42" r="2" fill="#3b82f6"/>
+    <circle cx="53" cy="42" r="2" fill="#3b82f6"/>
+  </g>
+  <text x="65" y="30" font-family="Arial" font-size="22" font-weight="900"
+        fill="white" letter-spacing="-0.5">Prop</text>
+  <text x="120" y="30" font-family="Arial" font-size="22" font-weight="300"
+        fill="#3b82f6" letter-spacing="2">Pilot</text>
+  <rect x="65" y="34" width="118" height="2" fill="#e67e22" rx="1"/>
 </svg>"""
 
-date_fr = datetime.now().strftime("%A %d %B %Y · %H:%M").capitalize()
+now = datetime.now()
+date_fr = f"{JOURS[now.weekday()]} {now.day} {MOIS[now.month-1]} {now.year} · {now.strftime('%H:%M')}"
+
+prenom = agency_name.split()[0] if agency_name and agency_name != "votre agence" else ""
+greeting = f"Bonjour, {prenom} 👋" if prenom else "Bonjour 👋"
 
 badge_class = "badge-plan-active" if plan_active else "badge-plan-inactive"
 badge_label = "Actif" if plan_active else "Inactif"
 
 st.markdown(f"""
+<div style="margin-bottom:16px;">{_LOGO_SVG}</div>
+""", unsafe_allow_html=True)
+
+st.title(greeting)
+
+st.markdown(f"""
 <div style="display:flex; align-items:center; justify-content:space-between;
-            flex-wrap:wrap; gap:12px; margin-bottom:28px;">
-  <div style="display:flex; align-items:center; gap:14px;">
-    {_LOGO_SVG}
-    <div>
-      <h2 style="margin:0; font-size:1.8rem;">Bonjour, {agency_name} 👋</h2>
-      <p style="margin:4px 0 0 0; color:#8892a4; font-size:0.9rem;">{date_fr}</p>
-    </div>
-  </div>
+            flex-wrap:wrap; gap:12px; margin-bottom:28px; margin-top:-12px;">
+  <p style="margin:0; color:#8892a4; font-size:0.9rem;">{date_fr}</p>
   <div style="display:flex; align-items:center; gap:10px;">
     <span style="color:#cbd5e1; font-size:0.9rem;">Forfait <strong style="color:white;">{tier}</strong></span>
     <span class="{badge_class}">{badge_label}</span>
@@ -252,14 +263,22 @@ mandat_count = stats.get("mandat_count", 0)
 roi_estime  = mandat_count * 3000
 
 col1, col2, col3, col4 = st.columns(4)
-with col1:
-    st.metric("📥 Leads ce mois", total_leads)
-with col2:
-    st.metric("📅 RDV bookés", rdv_count)
-with col3:
-    st.metric("📋 Mandats", mandat_count)
-with col4:
-    st.metric("💰 ROI estimé", f"{roi_estime:,.0f} €".replace(",", " "))
+kpis = [
+    (col1, "📥 Leads ce mois",  total_leads,                  "#3b82f6", "leads reçus"),
+    (col2, "📅 RDV bookés",     rdv_count,                    "#10b981", "rendez-vous confirmés"),
+    (col3, "📋 Mandats",        mandat_count,                 "#f59e0b", "mandats signés"),
+    (col4, "💰 ROI estimé",     f"{roi_estime:,.0f} €".replace(",", " "), "#8b5cf6", "CA généré estimé"),
+]
+for col, label, value, color, subtitle in kpis:
+    with col:
+        st.markdown(f"""
+        <div style="background:#1e2130;border-radius:12px;padding:20px;
+                    border-left:4px solid {color};">
+            <div style="font-size:0.85rem;color:#8892a4;margin-bottom:8px;">{label}</div>
+            <div style="font-size:2.2rem;font-weight:800;color:white;">{value}</div>
+            <div style="font-size:0.75rem;color:#8892a4;margin-top:4px;">{subtitle}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
 st.markdown("<div style='margin-bottom:32px;'></div>", unsafe_allow_html=True)
 
