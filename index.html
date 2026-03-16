@@ -359,6 +359,29 @@
     .pricing-features li:last-child { border-bottom: none; }
     .pricing-features li::before { content: '✓'; color: var(--marc); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
     .pricing-note { text-align: center; margin-top: 32px; font-size: 0.85rem; color: var(--muted); }
+    .pricing-toggle {
+      display: flex; align-items: center; justify-content: center;
+      gap: 12px; margin-bottom: 40px;
+    }
+    .toggle-label { font-size: 0.95rem; font-weight: 600; color: var(--muted); }
+    .toggle-label.active { color: var(--text); }
+    .toggle-switch {
+      position: relative; width: 52px; height: 28px;
+      background: var(--blue); border-radius: 14px; cursor: pointer;
+      border: none; outline: none; transition: background 0.2s;
+    }
+    .toggle-switch::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 22px; height: 22px; background: white;
+      border-radius: 50%; transition: transform 0.2s;
+    }
+    .toggle-switch.no-commit::after { transform: translateX(24px); }
+    .toggle-switch.no-commit { background: var(--card2); }
+    .pricing-badge-economy {
+      background: rgba(16,185,129,0.15); color: #10b981;
+      font-size: 0.7rem; font-weight: 700; padding: 2px 8px;
+      border-radius: 20px; margin-bottom: 6px; display: inline-block;
+    }
 
     /* ─── HOW IT WORKS ───────────────────────────────────────── */
     .how-it-works { background: var(--bg2); }
@@ -772,10 +795,17 @@
         <div class="divider"></div>
         <p class="section-subtitle">Les 7 collaborateurs sont inclus dans chaque forfait. Seules les limites d'usage mensuel varient.</p>
       </div>
+      <div class="pricing-toggle">
+        <span class="toggle-label active" id="label-commit">Engagement 1 an</span>
+        <button class="toggle-switch" id="pricing-toggle" onclick="togglePricing()" aria-label="Basculer"></button>
+        <span class="toggle-label" id="label-nocommit">Sans engagement</span>
+      </div>
       <div class="pricing-grid">
         <div class="pricing-card fade-up fade-up-delay-1">
           <div class="pricing-tier">Indépendant</div>
-          <div class="pricing-price">290€ <span>HT/mois</span></div>
+          <div class="pricing-badge-economy" id="eco-independant">Économie 840€/an</div>
+          <div class="pricing-price"><span id="price-independant">250€</span> <span>HT/mois</span></div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:4px;" id="commit-independant">Engagement 12 mois</div>
           <p class="pricing-desc">Pour les mandataires indépendants</p>
           <ul class="pricing-features">
             <li>7 agents IA (Léa, Marc, Sophie, Hugo, Camille, Thomas, Julie)</li>
@@ -790,7 +820,9 @@
         <div class="pricing-card featured fade-up fade-up-delay-2">
           <div class="pricing-badge">POPULAIRE</div>
           <div class="pricing-tier" style="color:var(--blue);">Starter</div>
-          <div class="pricing-price">790€ <span>HT/mois</span></div>
+          <div class="pricing-badge-economy" id="eco-starter">Économie 1 920€/an</div>
+          <div class="pricing-price"><span id="price-starter">790€</span> <span>HT/mois</span></div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:4px;" id="commit-starter">Engagement 12 mois</div>
           <p class="pricing-desc">Pour les petites agences</p>
           <ul class="pricing-features">
             <li>7 agents IA (Léa, Marc, Sophie, Hugo, Camille, Thomas, Julie)</li>
@@ -804,7 +836,9 @@
         </div>
         <div class="pricing-card fade-up fade-up-delay-3">
           <div class="pricing-tier">Pro</div>
-          <div class="pricing-price">1 490€ <span>HT/mois</span></div>
+          <div class="pricing-badge-economy" id="eco-pro">Économie 3 600€/an</div>
+          <div class="pricing-price"><span id="price-pro">1 490€</span> <span>HT/mois</span></div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:4px;" id="commit-pro">Engagement 12 mois</div>
           <p class="pricing-desc">Pour les agences actives</p>
           <ul class="pricing-features">
             <li>7 agents IA (Léa, Marc, Sophie, Hugo, Camille, Thomas, Julie)</li>
@@ -818,7 +852,9 @@
         </div>
         <div class="pricing-card fade-up fade-up-delay-4">
           <div class="pricing-tier" style="color:var(--gold);">Elite</div>
-          <div class="pricing-price">2 990€ <span>HT/mois</span></div>
+          <div class="pricing-badge-economy" id="eco-elite">Économie 7 200€/an</div>
+          <div class="pricing-price"><span id="price-elite">2 990€</span> <span>HT/mois</span></div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:4px;" id="commit-elite">Engagement 12 mois</div>
           <p class="pricing-desc">Pour les réseaux et multi-agences</p>
           <ul class="pricing-features">
             <li>7 agents IA (Léa, Marc, Sophie, Hugo, Camille, Thomas, Julie)</li>
@@ -1086,6 +1122,28 @@
       const isOpen = item.classList.contains('open');
       document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'));
       if (!isOpen) item.classList.add('open');
+    }
+  </script>
+
+  <script>
+    const PRICES = {
+      commit:   { independant:"250€", starter:"790€", pro:"1 490€", elite:"2 990€" },
+      nocommit: { independant:"320€", starter:"950€", pro:"1 790€", elite:"3 590€" }
+    };
+    let isNoCommit = false;
+    function togglePricing() {
+      isNoCommit = !isNoCommit;
+      const mode = isNoCommit ? "nocommit" : "commit";
+      document.getElementById("pricing-toggle").classList.toggle("no-commit", isNoCommit);
+      document.getElementById("label-commit").classList.toggle("active", !isNoCommit);
+      document.getElementById("label-nocommit").classList.toggle("active", isNoCommit);
+      ["independant","starter","pro","elite"].forEach(p => {
+        document.getElementById("price-"+p).textContent = PRICES[mode][p];
+        document.getElementById("commit-"+p).textContent = isNoCommit
+          ? "Sans engagement · résiliable à tout moment"
+          : "Engagement 12 mois";
+        document.getElementById("eco-"+p).style.visibility = isNoCommit ? "hidden" : "visible";
+      });
     }
   </script>
 </body>
