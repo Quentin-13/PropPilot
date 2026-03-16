@@ -150,13 +150,19 @@ render_sidebar_logout()
 # ─── Données de session ────────────────────────────────────────────────────────
 client_id  = st.session_state.get("user_id", settings.agency_client_id)
 tier       = st.session_state.get("plan", settings.agency_tier)
-agency_name = st.session_state.get("agency_name", settings.agency_name)
+agency_name = st.session_state.get("agency_name", "") or "votre agence"
 plan_active = st.session_state.get("plan_active", True)
 
 # ─── Chargement données ────────────────────────────────────────────────────────
 from memory.lead_repository import get_pipeline_stats, get_leads_by_client
 from memory.usage_tracker import get_usage_summary
 from datetime import datetime
+import locale
+
+try:
+    locale.setlocale(locale.LC_TIME, "fr_FR.UTF-8")
+except Exception:
+    pass
 
 stats  = get_pipeline_stats(client_id)
 usage  = get_usage_summary(client_id, tier)
@@ -166,8 +172,21 @@ leads_count = stats.get("total", 0)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # BLOC 1 — Header
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-now = datetime.now()
-date_str = now.strftime("%A %d %B %Y, %H:%M").capitalize()
+_LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 116" width="48" height="48">
+  <defs>
+    <linearGradient id="lghdr" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#1e3a5f"/>
+    </linearGradient>
+  </defs>
+  <polygon points="50,2 97,27 97,77 50,102 3,77 3,27" fill="url(#lghdr)"/>
+  <line x1="50" y1="2" x2="97" y2="27" stroke="#60a5fa" stroke-width="3.5" stroke-linecap="round"/>
+  <text x="50" y="70" font-family="Arial Black, Arial, sans-serif"
+        font-size="40" font-weight="900" fill="white" text-anchor="middle"
+        letter-spacing="-1">PP</text>
+</svg>"""
+
+date_fr = datetime.now().strftime("%A %d %B %Y · %H:%M").capitalize()
 
 badge_class = "badge-plan-active" if plan_active else "badge-plan-inactive"
 badge_label = "Actif" if plan_active else "Inactif"
@@ -175,9 +194,12 @@ badge_label = "Actif" if plan_active else "Inactif"
 st.markdown(f"""
 <div style="display:flex; align-items:center; justify-content:space-between;
             flex-wrap:wrap; gap:12px; margin-bottom:28px;">
-  <div>
-    <h2 style="margin:0; font-size:1.8rem;">Bonjour, {agency_name} 👋</h2>
-    <p style="margin:4px 0 0 0; color:#8892a4; font-size:0.9rem;">{date_str}</p>
+  <div style="display:flex; align-items:center; gap:14px;">
+    {_LOGO_SVG}
+    <div>
+      <h2 style="margin:0; font-size:1.8rem;">Bonjour, {agency_name} 👋</h2>
+      <p style="margin:4px 0 0 0; color:#8892a4; font-size:0.9rem;">{date_fr}</p>
+    </div>
   </div>
   <div style="display:flex; align-items:center; gap:10px;">
     <span style="color:#cbd5e1; font-size:0.9rem;">Forfait <strong style="color:white;">{tier}</strong></span>
@@ -193,40 +215,29 @@ if leads_count == 0:
     st.markdown('<p class="section-title">🚀 Prêt à décoller ? 3 étapes pour démarrer</p>',
                 unsafe_allow_html=True)
 
-    steps = [
-        {
-            "label": "Connecter votre première source de leads",
-            "page": "pages/11_integrations.py",
-            "page_label": "Intégrations →",
-            "done": False,
-        },
-        {
-            "label": "Configurer votre agence",
-            "page": "pages/06_settings.py",
-            "page_label": "Paramètres →",
-            "done": False,
-        },
-        {
-            "label": "Connecter Google Calendar",
-            "page": "pages/08_calendar.py",
-            "page_label": "Calendrier →",
-            "done": False,
-        },
-    ]
-
-    for i, step in enumerate(steps):
-        done = st.checkbox(step["label"], key=f"onboarding_{i}", value=step["done"])
-        done_class = "done" if done else ""
-        color = "#10b981" if done else "#475569"
-        check_icon = "✅" if done else "⬜"
-        st.markdown(f"""
-        <div class="step-card {done_class}" style="border-left-color:{color};">
-            <span style="font-size:1.1rem;">{check_icon}</span>
-            <div style="flex:1;">
-                <span style="color:white; font-size:0.9rem; font-weight:600;">{step['label']}</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+    st.markdown("""
+<a href="/11_integrations" target="_self" style="
+  display:block; padding:16px 20px; margin-bottom:8px;
+  background:#1e2130; border-radius:10px;
+  border-left:4px solid #3b82f6; text-decoration:none;
+  color:white; font-weight:600;">
+  ☐ 1. Connecter votre première source de leads →
+</a>
+<a href="/06_settings" target="_self" style="
+  display:block; padding:16px 20px; margin-bottom:8px;
+  background:#1e2130; border-radius:10px;
+  border-left:4px solid #3b82f6; text-decoration:none;
+  color:white; font-weight:600;">
+  ☐ 2. Configurer votre agence →
+</a>
+<a href="/08_calendar" target="_self" style="
+  display:block; padding:16px 20px; margin-bottom:8px;
+  background:#1e2130; border-radius:10px;
+  border-left:4px solid #3b82f6; text-decoration:none;
+  color:white; font-weight:600;">
+  ☐ 3. Connecter Google Calendar →
+</a>
+""", unsafe_allow_html=True)
 
     st.markdown("<div style='margin-bottom:28px;'></div>", unsafe_allow_html=True)
 
@@ -240,43 +251,15 @@ rdv_count   = stats.get("rdv_count", 0)
 mandat_count = stats.get("mandat_count", 0)
 roi_estime  = mandat_count * 3000
 
-kpis = [
-    {
-        "icon": "📥",
-        "value": str(total_leads),
-        "label": "leads reçus",
-        "color": "#3b82f6",
-    },
-    {
-        "icon": "📅",
-        "value": str(rdv_count),
-        "label": "rendez-vous confirmés",
-        "color": "#10b981",
-    },
-    {
-        "icon": "📋",
-        "value": str(mandat_count),
-        "label": "mandats signés",
-        "color": "#f59e0b",
-    },
-    {
-        "icon": "💰",
-        "value": f"{roi_estime:,}€".replace(",", " "),
-        "label": "CA généré estimé",
-        "color": "#8b5cf6",
-    },
-]
-
-cols = st.columns(4)
-for col, kpi in zip(cols, kpis):
-    with col:
-        st.markdown(f"""
-        <div class="kpi-card" style="border-left:4px solid {kpi['color']};">
-            <span class="kpi-icon">{kpi['icon']}</span>
-            <div class="kpi-value" style="color:{kpi['color']};">{kpi['value']}</div>
-            <p class="kpi-label">{kpi['label']}</p>
-        </div>
-        """, unsafe_allow_html=True)
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.metric("📥 Leads ce mois", total_leads)
+with col2:
+    st.metric("📅 RDV bookés", rdv_count)
+with col3:
+    st.metric("📋 Mandats", mandat_count)
+with col4:
+    st.metric("💰 ROI estimé", f"{roi_estime:,.0f} €".replace(",", " "))
 
 st.markdown("<div style='margin-bottom:32px;'></div>", unsafe_allow_html=True)
 
