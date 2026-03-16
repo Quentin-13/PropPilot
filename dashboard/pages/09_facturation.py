@@ -169,35 +169,35 @@ for col, plan_name in zip(cols, plan_names):
     prix_affiche = features["prix_engagement"] if engagement else features["prix_no_commit"]
     economie = features["economie_annuelle"]
     engagement_label = "Engagement 12 mois" if engagement else "Sans engagement"
-    badge_economie = (
-        f'<div style="background:#d4edda;color:#155724;font-size:11px;font-weight:700;'
-        f'border-radius:5px;padding:3px 8px;display:inline-block;margin-bottom:6px;">'
-        f'Économie {economie}</div>'
-        if engagement else ""
+    voix_sms = features["voix"] + " voix &middot; " + features["sms"]
+
+    if engagement:
+        badge_economie = (
+            '<div style="background:#d4edda;color:#155724;font-size:11px;font-weight:700;'
+            'border-radius:5px;padding:3px 8px;display:inline-block;margin-bottom:6px;">'
+            + "Économie " + economie + "</div>"
+        )
+    else:
+        badge_economie = ""
+
+    features_html = "".join(
+        "<div>\u2705 " + feat + "</div>" for feat in features["features"][:6]
+    )
+
+    card_html = (
+        '<div style="border: 2px solid ' + border + '; border-radius: 10px; padding: 20px;'
+        ' text-align: center; min-height: 380px;">'
+        '<div style="font-size: 18px; font-weight: 800; color: #1a3a5c;">' + plan_name + badge + "</div>"
+        + badge_economie
+        + '<div style="font-size: 28px; font-weight: 900; color: #e67e22; margin: 10px 0 2px 0;">' + prix_affiche + "</div>"
+        '<div style="font-size: 11px; color: #888; margin-bottom: 10px;">' + engagement_label + "</div>"
+        '<div style="font-size: 13px; color: #555; margin-bottom: 12px;">' + voix_sms + "</div>"
+        '<div style="text-align: left; font-size: 13px; color: #333;">' + features_html + "</div>"
+        "</div>"
     )
 
     with col:
-        st.markdown(f"""
-        <div style="border: 2px solid {border}; border-radius: 10px; padding: 20px;
-                    text-align: center; min-height: 380px;">
-            <div style="font-size: 18px; font-weight: 800; color: #1a3a5c;">
-                {plan_name}{badge}
-            </div>
-            {badge_economie}
-            <div style="font-size: 28px; font-weight: 900; color: #e67e22; margin: 10px 0 2px 0;">
-                {prix_affiche}
-            </div>
-            <div style="font-size: 11px; color: #888; margin-bottom: 10px;">
-                {engagement_label}
-            </div>
-            <div style="font-size: 13px; color: #555; margin-bottom: 12px;">
-                {features['voix']} voix · {features['sms']}
-            </div>
-            <div style="text-align: left; font-size: 13px; color: #333;">
-                {''.join(f"<div>✅ {f}</div>" for f in features['features'][:6])}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(card_html, unsafe_allow_html=True)
 
         st.markdown("")
         btn_label = "✓ Forfait actuel" if is_current else f"Choisir {plan_name}"

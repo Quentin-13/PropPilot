@@ -26,8 +26,8 @@ from dashboard.auth_ui import require_auth, render_sidebar_logout
 require_auth()
 render_sidebar_logout()
 
-client_id = st.session_state.get("user_id", client_id)
-tier = st.session_state.get("plan", tier)
+client_id = st.session_state.get("user_id", settings.agency_client_id)
+tier = st.session_state.get("plan", settings.agency_tier)
 agency_name = st.session_state.get("agency_name", settings.agency_name)
 
 st.title("🏠 Annonces & Staging Virtuel")
