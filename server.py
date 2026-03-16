@@ -18,7 +18,7 @@ from urllib.parse import quote
 
 from fastapi import BackgroundTasks, FastAPI, Form, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 from config.settings import get_settings
@@ -183,14 +183,8 @@ def _get_client_settings() -> tuple[str, str]:
 
 @app.get("/", tags=["health"])
 async def root():
-    """Endpoint racine — health check rapide."""
-    settings = get_settings()
-    return {
-        "service": "PropPilot",
-        "agency": settings.agency_name,
-        "tier": settings.agency_tier,
-        "status": "ok",
-    }
+    """Sert la landing page index.html (migration Netlify → Railway)."""
+    return FileResponse("index.html")
 
 
 @app.get("/health", tags=["health"])
