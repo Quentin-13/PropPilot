@@ -33,12 +33,36 @@ STRIPE_PRICE_IDS_NO_COMMIT: dict[str, str] = {
     "Elite":       "price_1TBYKlL2FehJuqYZEw0Rwzrd",  # 3590€/mois
 }
 
+# ── Prix LIVE avec engagement 1 an ───────────────────────────────────────────
+STRIPE_PRICE_IDS_LIVE: dict[str, str] = {
+    "Indépendant": "price_1TBifuLIPJ44lL0OiIJngkUh",  # 250€/mois
+    "Starter":     "price_1TBih9LIPJ44lL0OurpxoRmB",  # 790€/mois
+    "Pro":         "price_1TBihxLIPJ44lL0OFrBEO5x0",  # 1490€/mois
+    "Elite":       "price_1TBiirLIPJ44lL0O5vPNltUa",  # 2990€/mois
+}
+
+# ── Prix LIVE sans engagement ─────────────────────────────────────────────────
+STRIPE_PRICE_IDS_LIVE_NO_COMMIT: dict[str, str] = {
+    "Indépendant": "price_1TBifvLIPJ44lL0OyP0MQQpL",  # 320€/mois
+    "Starter":     "price_1TBih9LIPJ44lL0O0i4mK5Je",  # 950€/mois
+    "Pro":         "price_1TBihxLIPJ44lL0OP73hYsbz",  # 1790€/mois
+    "Elite":       "price_1TBiirLIPJ44lL0O5qjMCmg7",  # 3590€/mois
+}
+
 
 def get_price_id(plan_name: str, engagement: bool = True) -> str:
-    """Retourne le Price ID selon plan et engagement."""
-    if engagement:
-        return STRIPE_PRICE_IDS.get(plan_name, "")
-    return STRIPE_PRICE_IDS_NO_COMMIT.get(plan_name, "")
+    """Retourne le Price ID Stripe selon le plan, l'engagement et le mode (Live/Test)."""
+    import os
+    is_live = os.getenv("STRIPE_SECRET_KEY", "").startswith("sk_live_")
+
+    if is_live:
+        if engagement:
+            return STRIPE_PRICE_IDS_LIVE.get(plan_name, "")
+        return STRIPE_PRICE_IDS_LIVE_NO_COMMIT.get(plan_name, "")
+    else:
+        if engagement:
+            return STRIPE_PRICE_IDS.get(plan_name, "")
+        return STRIPE_PRICE_IDS_NO_COMMIT.get(plan_name, "")
 
 PLAN_FEATURES: dict[str, dict] = {
     "Indépendant": {
