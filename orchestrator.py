@@ -281,15 +281,18 @@ def node_propose_rdv(state: AgencyState) -> AgencyState:
     lead.statut = LeadStatus.QUALIFIE
     update_lead(lead)
 
-    # Envoi via Twilio
-    from tools.twilio_tool import TwilioTool
-    twilio = TwilioTool()
     canal = Canal(state.get("canal", "sms"))
 
     if canal == Canal.SMS and lead.telephone:
-        twilio.send_sms(to=lead.telephone, body=rdv_msg)
+        from tools.vonage_tool import VonageTool
+        vonage = VonageTool()
+        vonage.send_sms(
+            to=vonage.format_french_number(lead.telephone),
+            body=rdv_msg,
+        )
     elif canal == Canal.WHATSAPP and lead.telephone:
-        twilio.send_whatsapp(to=lead.telephone, body=rdv_msg)
+        from tools.twilio_tool import TwilioTool
+        TwilioTool().send_whatsapp(to=lead.telephone, body=rdv_msg)
 
     log_action(
         lead_id=state["lead_id"],

@@ -57,6 +57,7 @@ class NurturingAgent:
         self.tier = tier
         self.settings = get_settings()
         self._anthropic_client = None
+        self._vonage = None
         self._twilio = None
 
     def _get_anthropic_client(self):
@@ -64,6 +65,12 @@ class NurturingAgent:
             import anthropic
             self._anthropic_client = anthropic.Anthropic(api_key=self.settings.anthropic_api_key)
         return self._anthropic_client
+
+    def _get_vonage(self):
+        if self._vonage is None:
+            from tools.vonage_tool import VonageTool
+            self._vonage = VonageTool()
+        return self._vonage
 
     def _get_twilio(self):
         if self._twilio is None:
@@ -256,25 +263,31 @@ class NurturingAgent:
         if not message:
             return False
 
-        twilio = self._get_twilio()
-
         if canal == Canal.SMS:
             if not lead.telephone:
                 return False
-            result = twilio.send_sms(to=lead.telephone, body=message)
+            vonage = self._get_vonage()
+            result = vonage.send_sms(
+                to=vonage.format_french_number(lead.telephone),
+                body=message,
+            )
             return result.get("success", False)
 
         elif canal == Canal.WHATSAPP:
             if not lead.telephone:
                 return False
-            result = twilio.send_whatsapp(to=lead.telephone, body=message)
+            result = self._get_twilio().send_whatsapp(to=lead.telephone, body=message)
             return result.get("success", False)
 
         elif canal == Canal.EMAIL:
             if not lead.email:
-                # Fallback SMS si pas d'email
+                # Fallback SMS via Vonage si pas d'email
                 if lead.telephone:
-                    result = twilio.send_sms(to=lead.telephone, body=message[:160])
+                    vonage = self._get_vonage()
+                    result = vonage.send_sms(
+                        to=vonage.format_french_number(lead.telephone),
+                        body=message[:160],
+                    )
                     return result.get("success", False)
                 return False
             from tools.email_tool import EmailTool

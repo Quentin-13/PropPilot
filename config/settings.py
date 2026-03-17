@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     twilio_phone_number: Optional[str] = Field(default=None, alias="TWILIO_PHONE_NUMBER")
     twilio_whatsapp_number: str = Field(default="+14155238886", alias="TWILIO_WHATSAPP_NUMBER")
 
+    # Vonage
+    vonage_api_key: Optional[str] = Field(default=None, alias="VONAGE_API_KEY")
+    vonage_api_secret: Optional[str] = Field(default=None, alias="VONAGE_API_SECRET")
+    vonage_phone_number: Optional[str] = Field(default=None, alias="VONAGE_PHONE_NUMBER")
+
     # ElevenLabs
     elevenlabs_api_key: Optional[str] = Field(default=None, alias="ELEVENLABS_API_KEY")
     elevenlabs_voice_id: str = Field(default="EXAVITQu4vr4xnSDxMaL", alias="ELEVENLABS_VOICE_ID")
@@ -100,6 +105,12 @@ class Settings(BaseSettings):
         if v not in valid:
             return "Starter"
         return v
+
+    @property
+    def vonage_available(self) -> bool:
+        if self.testing or self.mock_mode == "always":
+            return False
+        return bool(self.vonage_api_key and self.vonage_api_secret)
 
     @property
     def twilio_available(self) -> bool:

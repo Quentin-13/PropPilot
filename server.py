@@ -804,6 +804,65 @@ async def twilio_sms_incoming(request: Request, background_tasks: BackgroundTask
     return Response(content=twiml, media_type="text/xml")
 
 
+@app.post("/webhooks/vonage/sms", tags=["webhooks"])
+@app.get("/webhooks/vonage/sms", tags=["webhooks"])
+async def vonage_sms_webhook(request: Request, background_tasks: BackgroundTasks):
+    """
+    Webhook SMS entrant Vonage.
+    Vonage envoie les SMS reçus en GET ou POST selon config webhook.
+    """
+    if request.method == "GET":
+        params = dict(request.query_params)
+    else:
+        try:
+            params = await request.json()
+        except Exception:
+            form = await request.form()
+            params = dict(form)
+
+    from_number = params.get("msisdn", "") or params.get("from", "")
+    to_number = params.get("to", "")
+    body = params.get("text", "") or params.get("Body", "")
+
+    if not from_number or not body:
+        return {"status": "ignored", "reason": "missing fields"}
+
+    from_e164 = f"+{from_number}" if not from_number.startswith("+") else from_number
+
+    logger.info(
+        f"[Vonage SMS] De: {from_e164} | Vers: {to_number} | Message: {body[:50]}"
+    )
+
+    settings = get_settings()
+    client_id = settings.agency_client_id
+    tier = settings.agency_tier
+
+    try:
+        from memory.database import get_connection
+        with get_connection() as conn:
+            row = conn.execute(
+                "SELECT id, plan FROM users WHERE plan_active = TRUE AND is_admin = FALSE LIMIT 1"
+            ).fetchone()
+            if row:
+                client_id = row["id"]
+                tier = row["plan"]
+    except Exception:
+        pass
+
+    def _process():
+        from orchestrator import process_incoming_message
+        process_incoming_message(
+            telephone=from_e164,
+            message=body,
+            client_id=client_id,
+            tier=tier,
+            canal="sms",
+        )
+
+    background_tasks.add_task(_process)
+    return Response(status_code=200)
+
+
 # ─── API interne (back-office) ─────────────────────────────────────────────────
 
 @app.get("/api/status", tags=["api"])
