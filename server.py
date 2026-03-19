@@ -11,6 +11,7 @@ Production :
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 from typing import Optional
 
@@ -188,6 +189,24 @@ def _get_client_settings() -> tuple[str, str]:
 async def root():
     """Sert la landing page index.html (migration Netlify → Railway)."""
     return FileResponse("index.html")
+
+
+@app.get("/legal/mentions-legales", tags=["legal"])
+async def mentions_legales():
+    path = os.path.join(os.path.dirname(__file__), "static/legal/mentions-legales.html")
+    return FileResponse(path, media_type="text/html")
+
+
+@app.get("/legal/cgu", tags=["legal"])
+async def cgu():
+    path = os.path.join(os.path.dirname(__file__), "static/legal/cgu.html")
+    return FileResponse(path, media_type="text/html")
+
+
+@app.get("/legal/confidentialite", tags=["legal"])
+async def confidentialite():
+    path = os.path.join(os.path.dirname(__file__), "static/legal/confidentialite.html")
+    return FileResponse(path, media_type="text/html")
 
 
 @app.get("/health", tags=["health"])

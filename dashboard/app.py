@@ -461,11 +461,31 @@ with col_s:
         st.progress(0.0)
 
 # ─── Footer ───────────────────────────────────────────────────────────────────
-st.markdown("<div style='margin-top:40px;'></div>", unsafe_allow_html=True)
-st.markdown(
-    f"<div style='text-align:center; color:#475569; font-size:12px;'>"
-    f"PropPilot · Forfait {tier} · "
-    f"<a href='mailto:hello@proppilot.fr' style='color:#475569;'>hello@proppilot.fr</a>"
-    f"</div>",
-    unsafe_allow_html=True,
-)
+st.markdown("""
+<div style='text-align:center;padding:20px 0;
+            border-top:1px solid #1e2130;margin-top:40px;'>
+  <a href='https://proppilot.fr/legal/mentions-legales'
+     target='_blank'
+     style='color:#8892a4;font-size:0.8rem;
+            text-decoration:none;margin:0 10px;'>
+    Mentions légales
+  </a>
+  <a href='https://proppilot.fr/legal/cgu'
+     target='_blank'
+     style='color:#8892a4;font-size:0.8rem;
+            text-decoration:none;margin:0 10px;'>
+    CGU
+  </a>
+  <a href='https://proppilot.fr/legal/confidentialite'
+     target='_blank'
+     style='color:#8892a4;font-size:0.8rem;
+            text-decoration:none;margin:0 10px;'>
+    Confidentialité
+  </a>
+  <a href='mailto:contact@proppilot.fr'
+     style='color:#8892a4;font-size:0.8rem;
+            text-decoration:none;margin:0 10px;'>
+    Contact
+  </a>
+</div>
+""", unsafe_allow_html=True)
