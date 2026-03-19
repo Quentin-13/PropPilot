@@ -57,8 +57,8 @@ class NurturingAgent:
         self.tier = tier
         self.settings = get_settings()
         self._anthropic_client = None
-        self._vonage = None
-        self._twilio = None
+        self._twilio = None   # gardé pour WhatsApp
+        self._smsmode = None
 
     def _get_anthropic_client(self):
         if self._anthropic_client is None and self.settings.anthropic_available:
@@ -66,17 +66,17 @@ class NurturingAgent:
             self._anthropic_client = anthropic.Anthropic(api_key=self.settings.anthropic_api_key)
         return self._anthropic_client
 
-    def _get_vonage(self):
-        if self._vonage is None:
-            from tools.vonage_tool import VonageTool
-            self._vonage = VonageTool()
-        return self._vonage
-
     def _get_twilio(self):
         if self._twilio is None:
             from tools.twilio_tool import TwilioTool
             self._twilio = TwilioTool()
         return self._twilio
+
+    def _get_smsmode(self):
+        if self._smsmode is None:
+            from tools.smsmode_tool import SmsmodeTool
+            self._smsmode = SmsmodeTool()
+        return self._smsmode
 
     def process_due_followups(self) -> list[dict]:
         """
@@ -266,9 +266,9 @@ class NurturingAgent:
         if canal == Canal.SMS:
             if not lead.telephone:
                 return False
-            vonage = self._get_vonage()
-            result = vonage.send_sms(
-                to=vonage.format_french_number(lead.telephone),
+            smsmode = self._get_smsmode()
+            result = smsmode.send_sms(
+                to=smsmode.format_french_number(lead.telephone),
                 body=message,
             )
             return result.get("success", False)
@@ -281,11 +281,11 @@ class NurturingAgent:
 
         elif canal == Canal.EMAIL:
             if not lead.email:
-                # Fallback SMS via Vonage si pas d'email
+                # Fallback SMS via smsmode si pas d'email
                 if lead.telephone:
-                    vonage = self._get_vonage()
-                    result = vonage.send_sms(
-                        to=vonage.format_french_number(lead.telephone),
+                    smsmode = self._get_smsmode()
+                    result = smsmode.send_sms(
+                        to=smsmode.format_french_number(lead.telephone),
                         body=message[:160],
                     )
                     return result.get("success", False)

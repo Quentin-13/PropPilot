@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     vonage_api_secret: Optional[str] = Field(default=None, alias="VONAGE_API_SECRET")
     vonage_phone_number: Optional[str] = Field(default=None, alias="VONAGE_PHONE_NUMBER")
 
+    # smsmode (SMS France)
+    smsmode_api_key: Optional[str] = Field(default=None, alias="SMSMODE_API_KEY")
+    smsmode_phone_number: Optional[str] = Field(default=None, alias="SMSMODE_PHONE_NUMBER")
+
     # ElevenLabs
     elevenlabs_api_key: Optional[str] = Field(default=None, alias="ELEVENLABS_API_KEY")
     elevenlabs_voice_id: str = Field(default="EXAVITQu4vr4xnSDxMaL", alias="ELEVENLABS_VOICE_ID")
@@ -105,6 +109,12 @@ class Settings(BaseSettings):
         if v not in valid:
             return "Starter"
         return v
+
+    @property
+    def smsmode_available(self) -> bool:
+        if self.testing or self.mock_mode == "always":
+            return False
+        return bool(self.smsmode_api_key)
 
     @property
     def vonage_available(self) -> bool:

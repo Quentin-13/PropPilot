@@ -198,6 +198,7 @@ async def health():
         "status": "ok",
         "anthropic": settings.anthropic_available,
         "twilio": settings.twilio_available,
+        "smsmode": settings.smsmode_available,
         "openai": settings.openai_available,
         "elevenlabs": settings.elevenlabs_available,
     }
@@ -854,6 +855,71 @@ async def vonage_sms_webhook(request: Request, background_tasks: BackgroundTasks
         process_incoming_message(
             telephone=from_e164,
             message=body,
+            client_id=client_id,
+            tier=tier,
+            canal="sms",
+        )
+
+    background_tasks.add_task(_process)
+    return Response(status_code=200)
+
+
+@app.post("/webhooks/smsmode/sms", tags=["webhooks"])
+@app.get("/webhooks/smsmode/sms", tags=["webhooks"])
+async def smsmode_sms_incoming(request: Request, background_tasks: BackgroundTasks):
+    """
+    Webhook SMS entrant smsmode Time2Chat.
+    smsmode envoie en GET avec params :
+    - numero : expéditeur (33XXXXXXXXX)
+    - message : contenu du SMS
+    - to : ton numéro virtuel
+    """
+    params = dict(request.query_params)
+    if not params:
+        try:
+            params = await request.json()
+        except Exception:
+            form = await request.form()
+            params = dict(form)
+
+    from_number = params.get("numero", "") or params.get("from", "")
+    body_text = params.get("message", "") or params.get("Body", "")
+
+    if not from_number or not body_text:
+        return Response(status_code=200)
+
+    from_e164 = (
+        f"+{from_number}"
+        if not from_number.startswith("+")
+        else from_number
+    )
+
+    logger.info(
+        f"[smsmode entrant] De: {from_e164} | "
+        f"Message: {body_text[:80]}"
+    )
+
+    settings = get_settings()
+    client_id = settings.agency_client_id
+    tier = settings.agency_tier
+
+    try:
+        from memory.database import get_connection
+        with get_connection() as conn:
+            row = conn.execute(
+                "SELECT id, plan FROM users WHERE plan_active = TRUE AND is_admin = FALSE LIMIT 1"
+            ).fetchone()
+            if row:
+                client_id = row["id"]
+                tier = row["plan"]
+    except Exception:
+        pass
+
+    def _process():
+        from orchestrator import process_incoming_message
+        process_incoming_message(
+            telephone=from_e164,
+            message=body_text,
             client_id=client_id,
             tier=tier,
             canal="sms",

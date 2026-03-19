@@ -18,8 +18,8 @@ openai>=1.0.0
 # Twilio (voix + WhatsApp)
 twilio>=9.0.0
 
-# Vonage (SMS)
-vonage>=3.0.0
+# HTTP (smsmode)
+requests>=2.31.0
 
 # ElevenLabs
 elevenlabs>=1.0.0
