@@ -219,9 +219,9 @@ for col, plan_name in zip(cols, plan_names):
 
 st.markdown("---")
 st.markdown("""
-### Garantie ROI 60 jours
-Si en 60 jours vous n'obtenez pas au moins **+2 RDV/mois** ou **+1 mandat**,
-nous vous remboursons **50% du premier mois** (100% en Elite). Aucun risque.
+### 🛡️ 60 Jours Satisfait ou Remboursé
+Si vous n'êtes pas satisfait dans les 60 jours suivant votre inscription,
+nous vous remboursons intégralement. Sans questions.
 
 **Contact :** [contact@proppilot.fr](mailto:contact@proppilot.fr)
 """)

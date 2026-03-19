@@ -264,10 +264,9 @@ elif st.session_state.wizard_step == 4:
 
     st.markdown("---")
     st.markdown("""
-    **Garantie ROI 60 jours :**
-    Si en 60 jours vous n'obtenez pas au moins +2 RDV/mois ou +1 mandat,
-    nous vous remboursons 50% du premier mois (100% en Elite).
-    Aucun risque.
+    **🛡️ 60 Jours Satisfait ou Remboursé**
+    Si vous n'êtes pas satisfait dans les 60 jours, nous
+    vous remboursons intégralement. Sans questions.
     """)
 
     col_prev, col_next = st.columns([1, 1])

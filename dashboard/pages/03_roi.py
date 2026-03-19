@@ -104,7 +104,7 @@ st.dataframe(pd.DataFrame(funnel_rows), use_container_width=True, hide_index=Tru
 
 # ─── Tracker garantie ROI ─────────────────────────────────────────────────────
 st.markdown("---")
-st.markdown("### 🎯 Tracker Garantie ROI 60 jours")
+st.markdown("### 🛡️ 60 Jours Satisfait ou Remboursé")
 
 # Calcul jours depuis le début (basé sur 1er jour du mois courant pour la démo)
 start_date = datetime.now().replace(day=1)

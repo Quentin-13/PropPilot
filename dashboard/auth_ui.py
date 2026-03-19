@@ -222,7 +222,7 @@ def _show_plan_selection() -> None:
         st.markdown("")
         st.markdown("""
         <div style="text-align: center; color: #94a3b8; font-size: 12px; margin-top: 16px;">
-            Garantie ROI 60 jours · Paiement sécurisé Stripe ·
+            60 Jours Satisfait ou Remboursé · Paiement sécurisé Stripe ·
             <a href="mailto:contact@proppilot.fr" style="color: #94a3b8;">contact@proppilot.fr</a>
         </div>
         """, unsafe_allow_html=True)
@@ -330,7 +330,7 @@ def show_auth_page() -> None:
 
         st.markdown("""
         <div style="text-align: center; margin-top: 24px; color: #94a3b8; font-size: 12px;">
-            Essai 14 jours · Garantie ROI 60 jours · Support email inclus
+            60 Jours Satisfait ou Remboursé · Support email inclus
         </div>
         """, unsafe_allow_html=True)
 
@@ -374,21 +374,31 @@ def render_sidebar_logout() -> None:
     with st.sidebar:
         if is_admin:
             # Admin : sidebar réduite à la seule page Propriétaire
-            # 07_admin (nth-child 8) masqué aussi pour éviter la confusion
             st.markdown("""
-            <style>
-            [data-testid="stSidebarNav"] li { display: none !important; }
-            [data-testid="stSidebarNav"] li:nth-child(1) { display: block !important; }
-            </style>
-            """, unsafe_allow_html=True)
+<style>
+/* Admin : masquer tout sauf propriétaire */
+[data-testid="stSidebarNav"] li
+  { display: none !important; }
+[data-testid="stSidebarNav"] li:nth-child(1)
+  { display: block !important; }
+</style>
+""", unsafe_allow_html=True)
         else:
             # Client : masquer Propriétaire (admin only) et 07_admin (obsolète)
             st.markdown("""
-            <style>
-            [data-testid="stSidebarNav"] li:nth-child(1) { display: none !important; }
-            [data-testid="stSidebarNav"] li:nth-child(8) { display: none !important; }
-            </style>
-            """, unsafe_allow_html=True)
+<style>
+/* Masquer propriétaire et admin pour les clients */
+[data-testid="stSidebarNav"] li:nth-child(1)
+  { display: none !important; }
+[data-testid="stSidebarNav"] li:nth-child(8)
+  { display: none !important; }
+/* Sécurité supplémentaire — masquer par nom */
+[data-testid="stSidebarNav"] a[href*="proprietaire"]
+  { display: none !important; }
+[data-testid="stSidebarNav"] a[href*="admin"]
+  { display: none !important; }
+</style>
+""", unsafe_allow_html=True)
 
         st.markdown(f"""
         <div style="padding: 8px 0 20px 0; display: flex; align-items: center; gap: 10px;">
@@ -401,6 +411,9 @@ def render_sidebar_logout() -> None:
         """, unsafe_allow_html=True)
 
         st.markdown("---")
+
+        if st.button("🏠 Accueil", use_container_width=True, key="_home_btn"):
+            st.switch_page("app.py")
 
         if st.button("🚪 Déconnexion", use_container_width=True, key="_logout_btn"):
             for key in ["authenticated", "token", "user_id", "agency_name", "plan", "plan_active"]:
