@@ -75,6 +75,11 @@ async def lifespan(app: FastAPI):
         logger.info(f"Claude: {'✅' if settings.anthropic_available else '⚠️ mock'} | "
                     f"Twilio: {'✅' if settings.twilio_available else '⚠️ mock'} | "
                     f"Stripe: {'✅' if settings.stripe_available else '⚠️ mock'}")
+        logger.info(
+            "PropPilot démarré en mode full SMS. "
+            "Variables Railway à supprimer si présentes : "
+            "ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID, BASE_URL"
+        )
     except Exception as e:
         if settings.testing:
             logger.warning(f"DB non disponible (mode test) : {e}")
@@ -107,10 +112,6 @@ async def lifespan(app: FastAPI):
 
 
 # ─── App ──────────────────────────────────────────────────────────────────────
-
-# Historique des conversations Sophie en cours (par CallSid Twilio)
-# {call_sid: [{"role": "assistant", "content": "..."}]}
-sophie_conversations: dict[str, list[dict]] = {}
 
 app = FastAPI(
     title="PropPilot — API",
@@ -223,7 +224,6 @@ async def health():
         "twilio": settings.twilio_available,
         "smsmode": settings.smsmode_available,
         "openai": settings.openai_available,
-        "elevenlabs": settings.elevenlabs_available,
     }
 
 
@@ -641,8 +641,8 @@ async def twiml_sophie_intro(lead_id: str):
 @app.post("/twiml/sophie/{lead_id}/response", tags=["twiml"], response_class=Response)
 async def twiml_sophie_response(lead_id: str, request: Request):
     """
-    Reçoit la réponse vocale Twilio <Gather>, génère la réponse Sophie via Claude,
-    synthétise avec ElevenLabs et retourne du TwiML <Say>+<Gather>.
+    Reçoit la réponse vocale Twilio <Gather>, génère la réponse Sophie via Claude
+    et retourne du TwiML <Say>+<Gather>.
     Si RDV détecté → book via CalendarTool et raccrocher.
     """
     import json as _json
@@ -738,153 +738,91 @@ async def twiml_sophie_response(lead_id: str, request: Request):
     return Response(content=twiml, media_type="text/xml")
 
 
-@app.get("/audio/{audio_id}", tags=["audio"])
-async def serve_audio(audio_id: str):
-    """Sert les fichiers audio temporaires générés par ElevenLabs pour Twilio."""
-    import os
-
-    audio_path = f"/tmp/sophie_{audio_id}.mp3"
-    if not os.path.exists(audio_path):
-        raise HTTPException(status_code=404, detail="Audio not found")
-
-    return FileResponse(
-        audio_path,
-        media_type="audio/mpeg",
-        headers={"Cache-Control": "no-cache"},
-    )
-
-
 @app.post("/webhooks/twilio/voice", tags=["webhooks"])
-async def twilio_voice_incoming(request: Request):
-    from twilio.twiml.voice_response import VoiceResponse, Gather
-    from agents.sophie_voice import SophieVoice
+async def twilio_voice_incoming(request: Request, background_tasks: BackgroundTasks):
+    """
+    Webhook Twilio voice entrant.
+    Quand quelqu'un appelle le numéro PropPilot :
+    1. Message vocal court en français
+    2. Récupère le numéro de l'appelant
+    3. Déclenche un SMS via smsmode
+    4. Raccroche proprement
+    """
+    from twilio.twiml.voice_response import VoiceResponse
 
     form = await request.form()
+    caller = form.get("From", "")
     call_sid = form.get("CallSid", "unknown")
-    caller = form.get("From", "inconnu")
 
-    logger.info(f"[Sophie] Appel entrant — {caller} — {call_sid}")
-
-    accueil = (
-        "Bonjour, je suis Sophie, l'assistante de votre "
-        "conseiller immobilier. Je suis ravie de vous "
-        "répondre. Comment puis-je vous aider ?"
-    )
-
-    sophie_conversations[call_sid] = [
-        {"role": "assistant", "content": accueil}
-    ]
-
-    sophie = SophieVoice()
-    audio_url = await sophie.text_to_speech(accueil)
+    logger.info(f"[Twilio] Appel entrant — {caller} — {call_sid}")
 
     response = VoiceResponse()
-    gather = Gather(
-        input="speech",
-        action=f"/webhooks/twilio/voice/gather?call_sid={call_sid}",
-        method="POST",
-        language="fr-FR",
-        speech_timeout="3",
-        timeout=10,
-    )
-    if audio_url:
-        gather.play(audio_url)
-    else:
-        gather.say(accueil, voice="Polly.Lea", language="fr-FR")
-    response.append(gather)
-
     response.say(
-        "Je n'ai pas entendu votre réponse. "
-        "Votre conseiller vous recontacte très rapidement. "
-        "Au revoir.",
+        "Bonjour, nous avons bien noté votre appel. "
+        "Vous allez recevoir un SMS dans quelques instants "
+        "pour échanger avec votre conseiller. "
+        "À très bientôt.",
         voice="Polly.Lea",
         language="fr-FR",
     )
+    response.hangup()
 
-    return Response(content=str(response), media_type="application/xml")
+    if caller and caller != "anonymous":
+        try:
+            from tools.smsmode_tool import SmsmodeTool
 
+            settings = get_settings()
+            client_id = settings.agency_client_id
+            tier = settings.agency_tier
 
-@app.post("/webhooks/twilio/voice/gather", tags=["webhooks"])
-async def twilio_voice_gather(request: Request, call_sid: str = ""):
-    from twilio.twiml.voice_response import VoiceResponse, Gather
-    from agents.sophie_voice import SophieVoice
+            try:
+                from memory.database import get_connection
+                with get_connection() as conn:
+                    row = conn.execute(
+                        "SELECT id, plan FROM users "
+                        "WHERE plan_active = TRUE AND is_admin = FALSE "
+                        "ORDER BY created_at DESC LIMIT 1"
+                    ).fetchone()
+                    if row:
+                        client_id = row["id"]
+                        tier = row["plan"]
+            except Exception as db_err:
+                logger.warning(f"[Twilio] DB lookup failed: {db_err}")
 
-    form = await request.form()
-    speech_result = form.get("SpeechResult", "")
-    caller = form.get("From", "inconnu")
+            smsmode = SmsmodeTool()
+            caller_e164 = (
+                f"+{caller.lstrip('+')}" if not caller.startswith("+") else caller
+            )
 
-    if not call_sid:
-        call_sid = form.get("CallSid", "unknown")
+            sms_body = (
+                "Bonjour, suite à votre appel, "
+                "je suis l'assistante de votre conseiller "
+                "immobilier. Comment puis-je vous aider ? "
+                "Vous pouvez me répondre directement par SMS."
+            )
+            result = smsmode.send_sms(to=caller_e164, body=sms_body)
 
-    logger.info(f"[Sophie] {caller} dit : '{speech_result}'")
+            if result.get("success"):
+                logger.info(f"[Twilio→SMS] SMS envoyé à {caller_e164}")
 
-    response = VoiceResponse()
+                def _process():
+                    from orchestrator import process_incoming_message
+                    process_incoming_message(
+                        telephone=caller_e164,
+                        message="[APPEL ENTRANT — prospect a appelé]",
+                        client_id=client_id,
+                        tier=tier,
+                        canal="sms",
+                    )
 
-    if not speech_result.strip():
-        gather = Gather(
-            input="speech",
-            action=f"/webhooks/twilio/voice/gather?call_sid={call_sid}",
-            method="POST",
-            language="fr-FR",
-            speech_timeout="3",
-            timeout=10,
-        )
-        gather.say(
-            "Je n'ai pas bien entendu. Pouvez-vous répéter ?",
-            voice="Polly.Lea",
-            language="fr-FR",
-        )
-        response.append(gather)
-        return Response(content=str(response), media_type="application/xml")
+                background_tasks.add_task(_process)
+            else:
+                logger.error(f"[Twilio→SMS] Échec envoi : {result}")
 
-    history = sophie_conversations.get(call_sid, [])
-
-    sophie = SophieVoice()
-    sophie_reply = await sophie.generate_response(history, speech_result)
-
-    logger.info(f"[Sophie] Répond : '{sophie_reply}'")
-
-    history.append({"role": "user", "content": speech_result})
-    history.append({"role": "assistant", "content": sophie_reply})
-    sophie_conversations[call_sid] = history
-
-    conversation_endings = [
-        "bonne journée", "au revoir", "très rapidement",
-        "je transmets votre dossier",
-    ]
-    is_ending = any(e in sophie_reply.lower() for e in conversation_endings)
-
-    audio_url = await sophie.text_to_speech(sophie_reply)
-
-    if is_ending:
-        if audio_url:
-            response.play(audio_url)
-        else:
-            response.say(sophie_reply, voice="Polly.Lea", language="fr-FR")
-        response.hangup()
-        sophie_conversations.pop(call_sid, None)
-        logger.info(
-            f"[Sophie] Conversation terminée — {caller} — {len(history)} échanges"
-        )
+        except Exception as e:
+            logger.error(f"[Twilio] Erreur déclenchement SMS : {e}")
     else:
-        gather = Gather(
-            input="speech",
-            action=f"/webhooks/twilio/voice/gather?call_sid={call_sid}",
-            method="POST",
-            language="fr-FR",
-            speech_timeout="3",
-            timeout=10,
-        )
-        if audio_url:
-            gather.play(audio_url)
-        else:
-            gather.say(sophie_reply, voice="Polly.Lea", language="fr-FR")
-        response.append(gather)
-        response.say(
-            "Votre conseiller vous recontacte très rapidement. Au revoir.",
-            voice="Polly.Lea",
-            language="fr-FR",
-        )
+        logger.warning("[Twilio] Numéro masqué — impossible d'envoyer SMS")
 
     return Response(content=str(response), media_type="application/xml")
 

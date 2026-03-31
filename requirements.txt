@@ -21,9 +21,6 @@ twilio>=9.0.0
 # HTTP (smsmode)
 requests>=2.31.0
 
-# ElevenLabs
-elevenlabs>=1.0.0
-
 # Retell AI
 retell-sdk>=4.0.0
 

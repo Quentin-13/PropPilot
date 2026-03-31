@@ -42,11 +42,6 @@ class Settings(BaseSettings):
     smsmode_api_key: Optional[str] = Field(default=None, alias="SMSMODE_API_KEY")
     smsmode_phone_number: Optional[str] = Field(default=None, alias="SMSMODE_PHONE_NUMBER")
 
-    # ElevenLabs
-    elevenlabs_api_key: Optional[str] = Field(default=None, alias="ELEVENLABS_API_KEY")
-    elevenlabs_voice_id: str = Field(default="EXAVITQu4vr4xnSDxMaL", alias="ELEVENLABS_VOICE_ID")
-    elevenlabs_model_id: str = Field(default="eleven_multilingual_v2", alias="ELEVENLABS_MODEL_ID")
-
     # Retell
     retell_api_key: Optional[str] = Field(default=None, alias="RETELL_API_KEY")
     retell_agent_id: Optional[str] = Field(default=None, alias="RETELL_AGENT_ID")
@@ -88,12 +83,6 @@ class Settings(BaseSettings):
 
     # URL de l'API FastAPI (pour le dashboard)
     api_url: str = Field(default="http://localhost:8000", alias="API_URL")
-
-    # URL publique Railway (pour les liens audio Twilio)
-    base_url: str = Field(
-        default="https://proppilot-production.up.railway.app",
-        alias="BASE_URL",
-    )
 
     # Stripe
     stripe_secret_key: Optional[str] = Field(default=None, alias="STRIPE_SECRET_KEY")
@@ -149,12 +138,6 @@ class Settings(BaseSettings):
         if self.testing or self.mock_mode == "always":
             return False
         return bool(self.google_client_id and self.google_client_secret)
-
-    @property
-    def elevenlabs_available(self) -> bool:
-        if self.testing or self.mock_mode == "always":
-            return False
-        return bool(self.elevenlabs_api_key)
 
     @property
     def retell_available(self) -> bool:
