@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PropPilot — Pilotez votre agence avec l'IA</title>
-  <meta name="description" content="PropPilot — 7 agents IA spécialisés immobilier. Leads qualifiés, appels automatisés, annonces rédigées. Vos premiers résultats en 7 jours." />
+  <meta name="description" content="PropPilot — Chaque lead contacté en moins de 5 minutes, qualifié automatiquement, RDV posé dans votre agenda. 24h/24, 7j/7." />
   <meta property="og:title" content="PropPilot — Pilotez votre agence avec l'IA" />
   <meta property="og:url" content="https://proppilot.fr" />
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
@@ -602,6 +602,27 @@
     .gold { color: var(--gold); }
     .divider { width: 48px; height: 4px; border-radius: 2px; background: var(--blue); margin: 20px 0 32px; }
     .centered .divider { margin: 20px auto 32px; }
+
+    .source {
+      font-size: 0.65rem;
+      color: var(--muted);
+      vertical-align: super;
+      margin-left: 1px;
+      opacity: 0.7;
+    }
+
+    .sources-footer {
+      margin-top: 48px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.9;
+      opacity: 0.8;
+      max-width: 680px;
+      margin-left: auto;
+      margin-right: auto;
+    }
   </style>
 </head>
 <body>
@@ -611,8 +632,8 @@
     <div class="nav-inner">
       <a href="#" class="nav-logo"><img src="/static/logo.svg" alt="PropPilot" height="28" style="vertical-align:middle;margin-right:6px;"> Prop<span>Pilot</span></a>
       <div class="nav-buttons">
-        <a href="https://proppilot-dashboard-production.up.railway.app/?auth=login" class="nav-btn-login">Se connecter</a>
-        <a href="https://proppilot-dashboard-production.up.railway.app/?auth=signup" class="nav-btn-signup">S'inscrire</a>
+        <a href="https://proppilot-dashboard-production.up.railway.app/?auth=login" class="nav-btn-login">Espace client</a>
+        <a href="https://calendly.com/contact-proppilot/appel-proppilot-20min" target="_blank" class="nav-btn-signup">Réserver un appel</a>
       </div>
     </div>
   </nav>
@@ -630,10 +651,13 @@
           <em>Votre équipe IA, non.</em>
         </h1>
         <p class="hero-sub fade-up fade-up-delay-2">
-          7 collaborateurs IA spécialisés immobilier français. Disponibles 24h/24, jamais malades, jamais en vacances. Vos premiers résultats en 7 jours.
+          Chaque lead contacté en moins de 5 minutes.<br />
+          Chaque prospect qualifié automatiquement.<br />
+          Chaque rendez-vous posé dans votre agenda.<br />
+          Même à 23h un dimanche.
         </p>
         <div class="hero-actions fade-up fade-up-delay-3">
-          <a href="https://proppilot-dashboard-production.up.railway.app/?auth=signup" class="btn btn-primary">S'inscrire gratuitement →</a>
+          <a href="https://calendly.com/contact-proppilot/appel-proppilot-20min" target="_blank" class="btn btn-primary">Réserver un appel gratuit →</a>
           <div class="hero-social-proof">
             <div class="hero-avatars">
               <span style="background:#3b82f6;">L</span>
@@ -642,7 +666,7 @@
               <span style="background:#f59e0b;">H</span>
               <span style="background:#ec4899;">C</span>
             </div>
-            Déjà utilisé par 200+ agents en France
+            Réponse automatique en moins de 5 minutes, 24h/24
           </div>
         </div>
         <div class="hero-agents-preview fade-up fade-up-delay-4">
@@ -669,14 +693,14 @@
       <div class="problem-grid">
         <div class="problem-card fade-up fade-up-delay-1">
           <span class="problem-icon">💸</span>
-          <div class="problem-stat">4 200€</div>
-          <p class="problem-text">C'est la commission moyenne perdue chaque mois par un agent qui ne rappelle pas ses leads dans les 5 premières minutes. Léa répond en 90 secondes, même à 23h le dimanche.</p>
+          <div class="problem-stat">21x</div>
+          <p class="problem-text">Contacter un lead dans les 5 premières minutes est <strong>21 fois plus efficace</strong> qu'attendre 30 minutes. Léa répond automatiquement, même à 23h le dimanche.<span class="source">¹</span></p>
           <span class="problem-agent-tag" style="background:rgba(59,130,246,0.12);color:var(--lea);">🎯 Léa règle ce problème</span>
         </div>
         <div class="problem-card fade-up fade-up-delay-2">
           <span class="problem-icon">📉</span>
-          <div class="problem-stat">1 sur 3</div>
-          <p class="problem-text">N'est jamais rappelé faute de temps. Sur 100 leads mensuels, vous en perdez 33 avant d'avoir décroché. Marc relance chacun d'eux automatiquement sur 30 jours.</p>
+          <div class="problem-stat">74%</div>
+          <p class="problem-text">Des propriétaires signent avec la <strong>première agence qui les contacte</strong>. Marc relance chacun de vos leads automatiquement sur 90 jours.<span class="source">²</span></p>
           <span class="problem-agent-tag" style="background:rgba(16,185,129,0.12);color:var(--marc);">📱 Marc règle ce problème</span>
         </div>
         <div class="problem-card fade-up fade-up-delay-3">
@@ -790,88 +814,28 @@
     </div>
   </section>
 
-  <!-- ─── PRICING ───────────────────────────────────────────────── -->
-  <section id="tarifs">
+  <section id="contact" style="background:var(--bg2);padding:100px 0;">
     <div class="container">
-      <div class="section-header centered fade-up">
-        <span class="section-label">Tarifs</span>
-        <h2 class="section-title">Constituez votre équipe aujourd'hui.</h2>
-        <div class="divider"></div>
-        <p class="section-subtitle">Les 7 collaborateurs sont inclus dans chaque forfait. Seules les limites d'usage mensuel varient.</p>
-      </div>
-      <div class="pricing-toggle">
-        <span class="toggle-label active" id="label-commit">Engagement 1 an</span>
-        <button class="toggle-switch" id="pricing-toggle" onclick="togglePricing()" aria-label="Basculer"></button>
-        <span class="toggle-label" id="label-nocommit">Sans engagement</span>
-      </div>
-      <div class="pricing-grid">
-        <div class="pricing-card fade-up fade-up-delay-1">
-          <div class="pricing-tier">Indépendant</div>
-          <div class="pricing-badge-economy" id="eco-independant">Économie 840€/an</div>
-          <div class="pricing-price"><span id="price-independant">250€</span> <span>HT/mois</span></div>
-          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:4px;" id="commit-independant">Engagement 12 mois</div>
-          <p class="pricing-desc">Pour les mandataires indépendants</p>
-          <ul class="pricing-features">
-            <li>7 agents IA (Léa, Marc, Sophie, Hugo, Camille, Thomas, Julie)</li>
-            <li>1 utilisateur</li>
-            <li>1 intégration CRM</li>
-            <li>📞 600 min d'appels/mois</li>
-            <li>📱 3 000 SMS/mois</li>
-            <li>60 Jours Satisfait ou Remboursé</li>
-          </ul>
-          <a href="https://proppilot-dashboard-production.up.railway.app/?auth=signup" class="btn btn-outline" style="width:100%;justify-content:center;">Démarrer →</a>
-        </div>
-        <div class="pricing-card featured fade-up fade-up-delay-2">
-          <div class="pricing-badge">POPULAIRE</div>
-          <div class="pricing-tier" style="color:var(--blue);">Starter</div>
-          <div class="pricing-badge-economy" id="eco-starter">Économie 1 920€/an</div>
-          <div class="pricing-price"><span id="price-starter">790€</span> <span>HT/mois</span></div>
-          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:4px;" id="commit-starter">Engagement 12 mois</div>
-          <p class="pricing-desc">Pour les petites agences</p>
-          <ul class="pricing-features">
-            <li>7 agents IA (Léa, Marc, Sophie, Hugo, Camille, Thomas, Julie)</li>
-            <li>3 utilisateurs</li>
-            <li>2 intégrations CRM</li>
-            <li>📞 1 500 min d'appels/mois</li>
-            <li>📱 8 000 SMS/mois</li>
-            <li>60 Jours Satisfait ou Remboursé</li>
-          </ul>
-          <a href="https://proppilot-dashboard-production.up.railway.app/?auth=signup" class="btn btn-primary" style="width:100%;justify-content:center;">Démarrer →</a>
-        </div>
-        <div class="pricing-card fade-up fade-up-delay-3">
-          <div class="pricing-tier">Pro</div>
-          <div class="pricing-badge-economy" id="eco-pro">Économie 3 600€/an</div>
-          <div class="pricing-price"><span id="price-pro">1 490€</span> <span>HT/mois</span></div>
-          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:4px;" id="commit-pro">Engagement 12 mois</div>
-          <p class="pricing-desc">Pour les agences actives</p>
-          <ul class="pricing-features">
-            <li>7 agents IA (Léa, Marc, Sophie, Hugo, Camille, Thomas, Julie)</li>
-            <li>6 utilisateurs</li>
-            <li>5 intégrations CRM</li>
-            <li>📞 3 000 min d'appels/mois</li>
-            <li>📱 15 000 SMS/mois</li>
-            <li>60 Jours Satisfait ou Remboursé</li>
-          </ul>
-          <a href="https://proppilot-dashboard-production.up.railway.app/?auth=signup" class="btn btn-outline" style="width:100%;justify-content:center;">Démarrer →</a>
-        </div>
-        <div class="pricing-card fade-up fade-up-delay-4">
-          <div class="pricing-tier" style="color:var(--gold);">Elite</div>
-          <div class="pricing-badge-economy" id="eco-elite">Économie 7 200€/an</div>
-          <div class="pricing-price"><span id="price-elite">2 990€</span> <span>HT/mois</span></div>
-          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:4px;" id="commit-elite">Engagement 12 mois</div>
-          <p class="pricing-desc">Pour les réseaux et multi-agences</p>
-          <ul class="pricing-features">
-            <li>7 agents IA (Léa, Marc, Sophie, Hugo, Camille, Thomas, Julie)</li>
-            <li>Utilisateurs illimités</li>
-            <li>Intégrations CRM illimitées</li>
-            <li>📞 Appels illimités</li>
-            <li>📱 SMS illimités</li>
-            <li>Agents custom sur mesure</li>
-            <li>Account manager dédié</li>
-            <li>60 Jours Satisfait ou Remboursé</li>
-          </ul>
-          <a href="mailto:contact@proppilot.fr" class="btn btn-gold" style="width:100%;justify-content:center;">Nous contacter →</a>
-        </div>
+      <div style="max-width:680px;margin:0 auto;text-align:center;">
+        <span class="section-label">Parlons-en</span>
+        <h2 class="section-title">
+          Votre prochain lead arrive<br />
+          peut-être ce soir à 23h.
+        </h2>
+        <p style="color:var(--muted);font-size:1.05rem;line-height:1.7;margin:20px auto 40px;max-width:520px;">
+          Chaque situation est différente. On échange 20 minutes,
+          on comprend votre volume, et on vous propose
+          une solution adaptée.
+        </p>
+        <a href="https://calendly.com/contact-proppilot/appel-proppilot-20min"
+           target="_blank"
+           class="btn btn-primary"
+           style="font-size:1.1rem;padding:18px 44px;">
+          Réserver un appel gratuit →
+        </a>
+        <p style="margin-top:16px;font-size:0.82rem;color:var(--muted);opacity:0.7;">
+          Aucun engagement · Réponse sous 24h
+        </p>
       </div>
     </div>
   </section>
@@ -1036,24 +1000,28 @@
   </section>
 
   <!-- ─── FINAL CTA ──────────────────────────────────────────────── -->
-  <section class="final-cta" id="contact">
+  <section class="final-cta">
     <div class="container">
       <div style="max-width:700px;margin:0 auto;" class="fade-up">
         <span class="section-label">Commencer</span>
         <h2 class="section-title">
-          Léa, Marc, Sophie, Hugo, Camille, Thomas et Julie sont prêts à travailler pour vous dès ce soir.
+          Votre prochaine vente arrive<br />
+          peut-être ce soir à 23h.
         </h2>
         <div class="divider"></div>
         <p class="section-subtitle" style="margin-bottom:40px;">
-          Rejoignez 200+ agents qui ne perdent plus de leads la nuit.
+          Chaque minute compte. Parlons-en avant qu'il parte chez quelqu'un d'autre.
         </p>
-        <a href="https://proppilot-dashboard-production.up.railway.app/?auth=signup" class="btn btn-primary" style="font-size:1.1rem;padding:18px 40px;">
-          S'inscrire maintenant →
+        <a href="https://calendly.com/contact-proppilot/appel-proppilot-20min"
+           target="_blank"
+           class="btn btn-primary"
+           style="font-size:1.1rem;padding:18px 40px;">
+          Réserver un appel gratuit →
         </a>
         <div class="final-proof">
-          <span>Sans carte bancaire</span>
-          <span>Réponse en moins de 2h</span>
-          <span>Démo en visio 30 min</span>
+          <span>Aucun engagement</span>
+          <span>Réponse sous 24h</span>
+          <span>Appel de 20 minutes</span>
         </div>
       </div>
     </div>
@@ -1073,8 +1041,18 @@
         <a href="/legal/cgu">CGU</a>
         <a href="/legal/confidentialite">Confidentialité</a>
         <a href="mailto:contact@proppilot.fr">Contact</a>
+        <a href="https://proppilot-dashboard-production.up.railway.app/?auth=login" style="opacity:0.4;font-size:0.75rem;">Espace client</a>
       </div>
     </div>
+  <div class="sources-footer container">
+    <p>
+      ¹ Journal de l'Agence / LeadResponseManagement.org —
+      Répondre dans les 5 premières minutes est 21x plus
+      efficace qu'après 30 minutes.<br />
+      ² Immobilier 2.0 / NAR — 74% des propriétaires
+      signent avec la première agence qui les contacte.
+    </p>
+  </div>
   </footer>
 
   <script>
@@ -1128,26 +1106,5 @@
     }
   </script>
 
-  <script>
-    const PRICES = {
-      commit:   { independant:"250€", starter:"790€", pro:"1 490€", elite:"2 990€" },
-      nocommit: { independant:"320€", starter:"950€", pro:"1 790€", elite:"3 590€" }
-    };
-    let isNoCommit = false;
-    function togglePricing() {
-      isNoCommit = !isNoCommit;
-      const mode = isNoCommit ? "nocommit" : "commit";
-      document.getElementById("pricing-toggle").classList.toggle("no-commit", isNoCommit);
-      document.getElementById("label-commit").classList.toggle("active", !isNoCommit);
-      document.getElementById("label-nocommit").classList.toggle("active", isNoCommit);
-      ["independant","starter","pro","elite"].forEach(p => {
-        document.getElementById("price-"+p).textContent = PRICES[mode][p];
-        document.getElementById("commit-"+p).textContent = isNoCommit
-          ? "Sans engagement · résiliable à tout moment"
-          : "Engagement 12 mois";
-        document.getElementById("eco-"+p).style.visibility = isNoCommit ? "hidden" : "visible";
-      });
-    }
-  </script>
 </body>
 </html>
