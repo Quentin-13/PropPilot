@@ -108,6 +108,10 @@ async def lifespan(app: FastAPI):
 
 # ─── App ──────────────────────────────────────────────────────────────────────
 
+# Historique des conversations Sophie en cours (par CallSid Twilio)
+# {call_sid: [{"role": "assistant", "content": "..."}]}
+sophie_conversations: dict[str, list[dict]] = {}
+
 app = FastAPI(
     title="PropPilot — API",
     description="Webhooks entrants pour leads, SMS, WhatsApp, appels voix",
@@ -734,34 +738,64 @@ async def twiml_sophie_response(lead_id: str, request: Request):
     return Response(content=twiml, media_type="text/xml")
 
 
+@app.get("/audio/{audio_id}", tags=["audio"])
+async def serve_audio(audio_id: str):
+    """Sert les fichiers audio temporaires générés par ElevenLabs pour Twilio."""
+    import os
+
+    audio_path = f"/tmp/sophie_{audio_id}.mp3"
+    if not os.path.exists(audio_path):
+        raise HTTPException(status_code=404, detail="Audio not found")
+
+    return FileResponse(
+        audio_path,
+        media_type="audio/mpeg",
+        headers={"Cache-Control": "no-cache"},
+    )
+
+
 @app.post("/webhooks/twilio/voice", tags=["webhooks"])
 async def twilio_voice_incoming(request: Request):
     from twilio.twiml.voice_response import VoiceResponse, Gather
+    from agents.sophie_voice import SophieVoice
+
+    form = await request.form()
+    call_sid = form.get("CallSid", "unknown")
+    caller = form.get("From", "inconnu")
+
+    logger.info(f"[Sophie] Appel entrant — {caller} — {call_sid}")
+
+    accueil = (
+        "Bonjour, je suis Sophie, l'assistante de votre "
+        "conseiller immobilier. Je suis ravie de vous "
+        "répondre. Comment puis-je vous aider ?"
+    )
+
+    sophie_conversations[call_sid] = [
+        {"role": "assistant", "content": accueil}
+    ]
+
+    sophie = SophieVoice()
+    audio_url = await sophie.text_to_speech(accueil)
 
     response = VoiceResponse()
-
     gather = Gather(
-        input="speech dtmf",
-        action="/webhooks/twilio/voice/gather",
+        input="speech",
+        action=f"/webhooks/twilio/voice/gather?call_sid={call_sid}",
         method="POST",
         language="fr-FR",
         speech_timeout="3",
         timeout=10,
     )
-    gather.say(
-        "Bonjour, vous êtes bien en contact avec l'assistante "
-        "de votre conseiller immobilier. "
-        "Je suis disponible pour répondre à vos questions "
-        "concernant ce bien. Comment puis-je vous aider ?",
-        voice="Polly.Lea",
-        language="fr-FR",
-    )
+    if audio_url:
+        gather.play(audio_url)
+    else:
+        gather.say(accueil, voice="Polly.Lea", language="fr-FR")
     response.append(gather)
 
     response.say(
-        "Je n'ai pas bien entendu. "
-        "N'hésitez pas à rappeler, "
-        "votre conseiller vous recontactera très rapidement. "
+        "Je n'ai pas entendu votre réponse. "
+        "Votre conseiller vous recontacte très rapidement. "
         "Au revoir.",
         voice="Polly.Lea",
         language="fr-FR",
@@ -771,32 +805,86 @@ async def twilio_voice_incoming(request: Request):
 
 
 @app.post("/webhooks/twilio/voice/gather", tags=["webhooks"])
-async def twilio_voice_gather(request: Request):
-    """
-    Reçoit la réponse vocale du prospect après le Gather.
-    Pour l'instant : accuse réception et raccroche proprement.
-    """
-    from twilio.twiml.voice_response import VoiceResponse
+async def twilio_voice_gather(request: Request, call_sid: str = ""):
+    from twilio.twiml.voice_response import VoiceResponse, Gather
+    from agents.sophie_voice import SophieVoice
 
     form = await request.form()
     speech_result = form.get("SpeechResult", "")
     caller = form.get("From", "inconnu")
 
-    logger.info(
-        f"[Sophie] Appel entrant de {caller} — "
-        f"Message : {speech_result}"
-    )
+    if not call_sid:
+        call_sid = form.get("CallSid", "unknown")
+
+    logger.info(f"[Sophie] {caller} dit : '{speech_result}'")
 
     response = VoiceResponse()
-    response.say(
-        "Merci pour votre message. "
-        "Votre conseiller va vous recontacter "
-        "dans les plus brefs délais. "
-        "Bonne journée !",
-        voice="Polly.Lea",
-        language="fr-FR",
-    )
-    response.hangup()
+
+    if not speech_result.strip():
+        gather = Gather(
+            input="speech",
+            action=f"/webhooks/twilio/voice/gather?call_sid={call_sid}",
+            method="POST",
+            language="fr-FR",
+            speech_timeout="3",
+            timeout=10,
+        )
+        gather.say(
+            "Je n'ai pas bien entendu. Pouvez-vous répéter ?",
+            voice="Polly.Lea",
+            language="fr-FR",
+        )
+        response.append(gather)
+        return Response(content=str(response), media_type="application/xml")
+
+    history = sophie_conversations.get(call_sid, [])
+
+    sophie = SophieVoice()
+    sophie_reply = await sophie.generate_response(history, speech_result)
+
+    logger.info(f"[Sophie] Répond : '{sophie_reply}'")
+
+    history.append({"role": "user", "content": speech_result})
+    history.append({"role": "assistant", "content": sophie_reply})
+    sophie_conversations[call_sid] = history
+
+    conversation_endings = [
+        "bonne journée", "au revoir", "très rapidement",
+        "je transmets votre dossier",
+    ]
+    is_ending = any(e in sophie_reply.lower() for e in conversation_endings)
+
+    audio_url = await sophie.text_to_speech(sophie_reply)
+
+    if is_ending:
+        if audio_url:
+            response.play(audio_url)
+        else:
+            response.say(sophie_reply, voice="Polly.Lea", language="fr-FR")
+        response.hangup()
+        sophie_conversations.pop(call_sid, None)
+        logger.info(
+            f"[Sophie] Conversation terminée — {caller} — {len(history)} échanges"
+        )
+    else:
+        gather = Gather(
+            input="speech",
+            action=f"/webhooks/twilio/voice/gather?call_sid={call_sid}",
+            method="POST",
+            language="fr-FR",
+            speech_timeout="3",
+            timeout=10,
+        )
+        if audio_url:
+            gather.play(audio_url)
+        else:
+            gather.say(sophie_reply, voice="Polly.Lea", language="fr-FR")
+        response.append(gather)
+        response.say(
+            "Votre conseiller vous recontacte très rapidement. Au revoir.",
+            voice="Polly.Lea",
+            language="fr-FR",
+        )
 
     return Response(content=str(response), media_type="application/xml")
 

@@ -89,6 +89,12 @@ class Settings(BaseSettings):
     # URL de l'API FastAPI (pour le dashboard)
     api_url: str = Field(default="http://localhost:8000", alias="API_URL")
 
+    # URL publique Railway (pour les liens audio Twilio)
+    base_url: str = Field(
+        default="https://proppilot-production.up.railway.app",
+        alias="BASE_URL",
+    )
+
     # Stripe
     stripe_secret_key: Optional[str] = Field(default=None, alias="STRIPE_SECRET_KEY")
     stripe_publishable_key: Optional[str] = Field(default=None, alias="STRIPE_PUBLISHABLE_KEY")
