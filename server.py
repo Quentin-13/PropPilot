@@ -736,37 +736,67 @@ async def twiml_sophie_response(lead_id: str, request: Request):
 
 @app.post("/webhooks/twilio/voice", tags=["webhooks"])
 async def twilio_voice_incoming(request: Request):
-    """
-    Webhook Twilio voice entrant.
-    Twilio appelle cette URL quand quelqu'un appelle le numéro PropPilot.
-    Retourne du TwiML pour décrocher et lancer Sophie.
-    """
     from twilio.twiml.voice_response import VoiceResponse, Gather
 
     response = VoiceResponse()
 
     gather = Gather(
-        input="speech",
+        input="speech dtmf",
         action="/webhooks/twilio/voice/gather",
         method="POST",
         language="fr-FR",
-        speech_timeout="auto",
-        timeout=5,
+        speech_timeout="3",
+        timeout=10,
     )
     gather.say(
-        "Bonjour, je suis Sophie, l'assistante de votre agent. "
-        "Comment puis-je vous aider ?",
-        voice="woman",
+        "Bonjour, vous êtes bien en contact avec l'assistante "
+        "de votre conseiller immobilier. "
+        "Je suis disponible pour répondre à vos questions "
+        "concernant ce bien. Comment puis-je vous aider ?",
+        voice="Polly.Lea",
         language="fr-FR",
     )
     response.append(gather)
 
     response.say(
-        "Je n'ai pas reçu de réponse. "
-        "Veuillez rappeler ou laisser un message.",
-        voice="woman",
+        "Je n'ai pas bien entendu. "
+        "N'hésitez pas à rappeler, "
+        "votre conseiller vous recontactera très rapidement. "
+        "Au revoir.",
+        voice="Polly.Lea",
         language="fr-FR",
     )
+
+    return Response(content=str(response), media_type="application/xml")
+
+
+@app.post("/webhooks/twilio/voice/gather", tags=["webhooks"])
+async def twilio_voice_gather(request: Request):
+    """
+    Reçoit la réponse vocale du prospect après le Gather.
+    Pour l'instant : accuse réception et raccroche proprement.
+    """
+    from twilio.twiml.voice_response import VoiceResponse
+
+    form = await request.form()
+    speech_result = form.get("SpeechResult", "")
+    caller = form.get("From", "inconnu")
+
+    logger.info(
+        f"[Sophie] Appel entrant de {caller} — "
+        f"Message : {speech_result}"
+    )
+
+    response = VoiceResponse()
+    response.say(
+        "Merci pour votre message. "
+        "Votre conseiller va vous recontacter "
+        "dans les plus brefs délais. "
+        "Bonne journée !",
+        voice="Polly.Lea",
+        language="fr-FR",
+    )
+    response.hangup()
 
     return Response(content=str(response), media_type="application/xml")
 
