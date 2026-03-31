@@ -734,6 +734,43 @@ async def twiml_sophie_response(lead_id: str, request: Request):
     return Response(content=twiml, media_type="text/xml")
 
 
+@app.post("/webhooks/twilio/voice", tags=["webhooks"])
+async def twilio_voice_incoming(request: Request):
+    """
+    Webhook Twilio voice entrant.
+    Twilio appelle cette URL quand quelqu'un appelle le numéro PropPilot.
+    Retourne du TwiML pour décrocher et lancer Sophie.
+    """
+    from twilio.twiml.voice_response import VoiceResponse, Gather
+
+    response = VoiceResponse()
+
+    gather = Gather(
+        input="speech",
+        action="/webhooks/twilio/voice/gather",
+        method="POST",
+        language="fr-FR",
+        speech_timeout="auto",
+        timeout=5,
+    )
+    gather.say(
+        "Bonjour, je suis Sophie, l'assistante de votre agent. "
+        "Comment puis-je vous aider ?",
+        voice="woman",
+        language="fr-FR",
+    )
+    response.append(gather)
+
+    response.say(
+        "Je n'ai pas reçu de réponse. "
+        "Veuillez rappeler ou laisser un message.",
+        voice="woman",
+        language="fr-FR",
+    )
+
+    return Response(content=str(response), media_type="application/xml")
+
+
 @app.post("/webhooks/twilio/call-status", tags=["webhooks"])
 async def twilio_call_status_webhook(request: Request):
     """
