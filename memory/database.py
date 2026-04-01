@@ -303,6 +303,7 @@ def _run_migrations(conn) -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMP",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS google_calendar_token TEXT",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS smspartner_number TEXT DEFAULT NULL",
     ]:
         conn.execute(col_sql)
 

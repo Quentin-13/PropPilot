@@ -223,6 +223,7 @@ async def health():
         "anthropic": settings.anthropic_available,
         "twilio": settings.twilio_available,
         "smsmode": settings.smsmode_available,
+        "smspartner": settings.smspartner_available,
         "openai": settings.openai_available,
     }
 
@@ -769,7 +770,7 @@ async def twilio_voice_incoming(request: Request, background_tasks: BackgroundTa
 
     if caller and caller != "anonymous":
         try:
-            from tools.smsmode_tool import SmsmodeTool
+            from tools.smspartner_tool import SmsPartnerTool
 
             settings = get_settings()
             client_id = settings.agency_client_id
@@ -789,7 +790,7 @@ async def twilio_voice_incoming(request: Request, background_tasks: BackgroundTa
             except Exception as db_err:
                 logger.warning(f"[Twilio] DB lookup failed: {db_err}")
 
-            smsmode = SmsmodeTool()
+            smspartner = SmsPartnerTool()
             caller_e164 = (
                 f"+{caller.lstrip('+')}" if not caller.startswith("+") else caller
             )
@@ -800,10 +801,10 @@ async def twilio_voice_incoming(request: Request, background_tasks: BackgroundTa
                 "immobilier. Comment puis-je vous aider ? "
                 "Vous pouvez me répondre directement par SMS."
             )
-            result = smsmode.send_sms(to=caller_e164, body=sms_body)
+            result = await smspartner.send_sms(to=caller_e164, body=sms_body)
 
             if result.get("success"):
-                logger.info(f"[Twilio→SMS] SMS envoyé à {caller_e164}")
+                logger.info(f"[Twilio→SMSPartner] SMS envoyé à {caller_e164}")
 
                 def _process():
                     from orchestrator import process_incoming_message
@@ -817,7 +818,7 @@ async def twilio_voice_incoming(request: Request, background_tasks: BackgroundTa
 
                 background_tasks.add_task(_process)
             else:
-                logger.error(f"[Twilio→SMS] Échec envoi : {result}")
+                logger.error(f"[Twilio→SMSPartner] Échec envoi : {result}")
 
         except Exception as e:
             logger.error(f"[Twilio] Erreur déclenchement SMS : {e}")
@@ -825,6 +826,89 @@ async def twilio_voice_incoming(request: Request, background_tasks: BackgroundTa
         logger.warning("[Twilio] Numéro masqué — impossible d'envoyer SMS")
 
     return Response(content=str(response), media_type="application/xml")
+
+
+@app.post("/webhooks/smspartner/incoming", tags=["webhooks"])
+async def smspartner_incoming_sms(
+    request: Request,
+    background_tasks: BackgroundTasks,
+):
+    """
+    Webhook SMS Partner — SMS entrant.
+    SMS Partner envoie un POST quand un prospect répond
+    sur le numéro virtuel du client.
+    """
+    try:
+        data = await request.json()
+    except Exception:
+        data = dict(await request.form())
+
+    logger.info(f"[SMSPartner] SMS entrant : {data}")
+
+    telephone = (
+        data.get("from")
+        or data.get("phone")
+        or data.get("numero")
+        or ""
+    )
+    message = (
+        data.get("message")
+        or data.get("text")
+        or data.get("body")
+        or ""
+    )
+    virtual_number = (
+        data.get("to")
+        or data.get("shortcode")
+        or data.get("numero_virtuel")
+        or ""
+    )
+
+    if not telephone or not message:
+        logger.warning(f"[SMSPartner] Données manquantes : {data}")
+        return {"status": "ignored"}
+
+    logger.info(f"[SMSPartner] {telephone} → {virtual_number} : '{message}'")
+
+    settings = get_settings()
+    client_id = settings.agency_client_id
+    tier = settings.agency_tier
+
+    try:
+        from memory.database import get_connection
+        with get_connection() as conn:
+            row = conn.execute(
+                "SELECT id, plan FROM users "
+                "WHERE smspartner_number = %s AND plan_active = TRUE LIMIT 1",
+                (virtual_number,),
+            ).fetchone()
+            if row:
+                client_id = row["id"]
+                tier = row["plan"]
+            else:
+                row = conn.execute(
+                    "SELECT id, plan FROM users "
+                    "WHERE plan_active = TRUE AND is_admin = FALSE "
+                    "ORDER BY created_at DESC LIMIT 1"
+                ).fetchone()
+                if row:
+                    client_id = row["id"]
+                    tier = row["plan"]
+    except Exception as e:
+        logger.warning(f"[SMSPartner] DB lookup failed: {e}")
+
+    def _process():
+        from orchestrator import process_incoming_message
+        process_incoming_message(
+            telephone=telephone,
+            message=message,
+            client_id=client_id,
+            tier=tier,
+            canal="sms",
+        )
+
+    background_tasks.add_task(_process)
+    return {"status": "processing"}
 
 
 @app.post("/webhooks/twilio/call-status", tags=["webhooks"])

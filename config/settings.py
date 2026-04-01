@@ -38,9 +38,12 @@ class Settings(BaseSettings):
     vonage_api_secret: Optional[str] = Field(default=None, alias="VONAGE_API_SECRET")
     vonage_phone_number: Optional[str] = Field(default=None, alias="VONAGE_PHONE_NUMBER")
 
-    # smsmode (SMS France)
+    # smsmode (SMS France — legacy)
     smsmode_api_key: Optional[str] = Field(default=None, alias="SMSMODE_API_KEY")
     smsmode_phone_number: Optional[str] = Field(default=None, alias="SMSMODE_PHONE_NUMBER")
+
+    # SMS Partner (SMS bidirectionnel — principal)
+    smspartner_api_key: Optional[str] = Field(default=None, alias="SMSPARTNER_API_KEY")
 
     # Retell
     retell_api_key: Optional[str] = Field(default=None, alias="RETELL_API_KEY")
@@ -110,6 +113,12 @@ class Settings(BaseSettings):
         if self.testing or self.mock_mode == "always":
             return False
         return bool(self.smsmode_api_key)
+
+    @property
+    def smspartner_available(self) -> bool:
+        if self.testing or self.mock_mode == "always":
+            return False
+        return bool(self.smspartner_api_key)
 
     @property
     def vonage_available(self) -> bool:
