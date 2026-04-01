@@ -84,7 +84,7 @@ if st.session_state.wizard_step == 1:
                 help="Prix moyen de vos transactions pour le calcul ROI",
             )
 
-        conseiller_prenom = st.text_input("Prénom du conseiller IA", value="Sophie", help="Prénom utilisé dans les messages automatiques")
+        conseiller_prenom = st.text_input("Prénom du conseiller IA", value="Léa", help="Prénom utilisé dans les messages automatiques")
         conseiller_titre = st.text_input("Titre du conseiller IA", value="conseillère immobilier")
 
         submitted = st.form_submit_button("Suivant →", type="primary")

@@ -1,5 +1,5 @@
 """
-Page Calendrier — Connexion Google Calendar OAuth + RDV bookés par Sophie.
+Page Calendrier — Connexion Google Calendar OAuth + RDV bookés automatiquement.
 """
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ token = st.session_state.get("token", "")
 agency_name = st.session_state.get("agency_name", settings.agency_name)
 
 st.title("📅 Calendrier & RDV")
-st.markdown(f"**{agency_name}** · Rendez-vous bookés par Sophie")
+st.markdown(f"**{agency_name}** · Rendez-vous bookés automatiquement")
 
 
 def _headers() -> dict:
@@ -134,9 +134,9 @@ except Exception as e:
 
 st.markdown("---")
 
-# ─── RDV bookés par Sophie cette semaine ──────────────────────────────────────
+# ─── RDV bookés automatiquement cette semaine ──────────────────────────────────────
 
-st.markdown("### 📋 RDV bookés par Sophie cette semaine")
+st.markdown("### 📋 RDV bookés automatiquement cette semaine")
 
 try:
     from datetime import datetime, timedelta
@@ -173,9 +173,9 @@ try:
             })
         df = pd.DataFrame(data)
         st.dataframe(df, use_container_width=True, hide_index=True)
-        st.success(f"✅ **{len(rows)} RDV** bookés par Sophie cette semaine.")
+        st.success(f"✅ **{len(rows)} RDV** bookés automatiquement cette semaine.")
     else:
-        st.info("Aucun RDV booké par Sophie cette semaine.")
+        st.info("Aucun RDV booké cette semaine.")
 
 except Exception as e:
     st.info(f"Données non disponibles (base de données hors ligne) : {e}")
@@ -183,7 +183,7 @@ except Exception as e:
 st.markdown("---")
 st.markdown(
     "<div style='color:#94a3b8;font-size:12px;text-align:center;'>"
-    "Les RDV sont créés automatiquement par Sophie lors des appels de qualification."
+    "Les RDV sont proposés automatiquement par Marc lors des échanges SMS de qualification."
     "</div>",
     unsafe_allow_html=True,
 )

@@ -27,7 +27,7 @@
       --gold: #f59e0b;
       --lea: #3b82f6;
       --marc: #10b981;
-      --sophie: #8b5cf6;
+
       --hugo: #f59e0b;
       --camille: #ec4899;
       --thomas: #06b6d4;
@@ -271,7 +271,7 @@
     }
     .agent-card.lea { --ac: var(--lea); }
     .agent-card.marc { --ac: var(--marc); }
-    .agent-card.sophie { --ac: var(--sophie); }
+
     .agent-card.hugo { --ac: var(--hugo); }
     .agent-card.camille { --ac: var(--camille); }
     .agent-card.thomas { --ac: var(--thomas); }
@@ -644,7 +644,7 @@
       <div class="hero-content">
         <div class="hero-badge fade-up">
           <span class="dot"></span>
-          7 collaborateurs IA spécialisés immobilier
+          6 collaborateurs IA spécialisés immobilier
         </div>
         <h1 class="fade-up fade-up-delay-1">
           Vos leads dorment.<br />
@@ -662,9 +662,10 @@
             <div class="hero-avatars">
               <span style="background:#3b82f6;">L</span>
               <span style="background:#10b981;">M</span>
-              <span style="background:#8b5cf6;">S</span>
               <span style="background:#f59e0b;">H</span>
               <span style="background:#ec4899;">C</span>
+              <span style="background:#06b6d4;">T</span>
+              <span style="background:#ef4444;">J</span>
             </div>
             Réponse automatique en moins de 5 minutes, 24h/24
           </div>
@@ -672,7 +673,7 @@
         <div class="hero-agents-preview fade-up fade-up-delay-4">
           <a href="#equipe" class="agent-chip"><span class="dot" style="background:var(--lea)"></span>🎯 Léa — Leads</a>
           <a href="#equipe" class="agent-chip"><span class="dot" style="background:var(--marc)"></span>📱 Marc — Nurturing</a>
-          <a href="#equipe" class="agent-chip"><span class="dot" style="background:var(--sophie)"></span>📞 Sophie — Appels</a>
+
           <a href="#equipe" class="agent-chip"><span class="dot" style="background:var(--hugo)"></span>📝 Hugo — Annonces</a>
           <a href="#equipe" class="agent-chip"><span class="dot" style="background:var(--camille)"></span>🏠 Camille — Staging</a>
           <a href="#equipe" class="agent-chip"><span class="dot" style="background:var(--thomas)"></span>📊 Thomas — Estimation</a>
@@ -706,8 +707,8 @@
         <div class="problem-card fade-up fade-up-delay-3">
           <span class="problem-icon">⏱</span>
           <div class="problem-stat">3h/jour</div>
-          <p class="problem-text">C'est le temps perdu en rédaction d'annonces et relances manuelles. Hugo rédige en 30 secondes. Sophie book les RDV pendant ses appels. Récupérez ces 3h pour faire des visites.</p>
-          <span class="problem-agent-tag" style="background:rgba(245,158,11,0.12);color:var(--hugo);">📝 Hugo + 📞 Sophie</span>
+          <p class="problem-text">C'est le temps perdu en rédaction d'annonces et relances manuelles. Hugo rédige une annonce en 30 secondes. Marc envoie le lien de RDV par SMS. Récupérez ces 3h pour faire des visites.</p>
+          <span class="problem-agent-tag" style="background:rgba(245,158,11,0.12);color:var(--hugo);">📝 Hugo + 📱 Marc</span>
         </div>
       </div>
     </div>
@@ -737,14 +738,7 @@
           <p class="agent-desc">Marc ne laisse jamais un prospect dans l'oubli. Il relance, personnalise et insiste avec tact. Vos leads froids deviennent chauds.</p>
           <span class="agent-stat">Relance sur 30 jours</span>
         </div>
-        <div class="agent-card sophie fade-up fade-up-delay-3">
-          <div class="agent-avatar" style="background:linear-gradient(135deg,#7c3aed,#8b5cf6);">S</div>
-          <div class="agent-name">📞 Sophie</div>
-          <div class="agent-role">Appels voix IA</div>
-          <p class="agent-desc">Sophie appelle vos leads chauds quand ils ne répondent pas aux SMS. Voix française naturelle, script adapté vendeur ou acheteur.</p>
-          <span class="agent-stat">RDV booké pendant l'appel</span>
-        </div>
-        <div class="agent-card hugo fade-up fade-up-delay-4">
+        <div class="agent-card hugo fade-up fade-up-delay-3">
           <div class="agent-avatar" style="background:linear-gradient(135deg,#d97706,#f59e0b);">H</div>
           <div class="agent-name">📝 Hugo</div>
           <div class="agent-role">Rédaction d'annonces</div>
@@ -798,7 +792,7 @@
         <div class="metric-item fade-up fade-up-delay-3">
           <div class="metric-value" style="background:linear-gradient(135deg,var(--marc),#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">+4.2</div>
           <div class="metric-label">Mandats supplémentaires<br />par mois</div>
-          <div class="metric-agent" style="color:var(--marc);">📱 Marc &amp; 📞 Sophie</div>
+          <div class="metric-agent" style="color:var(--marc);">📱 Marc &amp; 🎯 Léa</div>
         </div>
         <div class="metric-item fade-up fade-up-delay-4">
           <div class="metric-value" style="background:linear-gradient(135deg,var(--thomas),#6366f1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">60 sec</div>
@@ -867,19 +861,19 @@
         </div>
         <div class="step fade-up fade-up-delay-3">
           <div class="step-bubble">
-            📞
+            📱
             <span class="step-num">3</span>
           </div>
-          <div class="step-title">Sophie appelle, Marc relance</div>
-          <p class="step-desc">Rappel en moins de 5 min. Si pas de réponse : séquence SMS étalée 30 jours.</p>
+          <div class="step-title">Marc relance sur 90 jours</div>
+          <p class="step-desc">Séquence SMS personnalisée selon le score. Aucun lead n'est perdu, même les froids.</p>
         </div>
         <div class="step fade-up fade-up-delay-4">
           <div class="step-bubble">
             📅
             <span class="step-num">4</span>
           </div>
-          <div class="step-title">Le RDV est booké</div>
-          <p class="step-desc">Sophie propose des créneaux et réserve directement dans votre Google Calendar.</p>
+          <div class="step-title">Le RDV est proposé par SMS</div>
+          <p class="step-desc">Marc envoie un lien de réservation. Le prospect choisit son créneau directement.</p>
         </div>
       </div>
     </div>
@@ -897,7 +891,7 @@
           <div class="counter-label">tests validés</div>
         </div>
         <div class="counter-card fade-up fade-up-delay-2">
-          <div class="counter-value" data-target="7" data-suffix="">
+          <div class="counter-value" data-target="6" data-suffix="">
             <span class="counter-display">0</span>
             <span class="counter-suffix"></span>
           </div>
@@ -952,11 +946,11 @@
       <div class="faq-list fade-up">
         <div class="faq-item">
           <button class="faq-question" onclick="toggleFaq(this)">
-            Est-ce que Léa et Sophie remplacent mes négociateurs ?
+            Est-ce que Léa et Marc remplacent mes négociateurs ?
             <span class="faq-icon">+</span>
           </button>
           <div class="faq-answer">
-            <div class="faq-answer-inner">Non. Elles remplacent les 3h de tâches répétitives qui leur volent chaque jour. Vos agents se concentrent sur les visites et les signatures. L'équipe IA gère tout le reste.</div>
+            <div class="faq-answer-inner">Non. Ils remplacent les 3h de tâches répétitives qui leur volent chaque jour. Vos agents se concentrent sur les visites et les signatures. L'équipe IA gère tout le reste.</div>
           </div>
         </div>
         <div class="faq-item">
@@ -1032,7 +1026,7 @@
     <div class="footer-inner">
       <div>
         <div class="footer-brand"><img src="/static/logo.svg" alt="PropPilot" height="22" style="vertical-align:middle;margin-right:6px;"> PropPilot</div>
-        <div class="footer-tagline">Léa, Marc, Sophie, Hugo, Camille, Thomas et Julie travaillent pour vous.</div>
+        <div class="footer-tagline">Léa, Marc, Hugo, Camille, Thomas et Julie travaillent pour vous.</div>
         <a href="mailto:contact@proppilot.fr" class="footer-email">contact@proppilot.fr</a>
         <div class="footer-flag">Fait en France 🇫🇷</div>
       </div>

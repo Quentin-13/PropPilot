@@ -283,12 +283,11 @@ for col, label, value, color, subtitle in kpis:
 st.markdown("<div style='margin-bottom:32px;'></div>", unsafe_allow_html=True)
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# BLOC 4 — Statut des 7 agents
+# BLOC 4 — Statut des 6 agents
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 st.markdown('<p class="section-title">🤖 Vos agents IA</p>', unsafe_allow_html=True)
 
 _twilio_ok      = settings.twilio_available
-_elevenlabs_ok  = settings.elevenlabs_available
 _openai_ok      = settings.openai_available
 # Google Calendar : actif si token présent en session (OAuth flow)
 _calendar_ok    = bool(st.session_state.get("google_calendar_token"))
@@ -318,12 +317,6 @@ agents = [
         "desc": "Nurturing SMS & WhatsApp multi-canal",
     },
     {
-        "emoji": "📞", "name": "Sophie",
-        "active": _twilio_ok and _elevenlabs_ok,
-        "status": "Actif 🟢" if (_twilio_ok and _elevenlabs_ok) else "En attente configuration 🟡",
-        "desc": "Appels voix sortants & entrants en français",
-    },
-    {
         "emoji": "✍️", "name": "Hugo",
         "active": True,
         "status": "Actif 🟢",
@@ -349,10 +342,10 @@ agents = [
     },
 ]
 
-row1 = st.columns(4)
+row1 = st.columns(3)
 row2 = st.columns(3)
 
-for col, agent in zip(row1, agents[:4]):
+for col, agent in zip(row1, agents[:3]):
     with col:
         st.markdown(_agent_card_html(
             agent["emoji"], agent["name"], agent["active"],
@@ -361,7 +354,7 @@ for col, agent in zip(row1, agents[:4]):
 
 st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
-for col, agent in zip(row2, agents[4:]):
+for col, agent in zip(row2, agents[3:]):
     with col:
         st.markdown(_agent_card_html(
             agent["emoji"], agent["name"], agent["active"],
