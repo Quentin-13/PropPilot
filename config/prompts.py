@@ -230,12 +230,7 @@ Génère en JSON :
   "description_courte": "<80 mots max pour SMS/réseaux>",
   "points_forts": ["<point 1>", "<point 2>", "<point 3>"],
   "mentions_legales": "<DPE + surface Carrez si applicable>",
-  "mots_cles_seo": ["<mot1>", "<mot2>", "<mot3>", "<mot4>", "<mot5>"],
-  "prompts_dalle": [
-    "<prompt image 1 : vue principale>",
-    "<prompt image 2 : pièce de vie>",
-    "<prompt image 3 : ambiance extérieure>"
-  ]
+  "mots_cles_seo": ["<mot1>", "<mot2>", "<mot3>", "<mot4>", "<mot5>"]
 }}"""
 
 

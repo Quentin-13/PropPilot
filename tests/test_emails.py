@@ -39,10 +39,10 @@ class TestWelcomeSignup:
         t = welcome_signup("Agence Martin")
         assert "👋" in t["subject"]
 
-    def test_html_contains_7_agents(self):
+    def test_html_contains_agents(self):
         from tools.email_templates import welcome_signup
         t = welcome_signup("Agence Martin")
-        for agent in ["Léa", "Marc", "Sophie", "Hugo", "Camille", "Thomas", "Julie"]:
+        for agent in ["Léa", "Marc", "Hugo", "Thomas", "Julie"]:
             assert agent in t["html"]
 
     def test_html_contains_plans_url(self):
@@ -50,7 +50,7 @@ class TestWelcomeSignup:
         t = welcome_signup("Agence Martin")
         assert "proppilot-dashboard-production" in t["html"]
 
-    def test_text_contains_7_agents(self):
+    def test_text_contains_agents(self):
         from tools.email_templates import welcome_signup
         t = welcome_signup("Agence Martin")
         assert "Léa" in t["text"]

@@ -24,8 +24,6 @@ class Settings(BaseSettings):
     anthropic_api_key: Optional[str] = Field(default=None, alias="ANTHROPIC_API_KEY")
     claude_model: str = "claude-sonnet-4-5"
 
-    # OpenAI
-    openai_api_key: Optional[str] = Field(default=None, alias="OPENAI_API_KEY")
 
     # Twilio
     twilio_account_sid: Optional[str] = Field(default=None, alias="TWILIO_ACCOUNT_SID")
@@ -138,9 +136,6 @@ class Settings(BaseSettings):
     def anthropic_available(self) -> bool:
         return bool(self.anthropic_api_key)
 
-    @property
-    def openai_available(self) -> bool:
-        return bool(self.openai_api_key)
 
     @property
     def google_oauth_available(self) -> bool:

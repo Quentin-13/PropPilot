@@ -19,12 +19,7 @@ COST_PER_UNIT = {
             "cache_read_per_1k": 0.00028,  # 90% réduction sur cache hit
         }
     },
-    "openai": {
-        "dall-e-3": {
-            "standard_1024": 0.038,    # €/image 1024x1024
-            "standard_1792": 0.076,    # €/image 1792x1024
-        }
-    },
+
     "twilio": {
         "sms_fr": 0.0085,              # €/SMS sortant France
         "whatsapp_session": 0.025,     # €/session WhatsApp

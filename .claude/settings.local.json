@@ -20,7 +20,10 @@
       "Bash(git:*)",
       "Bash(grep:*)",
       "Bash(ls:*)",
-      "Bash(ping:*)"
+      "Bash(ping:*)",
+      "Bash(curl:*)",
+      "Bash(mv /Users/quentin/PropPilot/dashboard/pages/04_calls.py /Users/quentin/PropPilot/dashboard/pages/_hidden_calls.py)",
+      "Bash(mv /Users/quentin/PropPilot/dashboard/pages/10_success.py /Users/quentin/PropPilot/dashboard/pages/_hidden_success.py)"
     ]
   }
 }

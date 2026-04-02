@@ -16,7 +16,7 @@ class TierLimits:
     crm_integrations: Optional[int]         # None = illimité
     leads_par_mois: Optional[int]           # None = illimité
     minutes_voix_par_mois: Optional[float]  # None = illimité
-    images_par_mois: Optional[int]          # None = illimité
+
     tokens_claude_par_mois: Optional[int]   # None = illimité
     followups_sms_par_mois: Optional[int]   # None = illimité
     annonces_par_mois: Optional[int]        # None = illimité
@@ -37,7 +37,7 @@ TIERS: dict[str, TierLimits] = {
         crm_integrations=1,
         leads_par_mois=None,            # Illimité
         minutes_voix_par_mois=600.0,
-        images_par_mois=None,           # Illimité
+
         tokens_claude_par_mois=None,    # Illimité
         followups_sms_par_mois=3_000,
         annonces_par_mois=None,         # Illimité
@@ -56,7 +56,7 @@ TIERS: dict[str, TierLimits] = {
         crm_integrations=2,
         leads_par_mois=None,            # Illimité
         minutes_voix_par_mois=1_500.0,
-        images_par_mois=None,           # Illimité
+
         tokens_claude_par_mois=None,    # Illimité
         followups_sms_par_mois=8_000,
         annonces_par_mois=None,         # Illimité
@@ -75,7 +75,7 @@ TIERS: dict[str, TierLimits] = {
         crm_integrations=5,
         leads_par_mois=None,            # Illimité
         minutes_voix_par_mois=3_000.0,
-        images_par_mois=None,           # Illimité
+
         tokens_claude_par_mois=None,    # Illimité
         followups_sms_par_mois=15_000,
         annonces_par_mois=None,         # Illimité
@@ -94,7 +94,7 @@ TIERS: dict[str, TierLimits] = {
         crm_integrations=None,          # Illimité
         leads_par_mois=None,            # Illimité
         minutes_voix_par_mois=None,     # Illimité
-        images_par_mois=None,           # Illimité
+
         tokens_claude_par_mois=None,    # Illimité
         followups_sms_par_mois=None,    # Illimité
         annonces_par_mois=None,         # Illimité
@@ -112,7 +112,7 @@ TIERS: dict[str, TierLimits] = {
 ACTION_TO_FIELD: dict[str, str] = {
     "lead": "leads_par_mois",
     "voice_minute": "minutes_voix_par_mois",
-    "image": "images_par_mois",
+
     "token": "tokens_claude_par_mois",
     "followup": "followups_sms_par_mois",
     "listing": "annonces_par_mois",
@@ -124,7 +124,7 @@ ACTION_TO_FIELD: dict[str, str] = {
 ACTION_LABELS: dict[str, str] = {
     "lead": "leads qualifiés",
     "voice_minute": "minutes voix",
-    "image": "images staging",
+
     "token": "requêtes IA",
     "followup": "follow-ups SMS",
     "listing": "annonces générées",

@@ -238,12 +238,7 @@ def get_usage_summary(client_id: str, tier: str, month: Optional[str] = None) ->
             "pct": pct(usage.get("voice_minutes", 0.0), limits.minutes_voix_par_mois),
             "label": "Minutes voix",
         },
-        "images": {
-            "used": usage.get("images_count", 0),
-            "limit": limits.images_par_mois,
-            "pct": pct(usage.get("images_count", 0), limits.images_par_mois),
-            "label": "Images staging",
-        },
+
         "followups": {
             "used": usage.get("followups_count", 0),
             "limit": limits.followups_sms_par_mois,

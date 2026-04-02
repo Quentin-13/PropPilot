@@ -330,7 +330,6 @@ st.markdown("<div style='margin-bottom:32px;'></div>", unsafe_allow_html=True)
 st.markdown('<p class="section-title">🤖 Vos agents IA</p>', unsafe_allow_html=True)
 
 _twilio_ok      = settings.twilio_available
-_openai_ok      = settings.openai_available
 # Google Calendar : actif si token présent en session (OAuth flow)
 _calendar_ok    = bool(st.session_state.get("google_calendar_token"))
 
@@ -364,12 +363,7 @@ agents = [
         "status": "Actif 🟢",
         "desc": "Rédaction annonces SEO & compromis Hoguet",
     },
-    {
-        "emoji": "🏠", "name": "Camille",
-        "active": _openai_ok,
-        "status": "Actif 🟢" if _openai_ok else "Bientôt disponible 🟡",
-        "desc": "Staging virtuel DALL-E — intérieur français 2026",
-    },
+
     {
         "emoji": "📊", "name": "Thomas",
         "active": True,

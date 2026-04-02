@@ -12,8 +12,6 @@ langchain-anthropic>=0.1.0
 # Anthropic
 anthropic>=0.30.0
 
-# OpenAI (DALL-E)
-openai>=1.0.0
 
 # Twilio (voix + WhatsApp)
 twilio>=9.0.0

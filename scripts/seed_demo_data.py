@@ -30,7 +30,7 @@ LEADS_DATA = [
      "motivation": "Mutation professionnelle Paris → Lyon", "statut": LeadStatus.QUALIFIE,
      "source": Canal.SELOGER, "resume": "Acheteur très motivé, mutation pro, financement solide."},
 
-    {"prenom": "Camille", "nom": "Rousseau", "tel": "+33612345602", "email": "c.rousseau@outlook.fr",
+    {"prenom": "Claire", "nom": "Rousseau", "tel": "+33612345602", "email": "c.rousseau@outlook.fr",
      "projet": "vente", "budget": "320 000€", "loc": "Bordeaux Chartrons", "score": 8, "urgence": 3, "bud": 3, "mot": 2,
      "timeline": "3 mois", "financement": "Propriétaire — vente financement achat suivant",
      "motivation": "Séparation, besoin de liquidités", "statut": LeadStatus.RDV_BOOKÉ,
@@ -205,7 +205,7 @@ CONVERSATIONS_DEMO = {
     ],
     "+33612345602": [
         ("user", "Je voudrais vendre mon appartement à Bordeaux Chartrons"),
-        ("assistant", "[MOCK] Bonjour Camille ! Je suis Sophie de l'agence. Pouvez-vous me donner quelques détails sur le bien ? Surface, nombre de pièces ?"),
+        ("assistant", "[MOCK] Bonjour Claire ! Je suis Sophie de l'agence. Pouvez-vous me donner quelques détails sur le bien ? Surface, nombre de pièces ?"),
         ("user", "80m², 3 pièces, belle vue sur les quais, DPE B"),
         ("assistant", "[MOCK] Très beau bien ! Quel est votre prix de vente souhaité et dans quel délai ?"),
         ("user", "320 000€, j'aimerais vendre dans 3 mois max. Situation personnelle compliquée."),

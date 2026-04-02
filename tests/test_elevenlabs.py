@@ -116,9 +116,8 @@ class TestTextToSpeech:
 
     def test_other_voices_work(self):
         tool = _tool()
-        for voice_name in ("thomas", "camille"):
-            result = tool.text_to_speech("Test voix.", voice_name=voice_name)
-            assert result["success"] is True
+        result = tool.text_to_speech("Test voix.", voice_name="thomas")
+        assert result["success"] is True
 
     def test_text_preview_in_result(self):
         tool = _tool()

@@ -102,7 +102,7 @@ def welcome_signup(agency_name: str, plans_url: str = "https://proppilot-dashboa
       <li>📱 <strong>Marc</strong> — Gère vos séquences de nurturing SMS</li>
       <li>📞 <strong>Sophie</strong> — Effectue et reçoit vos appels voix</li>
       <li>📝 <strong>Hugo</strong> — Rédige vos annonces immobilières SEO</li>
-      <li>🏠 <strong>Camille</strong> — Réalise vos stagings virtuels</li>
+
       <li>📊 <strong>Thomas</strong> — Estime vos biens via DVF</li>
       <li>🔍 <strong>Julie</strong> — Détecte les anomalies dans vos dossiers</li>
     </ul>
@@ -128,12 +128,10 @@ def welcome_signup(agency_name: str, plans_url: str = "https://proppilot-dashboa
 
 Votre compte a été créé avec succès.
 
-Votre équipe de 7 collaborateurs IA vous attend :
+Votre équipe de 5 collaborateurs IA vous attend :
 - Léa : qualifie vos leads 24h/24
 - Marc : nurturing SMS automatisé
-- Sophie : appels voix entrants/sortants
 - Hugo : rédaction annonces SEO
-- Camille : staging virtuel
 - Thomas : estimation DVF
 - Julie : détection anomalies dossiers
 

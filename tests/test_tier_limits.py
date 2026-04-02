@@ -71,9 +71,6 @@ def test_independant_unlimited_estimations():
     assert TIERS["Indépendant"].estimations_par_mois is None
 
 
-def test_independant_unlimited_images():
-    assert TIERS["Indépendant"].images_par_mois is None
-
 
 def test_independant_unlimited_anomaly():
     assert TIERS["Indépendant"].anomaly_checks_par_mois is None
@@ -124,9 +121,6 @@ def test_starter_unlimited_listings():
 def test_starter_unlimited_estimations():
     assert TIERS["Starter"].estimations_par_mois is None
 
-
-def test_starter_unlimited_images():
-    assert TIERS["Starter"].images_par_mois is None
 
 
 def test_starter_unlimited_anomaly():
@@ -182,9 +176,6 @@ def test_pro_unlimited_listings():
 def test_pro_unlimited_estimations():
     assert TIERS["Pro"].estimations_par_mois is None
 
-
-def test_pro_unlimited_images():
-    assert TIERS["Pro"].images_par_mois is None
 
 
 def test_pro_utilisateurs():

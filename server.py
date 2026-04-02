@@ -224,7 +224,6 @@ async def health():
         "twilio": settings.twilio_available,
         "smsmode": settings.smsmode_available,
         "smspartner": settings.smspartner_available,
-        "openai": settings.openai_available,
     }
 
 

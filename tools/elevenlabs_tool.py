@@ -28,12 +28,6 @@ FRENCH_VOICES = {
         "description": "Voix masculine, posée et rassurante",
         "gender": "male",
     },
-    "camille": {
-        "id": "N2lVS1w4EtoT3dr4eOWO",
-        "name": "Camille",
-        "description": "Voix féminine, dynamique et enthousiaste",
-        "gender": "female",
-    },
 }
 
 # Répertoire de sortie audio (démo)
@@ -73,7 +67,7 @@ class ElevenLabsTool:
 
         Args:
             text: Texte à synthétiser
-            voice_name: Nom de la voix (sophie, thomas, camille)
+            voice_name: Nom de la voix (sophie, thomas)
             output_path: Chemin de sortie fichier (auto-généré si absent)
             stability: Stabilité de la voix (0.0-1.0)
             similarity_boost: Ressemblance à la voix originale (0.0-1.0)

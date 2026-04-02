@@ -160,14 +160,6 @@ with col2:
     )
     st.markdown("")
 
-    display_usage_bar(
-        "🖼️ Images staging",
-        usage["images"]["used"],
-        usage["images"]["limit"],
-        usage["images"]["pct"],
-    )
-    st.markdown("")
-
     # Métriques SMS complémentaires (placeholders)
     sms_recu = 0
     st.markdown(f"**📥 SMS reçus ce mois** — `{sms_recu}`")
@@ -200,13 +192,7 @@ with st.expander("📋 Détail complet de l'utilisation"):
             "Restant": max(0, int((usage["followups"]["limit"] or 0) - usage["followups"]["used"])) if usage["followups"]["limit"] else "∞",
             "Progression": f"{usage['followups']['pct']:.0f}%",
         },
-        {
-            "Fonctionnalité": "Images staging",
-            "Utilisé": usage["images"]["used"],
-            "Limite": usage["images"]["limit"] or "Illimité",
-            "Restant": max(0, int((usage["images"]["limit"] or 0) - usage["images"]["used"])) if usage["images"]["limit"] else "∞",
-            "Progression": f"{usage['images']['pct']:.0f}%",
-        },
+
         {
             "Fonctionnalité": "Annonces générées",
             "Utilisé": usage["listings"]["used"],

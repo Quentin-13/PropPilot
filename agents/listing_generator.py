@@ -54,7 +54,6 @@ class ListingGeneratorAgent:
         etat: str = "bon",
         notes: str = "",
         lead_id: str = "",
-        generate_dalle_images: bool = False,
     ) -> dict:
         """
         Génère une annonce immobilière complète.
@@ -76,8 +75,6 @@ class ListingGeneratorAgent:
             etat: État général (excellent, bon, à rénover)
             notes: Notes complémentaires de l'agent
             lead_id: ID du lead associé (optionnel)
-            generate_dalle_images: Générer les images via DALL-E
-
         Returns:
             {
                 "success": bool,
@@ -88,8 +85,6 @@ class ListingGeneratorAgent:
                 "points_forts": list,
                 "mentions_legales": str,
                 "mots_cles_seo": list,
-                "prompts_dalle": list,
-                "images": list,
                 "compromis_prefill": dict,
                 "mock": bool,
             }
@@ -119,18 +114,7 @@ class ListingGeneratorAgent:
         )
 
         listing_id = str(uuid.uuid4())
-
-        # Génération images DALL-E (optionnel)
         images = []
-        if generate_dalle_images and listing_data.get("prompts_dalle"):
-            from tools.dalle_tool import DalleTool
-            dalle = DalleTool()
-            for prompt in listing_data.get("prompts_dalle", [])[:3]:
-                usage_img = check_and_consume(self.client_id, "image", tier=self.tier)
-                if usage_img["allowed"]:
-                    img = dalle.generate_from_prompt(prompt)
-                    if img.get("success"):
-                        images.append(img.get("image_path", ""))
 
         # Pré-remplissage compromis
         compromis = self._prefill_compromis(
@@ -270,11 +254,7 @@ class ListingGeneratorAgent:
                 f"DPE {dpe} {ville}",
                 "immobilier investissement",
             ],
-            "prompts_dalle": [
-                f"Beautiful {type_bien} interior in {ville}, France, {surface}m², bright living room, natural light, modern French decor, professional real estate photography 8k",
-                f"French {type_bien.lower()} kitchen interior, {ville}, contemporary design, white and wood, professional photography",
-                f"French apartment exterior in {ville}, Haussmann building, sunny day, architectural photography",
-            ],
+
         }
 
     def _prefill_compromis(

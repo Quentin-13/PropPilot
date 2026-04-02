@@ -95,7 +95,7 @@ def test_generate_has_required_fields(agent):
     required_fields = [
         "success", "listing_id", "titre", "description_longue",
         "description_courte", "points_forts", "mentions_legales",
-        "mots_cles_seo", "prompts_dalle", "compromis_prefill",
+        "mots_cles_seo", "compromis_prefill",
     ]
     for field in required_fields:
         assert field in result, f"Champ manquant : {field}"
@@ -158,20 +158,6 @@ def test_generate_mots_cles_seo_is_list(agent):
     assert isinstance(mots, list)
     assert all(isinstance(m, str) for m in mots)
 
-
-def test_generate_prompts_dalle_is_list(agent):
-    """prompts_dalle est une liste non vide."""
-    result = agent.generate(
-        type_bien="Villa",
-        adresse="Route des Plages, 06370 Mougins",
-        surface=200.0,
-        nb_pieces=7,
-        dpe_energie="B",
-        prix=1200000,
-    )
-    prompts = result.get("prompts_dalle", [])
-    assert isinstance(prompts, list)
-    assert len(prompts) >= 1
 
 
 # ─── Test compromis pré-rempli ────────────────────────────────────────────────
@@ -338,7 +324,6 @@ def test_mock_listing_structure():
     assert result["description_courte"]
     assert isinstance(result["points_forts"], list)
     assert isinstance(result["mots_cles_seo"], list)
-    assert isinstance(result["prompts_dalle"], list)
 
 
 def test_translate_to_english(agent):
