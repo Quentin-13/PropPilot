@@ -219,37 +219,80 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# BLOC 2 — Checklist démarrage (si aucun lead)
+# BLOC 2 — Démarrage (affiché quand pas encore de leads)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 if leads_count == 0:
-    st.markdown('<p class="section-title">🚀 Prêt à décoller ? 3 étapes pour démarrer</p>',
-                unsafe_allow_html=True)
+    # Récupérer le numéro SMS Partner du client
+    smspartner_number = ""
+    try:
+        from memory.database import get_connection
+        with get_connection() as conn:
+            row = conn.execute(
+                "SELECT smspartner_number FROM users WHERE id = ?",
+                (client_id,),
+            ).fetchone()
+            if row and row[0]:
+                smspartner_number = row[0]
+    except Exception:
+        pass
 
-    st.markdown("""
-<a href="/11_integrations" target="_self" style="
-  display:block; padding:16px 20px; margin-bottom:8px;
-  background:#1e2130; border-radius:10px;
-  border-left:4px solid #3b82f6; text-decoration:none;
-  color:white; font-weight:600;">
-  ☐ 1. Connecter votre première source de leads →
-</a>
-<a href="/06_settings" target="_self" style="
-  display:block; padding:16px 20px; margin-bottom:8px;
-  background:#1e2130; border-radius:10px;
-  border-left:4px solid #3b82f6; text-decoration:none;
-  color:white; font-weight:600;">
-  ☐ 2. Configurer votre agence →
-</a>
-<a href="/08_calendar" target="_self" style="
-  display:block; padding:16px 20px; margin-bottom:8px;
-  background:#1e2130; border-radius:10px;
-  border-left:4px solid #3b82f6; text-decoration:none;
-  color:white; font-weight:600;">
-  ☐ 3. Connecter Google Calendar →
-</a>
-""", unsafe_allow_html=True)
+    st.markdown("---")
+    st.markdown('<p class="section-title">🚀 Vous êtes prêt à décoller</p>', unsafe_allow_html=True)
+    st.markdown(
+        "Votre système PropPilot est actif. "
+        "Voici comment en tirer le meilleur parti."
+    )
+    st.markdown("")
 
-    st.markdown("<div style='margin-bottom:28px;'></div>", unsafe_allow_html=True)
+    col_ob1, col_ob2, col_ob3 = st.columns(3)
+
+    with col_ob1:
+        st.markdown("### 📱 Étape 1")
+        st.markdown("**Mettez votre numéro dans vos annonces**")
+        if smspartner_number:
+            st.code(smspartner_number, language=None)
+            st.caption(
+                "Copiez ce numéro et ajoutez-le dans "
+                "toutes vos annonces LeBonCoin et SeLoger."
+            )
+        else:
+            st.info(
+                "Votre numéro dédié est en cours "
+                "d'activation. Vous recevrez un email "
+                "de Quentin sous 24h."
+            )
+
+    with col_ob2:
+        st.markdown("### 💬 Étape 2")
+        st.markdown("**Testez Léa maintenant**")
+        st.caption(
+            "Envoyez un SMS à votre numéro PropPilot "
+            "depuis votre téléphone personnel. "
+            "Léa vous répondra en moins de 5 minutes."
+        )
+        if smspartner_number:
+            st.markdown(
+                f"👉 Envoyez **'Bonjour'** au **{smspartner_number}**"
+            )
+        else:
+            st.markdown("👉 Disponible dès activation de votre numéro")
+
+    with col_ob3:
+        st.markdown("### 🎯 Étape 3")
+        st.markdown("**Une question ? On est là.**")
+        st.caption(
+            "Réservez un appel de 20 minutes avec "
+            "Quentin pour optimiser votre configuration "
+            "ou poser vos questions."
+        )
+        st.link_button(
+            "📅 Réserver un appel",
+            "https://calendly.com/contact-proppilot/appel-proppilot-20min",
+            use_container_width=True,
+        )
+
+    st.markdown("---")
+    st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # BLOC 3 — KPIs du mois

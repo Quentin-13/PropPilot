@@ -17,6 +17,12 @@ import httpx
 import streamlit as st
 
 from config.settings import get_settings
+from dashboard.auth_cookies import (
+    get_cookie_manager,
+    save_session as _cookie_save,
+    load_session as _cookie_load,
+    clear_session as _cookie_clear,
+)
 
 
 # ─── Logo inline SVG ──────────────────────────────────────────────────────────
@@ -264,6 +270,7 @@ def show_auth_page() -> None:
             with st.form("form_login", clear_on_submit=False):
                 email = st.text_input("Email", placeholder="vous@agence.fr")
                 password = st.text_input("Mot de passe", type="password")
+                remember = st.checkbox("Rester connecté 30 jours", value=True)
                 submitted = st.form_submit_button("Se connecter", use_container_width=True, type="primary")
 
             if submitted:
@@ -276,14 +283,21 @@ def show_auth_page() -> None:
                         st.error(result["error"])
                     else:
                         plan_active = result.get("plan_active", True)
+                        uid = result.get("user_id", "")
+                        aname = result.get("agency_name", email)
+                        plan = result.get("plan", "Starter")
+                        is_admin = result.get("is_admin", False)
+                        token = result["access_token"]
                         _set_session(
-                            token=result["access_token"],
-                            user_id=result.get("user_id", ""),
-                            agency_name=result.get("agency_name", email),
-                            plan=result.get("plan", "Starter"),
+                            token=token,
+                            user_id=uid,
+                            agency_name=aname,
+                            plan=plan,
                             plan_active=plan_active,
-                            is_admin=result.get("is_admin", False),
+                            is_admin=is_admin,
                         )
+                        if remember:
+                            _cookie_save(uid, token, aname, plan, plan_active, is_admin)
                         if not plan_active:
                             st.session_state["plan_inactive_reason"] = "inactive"
                         st.rerun()
@@ -348,7 +362,23 @@ def require_auth(require_active_plan: bool = True) -> None:
 
     Doit être appelé APRÈS st.set_page_config().
     """
+    # Rendre le cookie manager (nécessaire pour qu'il communique ses valeurs)
+    get_cookie_manager()
+
     if not st.session_state.get("authenticated"):
+        # Tentative de restauration depuis cookie
+        saved = _cookie_load()
+        if saved:
+            _set_session(
+                token=saved["token"],
+                user_id=saved["user_id"],
+                agency_name=saved["agency_name"],
+                plan=saved["plan"],
+                plan_active=saved["plan_active"],
+                is_admin=saved["is_admin"],
+            )
+            st.rerun()
+
         show_auth_page()
         st.stop()
 
@@ -416,7 +446,8 @@ def render_sidebar_logout() -> None:
             st.switch_page("app.py")
 
         if st.button("🚪 Déconnexion", use_container_width=True, key="_logout_btn"):
-            for key in ["authenticated", "token", "user_id", "agency_name", "plan", "plan_active"]:
+            _cookie_clear()
+            for key in ["authenticated", "token", "user_id", "agency_name", "plan", "plan_active", "is_admin"]:
                 st.session_state.pop(key, None)
             st.rerun()
 
