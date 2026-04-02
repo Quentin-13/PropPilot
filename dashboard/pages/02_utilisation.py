@@ -21,7 +21,7 @@ from memory.usage_tracker import get_usage_summary
 init_database()
 settings = get_settings()
 
-st.set_page_config(page_title="Usage — PropPilot", layout="wide", page_icon="📊")
+st.set_page_config(page_title="Utilisation — PropPilot", layout="wide", page_icon="📊")
 
 from dashboard.auth_ui import require_auth, render_sidebar_logout
 require_auth()
