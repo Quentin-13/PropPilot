@@ -8,8 +8,6 @@ import hashlib
 import logging
 from datetime import datetime, timedelta
 
-import streamlit as st
-
 logger = logging.getLogger(__name__)
 
 _PREFIX = "proppilot_"
@@ -19,21 +17,27 @@ _SECRET = "PROPPILOT_SECRET_2026"
 _FIELDS = ["user_id", "token", "agency_name", "plan",
            "plan_active", "is_admin", "hmac"]
 
-
-@st.cache_resource
-def _get_manager():
-    """Singleton CookieManager — chargé une seule fois par process."""
-    try:
-        import extra_streamlit_components as stx
-        return stx.CookieManager(key="proppilot_cookies")
-    except Exception as e:  # pragma: no cover
-        logger.warning(f"CookieManager indisponible : {e}")
-        return None
+# Singleton manuel — NE PAS utiliser @st.cache_resource :
+# CookieManager est un widget Streamlit et ne peut pas être mis en cache.
+_cookie_manager_instance = None
 
 
 def get_cookie_manager():
-    """Retourne le manager (peut être None si la lib n'est pas installée)."""
-    return _get_manager()
+    """
+    Retourne une instance unique de CookieManager.
+    Singleton géré manuellement pour éviter CachedWidgetWarning.
+    """
+    global _cookie_manager_instance
+    try:
+        import extra_streamlit_components as stx
+        if _cookie_manager_instance is None:
+            _cookie_manager_instance = stx.CookieManager(
+                key="proppilot_cookies"
+            )
+        return _cookie_manager_instance
+    except Exception as e:
+        logger.warning(f"CookieManager indisponible : {e}")
+        return None
 
 
 def _hmac(user_id: str) -> str:
