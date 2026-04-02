@@ -32,7 +32,7 @@ tier = st.session_state.get("plan", settings.agency_tier)
 agency_name = st.session_state.get("agency_name", settings.agency_name)
 
 st.title("📊 Utilisation mensuelle")
-st.markdown(f"**{agency_name}** · Forfait **{tier}** · {datetime.now().strftime('%B %Y')}")
+st.markdown(f"**{agency_name}** · {datetime.now().strftime('%B %Y')}")
 
 # ─── Usage data ────────────────────────────────────────────────────────────
 
@@ -149,20 +149,11 @@ with col1:
     )
 
 with col2:
-    st.markdown("### Communication")
+    st.markdown("### Communication SMS")
     st.markdown("")
 
     display_usage_bar(
-        "🎙️ Minutes voix",
-        usage["voice"]["used"],
-        usage["voice"]["limit"],
-        usage["voice"]["pct"],
-        unit=" min",
-    )
-    st.markdown("")
-
-    display_usage_bar(
-        "💬 Follow-ups SMS",
+        "💬 SMS envoyés ce mois",
         usage["followups"]["used"],
         usage["followups"]["limit"],
         usage["followups"]["pct"],
@@ -175,6 +166,17 @@ with col2:
         usage["images"]["limit"],
         usage["images"]["pct"],
     )
+    st.markdown("")
+
+    # Métriques SMS complémentaires (placeholders)
+    sms_recu = 0
+    st.markdown(f"**📥 SMS reçus ce mois** — `{sms_recu}`")
+    st.markdown("")
+    taux_reponse = 0
+    st.markdown(f"**⚡ Taux réponse Léa < 5 min** — `{taux_reponse}%`")
+    st.markdown("")
+    nurturing_count = 0
+    st.markdown(f"**🔄 Leads en nurturing Marc (90j)** — `{nurturing_count}`")
 
 st.markdown("---")
 
@@ -192,11 +194,11 @@ with st.expander("📋 Détail complet de l'utilisation"):
             "Progression": f"{usage['leads']['pct']:.0f}%",
         },
         {
-            "Fonctionnalité": "Minutes voix",
-            "Utilisé": f"{usage['voice']['used']:.1f}",
-            "Limite": usage["voice"]["limit"] or "Illimité",
-            "Restant": f"{max(0, (usage['voice']['limit'] or 0) - usage['voice']['used']):.0f}" if usage["voice"]["limit"] else "∞",
-            "Progression": f"{usage['voice']['pct']:.0f}%",
+            "Fonctionnalité": "SMS envoyés",
+            "Utilisé": usage["followups"]["used"],
+            "Limite": usage["followups"]["limit"] or "Illimité",
+            "Restant": max(0, int((usage["followups"]["limit"] or 0) - usage["followups"]["used"])) if usage["followups"]["limit"] else "∞",
+            "Progression": f"{usage['followups']['pct']:.0f}%",
         },
         {
             "Fonctionnalité": "Images staging",
@@ -204,13 +206,6 @@ with st.expander("📋 Détail complet de l'utilisation"):
             "Limite": usage["images"]["limit"] or "Illimité",
             "Restant": max(0, int((usage["images"]["limit"] or 0) - usage["images"]["used"])) if usage["images"]["limit"] else "∞",
             "Progression": f"{usage['images']['pct']:.0f}%",
-        },
-        {
-            "Fonctionnalité": "Follow-ups SMS",
-            "Utilisé": usage["followups"]["used"],
-            "Limite": usage["followups"]["limit"] or "Illimité",
-            "Restant": max(0, int((usage["followups"]["limit"] or 0) - usage["followups"]["used"])) if usage["followups"]["limit"] else "∞",
-            "Progression": f"{usage['followups']['pct']:.0f}%",
         },
         {
             "Fonctionnalité": "Annonces générées",
@@ -234,38 +229,13 @@ with st.expander("📋 Détail complet de l'utilisation"):
 # ─── Upgrade CTA ────────────────────────────────────────────────────────────
 
 st.markdown("---")
-st.markdown("### Votre forfait actuel")
-
-tier_col1, tier_col2, tier_col3, tier_col4 = st.columns(4)
-
-tiers_display = {
-    "Indépendant": {"prix": "290€/mois", "voix": "600 min", "sms": "3 000 SMS", "highlight": tier == "Indépendant"},
-    "Starter": {"prix": "790€/mois", "voix": "1 500 min", "sms": "8 000 SMS", "highlight": tier == "Starter"},
-    "Pro": {"prix": "1 490€/mois", "voix": "3 000 min", "sms": "15 000 SMS", "highlight": tier == "Pro"},
-    "Elite": {"prix": "2 990€/mois", "voix": "Illimité", "sms": "Illimité", "highlight": tier == "Elite"},
-}
-
-for col, (tier_name, info) in zip([tier_col1, tier_col2, tier_col3, tier_col4], tiers_display.items()):
-    with col:
-        border_color = "#1a3a5c" if info["highlight"] else "#e9ecef"
-        badge = " ✓ Votre forfait" if info["highlight"] else ""
-        upgrade_txt = "" if info["highlight"] else f"<a href='mailto:contact@proppilot.fr?subject=Upgrade vers {tier_name}' style='color: #e67e22;'>Passer à {tier_name} →</a>"
-
-        st.markdown(f"""
-        <div style="border: 2px solid {border_color}; border-radius: 10px; padding: 20px; text-align: center;">
-            <div style="font-size: 18px; font-weight: 700;">{tier_name}{badge}</div>
-            <div style="font-size: 24px; font-weight: 800; color: #1a3a5c; margin: 8px 0;">{info['prix']}</div>
-            <div style="color: #666; font-size: 14px;">
-                {info['voix']} voix · {info['sms']}
-            </div>
-            <div style="margin-top: 12px;">{upgrade_txt}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-# Gain concret selon tier
-if tier == "Indépendant":
-    st.info("💡 **Passer Starter** → 1 500 min voix au lieu de 600, 8 000 SMS au lieu de 3 000, jusqu'à 3 utilisateurs. Contactez-nous : contact@proppilot.fr")
-elif tier == "Starter":
-    st.info("💡 **Passer Pro** → 3 000 min voix au lieu de 1 500, 15 000 SMS au lieu de 8 000, jusqu'à 6 utilisateurs. Contactez-nous : contact@proppilot.fr")
-elif tier == "Pro":
-    st.info("💡 **Passer Elite** → Voix et SMS illimités, white-label, agents custom, account manager dédié. Contactez-nous : contact@proppilot.fr")
+st.markdown("### Faire évoluer votre abonnement ?")
+st.markdown(
+    "Réservez un appel de 20 minutes avec Quentin pour discuter de vos besoins."
+)
+st.link_button(
+    "📅 Réserver un appel",
+    "https://calendly.com/contact-proppilot/appel-proppilot-20min",
+    use_container_width=False,
+)
+st.markdown("📩 Ou contactez-nous directement : contact@proppilot.fr")

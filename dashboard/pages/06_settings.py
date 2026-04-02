@@ -227,47 +227,21 @@ elif st.session_state.wizard_step == 3:
 # ─── ÉTAPE 4 : Forfait & Billing ──────────────────────────────────────────────
 
 elif st.session_state.wizard_step == 4:
-    st.markdown("## Étape 4 — Forfait & Facturation")
+    st.markdown("## Étape 4 — Abonnement")
 
-    current_tier = tier
-    tier_prices = {"Indépendant": 290, "Starter": 790, "Pro": 1490, "Elite": 2990}
-
-    col_s1, col_s2, col_s3, col_s4 = st.columns(4)
-
-    for col, (tier_name, price) in zip([col_s1, col_s2, col_s3, col_s4], tier_prices.items()):
-        with col:
-            is_current = tier_name == current_tier
-            border_col = "#1a3a5c" if is_current else "#e9ecef"
-            badge = " ← Actuel" if is_current else ""
-
-            limits = {
-                "Indépendant": "600 min voix · 3 000 SMS · 1 utilisateur",
-                "Starter": "1 500 min voix · 8 000 SMS · 3 utilisateurs",
-                "Pro": "3 000 min voix · 15 000 SMS · 6 utilisateurs",
-                "Elite": "Illimité · White-label · Agents custom",
-            }
-            garantie = {
-                "Indépendant": "Garantie ROI 60j — remboursement 50%",
-                "Starter": "Garantie ROI 60j — remboursement 50%",
-                "Pro": "Garantie ROI 60j — remboursement 50%",
-                "Elite": "Garantie ROI 60j — remboursement 100%",
-            }
-
-            st.markdown(f"""
-            <div style="border: 2px solid {border_col}; border-radius: 10px; padding: 20px; text-align: center; margin: 4px;">
-                <div style="font-size: 20px; font-weight: 800;">{tier_name}{badge}</div>
-                <div style="font-size: 28px; font-weight: 900; color: #1a3a5c; margin: 8px 0;">{price}€<span style="font-size:14px;">/mois</span></div>
-                <div style="color: #666; font-size: 13px; margin-bottom: 12px;">{limits[tier_name]}</div>
-                <div style="color: #27ae60; font-size: 12px;">✅ {garantie[tier_name]}</div>
-            </div>
-            """, unsafe_allow_html=True)
-
+    st.markdown(
+        "Votre forfait est configuré sur mesure selon votre volume de leads."
+    )
+    st.markdown("### Vous souhaitez ajuster votre abonnement ?")
+    st.markdown(
+        "Réservez un appel de 20 minutes avec Quentin pour discuter de vos besoins."
+    )
+    st.link_button(
+        "📅 Réserver un appel",
+        "https://calendly.com/contact-proppilot/appel-proppilot-20min",
+    )
+    st.markdown("📩 Ou contactez-nous : contact@proppilot.fr")
     st.markdown("---")
-    st.markdown("""
-    **🛡️ 60 Jours Satisfait ou Remboursé**
-    Si vous n'êtes pas satisfait dans les 60 jours, nous
-    vous remboursons intégralement. Sans questions.
-    """)
 
     col_prev, col_next = st.columns([1, 1])
     with col_prev:
@@ -571,7 +545,7 @@ with st.expander("🔧 Configuration actuelle (lecture seule)"):
         "Modèle Claude": settings.claude_model,
         "Twilio disponible": "✅ Oui" if settings.twilio_available else "⚠️ Mode mock",
         "Anthropic disponible": "✅ Oui" if settings.anthropic_available else "⚠️ Mode mock",
-        "ElevenLabs disponible": "✅ Oui" if settings.elevenlabs_available else "⚠️ Mode mock",
+
         "SendGrid disponible": "✅ Oui" if settings.sendgrid_available else "⚠️ Mode mock",
         "Base de données": settings.database_path,
     }

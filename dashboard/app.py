@@ -213,7 +213,6 @@ st.markdown(f"""
             flex-wrap:wrap; gap:12px; margin-bottom:28px; margin-top:-12px;">
   <p style="margin:0; color:#8892a4; font-size:0.9rem;">{date_fr}</p>
   <div style="display:flex; align-items:center; gap:10px;">
-    <span style="color:#cbd5e1; font-size:0.9rem;">Forfait <strong style="color:white;">{tier}</strong></span>
     <span class="{badge_class}">{badge_label}</span>
   </div>
 </div>
@@ -415,35 +414,21 @@ if leads_count > 0 and leads:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 st.markdown('<p class="section-title">📦 Utilisation du mois</p>', unsafe_allow_html=True)
 
-voice_used  = usage["voice"]["used"]
-voice_limit = usage["voice"]["limit"]
-voice_pct   = usage["voice"]["pct"] / 100
-
 sms_used    = usage["followups"]["used"]
 sms_limit   = usage["followups"]["limit"]
 sms_pct     = usage["followups"]["pct"] / 100
 
-col_v, col_s = st.columns(2)
+leads_actifs = stats.get("total", 0)
+rdv_du_mois  = stats.get("rdv_count", 0)
+score_moyen  = stats.get("avg_score", 0) or 0
 
-with col_v:
-    voice_limit_label = f"{int(voice_limit)} min" if voice_limit else "Illimité"
-    st.markdown(f"""
-    <div class="quota-bar-wrap">
-        <div class="quota-label">🎙 Minutes voix
-            <span class="quota-sub" style="float:right;">{voice_used} / {voice_limit_label}</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    if voice_limit:
-        st.progress(min(voice_pct, 1.0))
-    else:
-        st.progress(0.0)
+col_s, col_l, col_r, col_sc = st.columns(4)
 
 with col_s:
     sms_limit_label = f"{int(sms_limit)}" if sms_limit else "Illimité"
     st.markdown(f"""
     <div class="quota-bar-wrap">
-        <div class="quota-label">💬 Follow-ups SMS
+        <div class="quota-label">💬 SMS envoyés
             <span class="quota-sub" style="float:right;">{sms_used} / {sms_limit_label}</span>
         </div>
     </div>
@@ -452,6 +437,15 @@ with col_s:
         st.progress(min(sms_pct, 1.0))
     else:
         st.progress(0.0)
+
+with col_l:
+    st.metric("📥 Leads actifs", leads_actifs)
+
+with col_r:
+    st.metric("📅 RDV posés", rdv_du_mois)
+
+with col_sc:
+    st.metric("⭐ Score moyen", f"{score_moyen:.1f}" if score_moyen else "—")
 
 # ─── Footer ───────────────────────────────────────────────────────────────────
 st.markdown("""
