@@ -10,6 +10,7 @@ Production :
 """
 from __future__ import annotations
 
+import hmac
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -22,9 +23,17 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from config.settings import get_settings
 from memory.database import init_database
+from tools.security import (
+    validate_twilio_signature,
+    validate_smspartner_request,
+    sanitize_sms_input,
+    sanitize_phone_number,
+    rate_limit,
+)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(levelname)s — %(message)s")
@@ -76,9 +85,9 @@ async def lifespan(app: FastAPI):
                     f"Twilio: {'✅' if settings.twilio_available else '⚠️ mock'} | "
                     f"Stripe: {'✅' if settings.stripe_available else '⚠️ mock'}")
         logger.info(
-            "PropPilot démarré en mode full SMS. "
-            "Variables Railway à supprimer si présentes : "
-            "ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID, BASE_URL"
+            "PropPilot sécurisé — full SMS. "
+            "Variables Railway à ajouter : SMSPARTNER_WEBHOOK_SECRET, HEALTH_SECRET. "
+            "Variables à supprimer si présentes : ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID, BASE_URL"
         )
     except Exception as e:
         if settings.testing:
@@ -128,6 +137,34 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+
+class SecurityAuditMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        path = request.url.path
+        ip = request.client.host if request.client else "unknown"
+        sensitive = ["/webhooks", "/admin", "/health", "/api"]
+        if any(path.startswith(s) for s in sensitive):
+            logger.info(f"[Audit] {request.method} {path} — IP: {ip}")
+        response = await call_next(request)
+        if response.status_code >= 400:
+            logger.warning(f"[Audit] {response.status_code} sur {path} — IP: {ip}")
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(SecurityAuditMiddleware)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -215,9 +252,13 @@ async def confidentialite():
 
 
 @app.get("/health", tags=["health"])
-async def health():
-    """Health check détaillé."""
+async def health(request: Request):
+    """Health check — détails disponibles uniquement avec X-Health-Key."""
     settings = get_settings()
+    if settings.health_secret:
+        provided = request.headers.get("X-Health-Key", "")
+        if not hmac.compare_digest(provided, settings.health_secret):
+            return {"status": "ok"}
     return {
         "status": "ok",
         "anthropic": settings.anthropic_available,
@@ -739,6 +780,7 @@ async def twiml_sophie_response(lead_id: str, request: Request):
 
 
 @app.post("/webhooks/twilio/voice", tags=["webhooks"])
+@rate_limit(max_calls=30, window_seconds=60)
 async def twilio_voice_incoming(request: Request, background_tasks: BackgroundTasks):
     """
     Webhook Twilio voice entrant.
@@ -748,10 +790,13 @@ async def twilio_voice_incoming(request: Request, background_tasks: BackgroundTa
     3. Déclenche un SMS via smsmode
     4. Raccroche proprement
     """
+    if not await validate_twilio_signature(request):
+        raise HTTPException(status_code=403, detail="Signature invalide")
+
     from twilio.twiml.voice_response import VoiceResponse
 
     form = await request.form()
-    caller = form.get("From", "")
+    caller = sanitize_phone_number(form.get("From", ""))
     call_sid = form.get("CallSid", "unknown")
 
     logger.info(f"[Twilio] Appel entrant — {caller} — {call_sid}")
@@ -828,6 +873,7 @@ async def twilio_voice_incoming(request: Request, background_tasks: BackgroundTa
 
 
 @app.post("/webhooks/smspartner/incoming", tags=["webhooks"])
+@rate_limit(max_calls=60, window_seconds=60)
 async def smspartner_incoming_sms(
     request: Request,
     background_tasks: BackgroundTasks,
@@ -837,24 +883,21 @@ async def smspartner_incoming_sms(
     SMS Partner envoie un POST quand un prospect répond
     sur le numéro virtuel du client.
     """
+    if not await validate_smspartner_request(request):
+        raise HTTPException(status_code=403, detail="Requête non autorisée")
+
     try:
         data = await request.json()
     except Exception:
         data = dict(await request.form())
 
-    logger.info(f"[SMSPartner] SMS entrant : {data}")
+    logger.info(f"[SMSPartner] SMS entrant reçu")
 
-    telephone = (
-        data.get("from")
-        or data.get("phone")
-        or data.get("numero")
-        or ""
+    telephone = sanitize_phone_number(
+        data.get("from") or data.get("phone") or data.get("numero") or ""
     )
-    message = (
-        data.get("message")
-        or data.get("text")
-        or data.get("body")
-        or ""
+    message = sanitize_sms_input(
+        data.get("message") or data.get("text") or data.get("body") or ""
     )
     virtual_number = (
         data.get("to")
@@ -863,8 +906,12 @@ async def smspartner_incoming_sms(
         or ""
     )
 
-    if not telephone or not message:
-        logger.warning(f"[SMSPartner] Données manquantes : {data}")
+    if not telephone:
+        logger.warning("[SMSPartner] Numéro invalide ou manquant")
+        return {"status": "invalid_number"}
+
+    if not message:
+        logger.warning("[SMSPartner] Message manquant")
         return {"status": "ignored"}
 
     logger.info(f"[SMSPartner] {telephone} → {virtual_number} : '{message}'")

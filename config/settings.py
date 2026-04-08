@@ -42,6 +42,7 @@ class Settings(BaseSettings):
 
     # SMS Partner (SMS bidirectionnel — principal)
     smspartner_api_key: Optional[str] = Field(default=None, alias="SMSPARTNER_API_KEY")
+    smspartner_webhook_secret: Optional[str] = Field(default=None, alias="SMSPARTNER_WEBHOOK_SECRET")
 
     # Retell
     retell_api_key: Optional[str] = Field(default=None, alias="RETELL_API_KEY")
@@ -89,6 +90,9 @@ class Settings(BaseSettings):
     stripe_secret_key: Optional[str] = Field(default=None, alias="STRIPE_SECRET_KEY")
     stripe_publishable_key: Optional[str] = Field(default=None, alias="STRIPE_PUBLISHABLE_KEY")
     stripe_webhook_secret: Optional[str] = Field(default=None, alias="STRIPE_WEBHOOK_SECRET")
+
+    # Sécurité
+    health_secret: Optional[str] = Field(default=None, alias="HEALTH_SECRET")
 
     # Admin
     admin_password: str = Field(default="changeme", alias="ADMIN_PASSWORD")
