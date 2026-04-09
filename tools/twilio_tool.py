@@ -46,10 +46,10 @@ class TwilioTool:
         Returns:
             {"success": bool, "sid": str, "mock": bool, "error": Optional[str]}
         """
-        from_num = from_number or self.settings.twilio_phone_number or "+33100000000"
+        from_num = from_number or self.settings.twilio_sms_number or self.settings.twilio_phone_number
 
-        if self.mock_mode:
-            logger.info(f"[MOCK SMS] To: {to} | From: {from_num} | Body: {body[:50]}...")
+        if self.mock_mode or not from_num:
+            logger.info(f"[MOCK Twilio SMS] {from_num} → {to}: {body[:60]}")
             return {
                 "success": True,
                 "sid": f"mock_sms_{_generate_id()}",

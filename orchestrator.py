@@ -284,10 +284,10 @@ def node_propose_rdv(state: AgencyState) -> AgencyState:
     canal = Canal(state.get("canal", "sms"))
 
     if canal == Canal.SMS and lead.telephone:
-        from tools.smsmode_tool import SmsmodeTool
-        smsmode = SmsmodeTool()
-        smsmode.send_sms(
-            to=smsmode.format_french_number(lead.telephone),
+        from tools.twilio_tool import TwilioTool
+        twilio = TwilioTool()
+        twilio.send_sms(
+            to=twilio.format_french_number(lead.telephone),
             body=rdv_msg,
         )
     elif canal == Canal.WHATSAPP and lead.telephone:

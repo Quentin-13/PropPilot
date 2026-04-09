@@ -186,6 +186,18 @@ class Listing:
 
 
 @dataclass
+class User:
+    """Compte client PropPilot (agence ou mandataire)."""
+    id: Optional[str] = None
+    email: str = ""
+    agency_name: str = ""
+    plan: str = "Starter"
+    plan_active: bool = False
+    twilio_sms_number: Optional[str] = None  # Numéro 06/07 Twilio assigné à ce client
+    created_at: datetime = field(default_factory=datetime.now)
+
+
+@dataclass
 class Estimation:
     id: str = field(default_factory=lambda: str(uuid4()))
     lead_id: str = ""

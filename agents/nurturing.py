@@ -57,8 +57,7 @@ class NurturingAgent:
         self.tier = tier
         self.settings = get_settings()
         self._anthropic_client = None
-        self._twilio = None   # gardé pour WhatsApp
-        self._smsmode = None
+        self._twilio = None
 
     def _get_anthropic_client(self):
         if self._anthropic_client is None and self.settings.anthropic_available:
@@ -71,12 +70,6 @@ class NurturingAgent:
             from tools.twilio_tool import TwilioTool
             self._twilio = TwilioTool()
         return self._twilio
-
-    def _get_smsmode(self):
-        if self._smsmode is None:
-            from tools.smsmode_tool import SmsmodeTool
-            self._smsmode = SmsmodeTool()
-        return self._smsmode
 
     def process_due_followups(self) -> list[dict]:
         """
@@ -266,10 +259,23 @@ class NurturingAgent:
         if canal == Canal.SMS:
             if not lead.telephone:
                 return False
-            smsmode = self._get_smsmode()
-            result = smsmode.send_sms(
-                to=smsmode.format_french_number(lead.telephone),
+            twilio = self._get_twilio()
+            client_sms_number = None
+            try:
+                from memory.database import get_connection
+                with get_connection() as conn:
+                    row = conn.execute(
+                        "SELECT twilio_sms_number FROM users WHERE id = %s LIMIT 1",
+                        (self.client_id,),
+                    ).fetchone()
+                    if row:
+                        client_sms_number = row["twilio_sms_number"]
+            except Exception:
+                pass
+            result = twilio.send_sms(
+                to=twilio.format_french_number(lead.telephone),
                 body=message,
+                from_number=client_sms_number,
             )
             return result.get("success", False)
 
@@ -281,11 +287,11 @@ class NurturingAgent:
 
         elif canal == Canal.EMAIL:
             if not lead.email:
-                # Fallback SMS via smsmode si pas d'email
+                # Fallback SMS via Twilio si pas d'email
                 if lead.telephone:
-                    smsmode = self._get_smsmode()
-                    result = smsmode.send_sms(
-                        to=smsmode.format_french_number(lead.telephone),
+                    twilio = self._get_twilio()
+                    result = twilio.send_sms(
+                        to=twilio.format_french_number(lead.telephone),
                         body=message[:160],
                     )
                     return result.get("success", False)

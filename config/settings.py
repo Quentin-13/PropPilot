@@ -25,28 +25,13 @@ class Settings(BaseSettings):
     claude_model: str = "claude-sonnet-4-5"
 
 
-    # Twilio
+    # Twilio (voix + SMS 06/07)
     twilio_account_sid: Optional[str] = Field(default=None, alias="TWILIO_ACCOUNT_SID")
     twilio_auth_token: Optional[str] = Field(default=None, alias="TWILIO_AUTH_TOKEN")
     twilio_phone_number: Optional[str] = Field(default=None, alias="TWILIO_PHONE_NUMBER")
+    twilio_voice_number: Optional[str] = Field(default=None, alias="TWILIO_VOICE_NUMBER")
+    twilio_sms_number: Optional[str] = Field(default=None, alias="TWILIO_SMS_NUMBER")
     twilio_whatsapp_number: str = Field(default="+14155238886", alias="TWILIO_WHATSAPP_NUMBER")
-
-    # Vonage
-    vonage_api_key: Optional[str] = Field(default=None, alias="VONAGE_API_KEY")
-    vonage_api_secret: Optional[str] = Field(default=None, alias="VONAGE_API_SECRET")
-    vonage_phone_number: Optional[str] = Field(default=None, alias="VONAGE_PHONE_NUMBER")
-
-    # smsmode (SMS France — legacy)
-    smsmode_api_key: Optional[str] = Field(default=None, alias="SMSMODE_API_KEY")
-    smsmode_phone_number: Optional[str] = Field(default=None, alias="SMSMODE_PHONE_NUMBER")
-
-    # SMS Partner (SMS bidirectionnel — principal)
-    smspartner_api_key: Optional[str] = Field(default=None, alias="SMSPARTNER_API_KEY")
-    smspartner_webhook_secret: Optional[str] = Field(default=None, alias="SMSPARTNER_WEBHOOK_SECRET")
-
-    # Retell
-    retell_api_key: Optional[str] = Field(default=None, alias="RETELL_API_KEY")
-    retell_agent_id: Optional[str] = Field(default=None, alias="RETELL_AGENT_ID")
 
     # SendGrid
     sendgrid_api_key: Optional[str] = Field(default=None, alias="SENDGRID_API_KEY")
@@ -111,22 +96,12 @@ class Settings(BaseSettings):
         return v
 
     @property
-    def smsmode_available(self) -> bool:
+    def twilio_sms_available(self) -> bool:
         if self.testing or self.mock_mode == "always":
             return False
-        return bool(self.smsmode_api_key)
-
-    @property
-    def smspartner_available(self) -> bool:
-        if self.testing or self.mock_mode == "always":
-            return False
-        return bool(self.smspartner_api_key)
-
-    @property
-    def vonage_available(self) -> bool:
-        if self.testing or self.mock_mode == "always":
-            return False
-        return bool(self.vonage_api_key and self.vonage_api_secret)
+        return bool(self.twilio_account_sid and
+                    self.twilio_auth_token and
+                    self.twilio_sms_number)
 
     @property
     def twilio_available(self) -> bool:
@@ -146,12 +121,6 @@ class Settings(BaseSettings):
         if self.testing or self.mock_mode == "always":
             return False
         return bool(self.google_client_id and self.google_client_secret)
-
-    @property
-    def retell_available(self) -> bool:
-        if self.testing or self.mock_mode == "always":
-            return False
-        return bool(self.retell_api_key)
 
     @property
     def sendgrid_available(self) -> bool:
