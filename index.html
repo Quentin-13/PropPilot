@@ -179,7 +179,7 @@
       border-radius: 12px 12px 12px 4px;
       color: var(--text);
       opacity: 0;
-      animation: fadeInUp 0.4s ease forwards;
+      animation: fadeInUp 0.4s ease both;
     }
     .msg-out {
       background: var(--accent-2);
@@ -188,21 +188,22 @@
       color: var(--text);
       align-self: flex-end;
       opacity: 0;
-      animation: fadeInUp 0.4s ease forwards;
+      animation: fadeInUp 0.4s ease both;
     }
     .msg-ts { font-size: 11px; color: var(--muted); margin-top: 3px; }
     .msg-in .msg-ts { text-align: left; }
     .msg-out .msg-ts { text-align: right; }
 
     .sms-chat {
-      max-height: 420px; overflow: hidden;
+      max-height: 420px; overflow-y: hidden;
+      position: relative;
       display: flex; flex-direction: column; gap: 10px;
     }
 
     .sms-result {
       margin-top: 12px; text-align: center;
       opacity: 0;
-      animation: fadeInUp 0.4s ease 5.9s forwards;
+      animation: fadeInUp 0.4s ease 5.9s both;
     }
     .sms-result-pill {
       display: inline-block;
@@ -509,44 +510,44 @@
       </div>
       <div class="sms-animate-wrap">
         <div class="sms-chat">
-          <div class="msg msg-in" style="animation-delay:0.3s">
-            Bonjour, annonce LBC-2847391, la maison à Tournefeuille, elle est toujours dispo ?
+          <div class="msg msg-in sms-msg" style="animation-delay:0.3s">
+            Bonjour, annonce LBC-2847391, la maison à Tournefeuille, encore disponible ?
             <div class="msg-ts">22:47</div>
           </div>
-          <div class="msg msg-out" style="animation-delay:0.9s">
-            Bonsoir ! Oui, toujours disponible. Vous cherchez pour habiter ou pour investir ?
+          <div class="msg msg-out sms-msg" style="animation-delay:0.9s">
+            Bonsoir ! Oui toujours dispo. C'est pour habiter ou investir ?
             <div class="msg-ts">22:47</div>
           </div>
-          <div class="msg msg-in" style="animation-delay:1.5s">
-            Pour habiter, on est une famille avec 2 enfants.
+          <div class="msg msg-in sms-msg" style="animation-delay:1.5s">
+            Pour habiter, famille avec 2 enfants.
             <div class="msg-ts">22:48</div>
           </div>
-          <div class="msg msg-out" style="animation-delay:2.1s">
-            Super. Votre projet est pour quand ? Plutôt dans 3 mois, 6 mois, ou plus ?
+          <div class="msg msg-out sms-msg" style="animation-delay:2.1s">
+            Votre projet c'est pour quand ? Plutôt 3 mois, 6 mois ou plus ?
             <div class="msg-ts">22:48</div>
           </div>
-          <div class="msg msg-in" style="animation-delay:2.7s">
-            On aimerait conclure avant la rentrée, donc 3 mois.
+          <div class="msg msg-in sms-msg" style="animation-delay:2.7s">
+            Avant la rentrée, donc 3 mois.
             <div class="msg-ts">22:49</div>
           </div>
-          <div class="msg msg-out" style="animation-delay:3.3s">
-            Vous avez déjà un financement en cours ou vous démarrez les démarches ?
+          <div class="msg msg-out sms-msg" style="animation-delay:3.3s">
+            Vous avez un financement en cours ou vous démarrez les démarches ?
             <div class="msg-ts">22:49</div>
           </div>
-          <div class="msg msg-in" style="animation-delay:3.9s">
-            On a un accord de principe pour 380 000€.
+          <div class="msg msg-in sms-msg" style="animation-delay:3.9s">
+            Accord de principe pour 380 000€.
             <div class="msg-ts">22:50</div>
           </div>
-          <div class="msg msg-out" style="animation-delay:4.5s">
-            Parfait, votre dossier est solide. Je vous propose une visite : mardi 10h ou jeudi 17h ?
+          <div class="msg msg-out sms-msg" style="animation-delay:4.5s">
+            Parfait, dossier solide ! Visite mardi 10h ou jeudi 17h ?
             <div class="msg-ts">22:50</div>
           </div>
-          <div class="msg msg-in" style="animation-delay:5.1s">
+          <div class="msg msg-in sms-msg" style="animation-delay:5.1s">
             Mardi 10h c'est parfait !
             <div class="msg-ts">22:51</div>
           </div>
         </div>
-        <div class="sms-result">
+        <div class="sms-result sms-badge-final">
           <span class="sms-result-pill">✓ Visite confirmée · 4 min après le message</span>
         </div>
       </div>
@@ -870,27 +871,39 @@
     document.querySelectorAll('.fade-up').forEach(el => obs.observe(el));
 
     /* ─── SMS mockup — scroll + loop ────────────────────── */
-    const SMS_DELAYS = [0.3, 0.9, 1.5, 2.1, 2.7, 3.3, 3.9, 4.5, 5.1, 5.9];
+    document.addEventListener('DOMContentLoaded', function() {
+      var chat = document.querySelector('.sms-chat');
+      if (chat) chat.scrollTop = 0;
+    });
+
+    var smsDelays = [400, 1200, 2000, 2800, 3600, 4400, 5200, 5900];
+
+    function scrollChatToBottom() {
+      var chat = document.querySelector('.sms-chat');
+      if (!chat) return;
+      chat.scrollTo({ top: chat.scrollHeight, behavior: 'smooth' });
+    }
 
     function scheduleSmsScroll() {
-      SMS_DELAYS.forEach(d => {
-        setTimeout(() => {
-          const chat = document.querySelector('.sms-chat');
-          if (chat) chat.scrollTop = chat.scrollHeight;
-        }, (d + 0.45) * 1000);
+      smsDelays.forEach(function(delay) {
+        setTimeout(scrollChatToBottom, delay + 350);
       });
     }
 
     function resetSmsAnimation() {
-      const wrap = document.querySelector('.sms-animate-wrap');
-      if (!wrap) return;
-      const clone = wrap.cloneNode(true);
-      wrap.parentNode.replaceChild(clone, wrap);
+      var chat = document.querySelector('.sms-chat');
+      var messages = document.querySelectorAll('.sms-msg, .sms-badge-final');
+      if (chat) chat.scrollTop = 0;
+      messages.forEach(function(el) {
+        el.style.animation = 'none';
+        el.offsetHeight; // force reflow
+        el.style.animation = '';
+      });
       scheduleSmsScroll();
     }
 
     scheduleSmsScroll();
-    setInterval(resetSmsAnimation, 10000);
+    setInterval(resetSmsAnimation, 12000);
 
     /* ─── FAQ ────────────────────────────────────────────── */
     function toggleFaq(btn) {
