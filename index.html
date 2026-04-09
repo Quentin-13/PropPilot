@@ -169,7 +169,6 @@
       background: var(--accent); display: inline-block;
     }
 
-    .sms-body { display: flex; flex-direction: column; gap: 10px; }
 
     .msg {
       max-width: 82%; padding: 10px 14px; font-size: 13px;
@@ -195,15 +194,15 @@
     .msg-in .msg-ts { text-align: left; }
     .msg-out .msg-ts { text-align: right; }
 
-    .msg-in:nth-child(1)  { animation-delay: 0.3s; }
-    .msg-out:nth-child(2) { animation-delay: 0.8s; }
-    .msg-in:nth-child(3)  { animation-delay: 1.4s; }
-    .msg-out:nth-child(4) { animation-delay: 2.0s; }
+    .sms-chat {
+      max-height: 420px; overflow: hidden;
+      display: flex; flex-direction: column; gap: 10px;
+    }
 
     .sms-result {
       margin-top: 12px; text-align: center;
       opacity: 0;
-      animation: fadeInUp 0.4s ease 2.6s forwards;
+      animation: fadeInUp 0.4s ease 5.9s forwards;
     }
     .sms-result-pill {
       display: inline-block;
@@ -508,26 +507,48 @@
           <div class="sms-status">En ligne</div>
         </div>
       </div>
-      <div class="sms-body">
-        <div class="msg msg-in">
-          Bonjour, je suis intéressé par l'estimation de mon appartement à Toulouse.
-          <div class="msg-ts">22:47</div>
+      <div class="sms-animate-wrap">
+        <div class="sms-chat">
+          <div class="msg msg-in" style="animation-delay:0.3s">
+            Bonjour, annonce LBC-2847391, la maison à Tournefeuille, elle est toujours dispo ?
+            <div class="msg-ts">22:47</div>
+          </div>
+          <div class="msg msg-out" style="animation-delay:0.9s">
+            Bonsoir ! Oui, toujours disponible. Vous cherchez pour habiter ou pour investir ?
+            <div class="msg-ts">22:47</div>
+          </div>
+          <div class="msg msg-in" style="animation-delay:1.5s">
+            Pour habiter, on est une famille avec 2 enfants.
+            <div class="msg-ts">22:48</div>
+          </div>
+          <div class="msg msg-out" style="animation-delay:2.1s">
+            Super. Votre projet est pour quand ? Plutôt dans 3 mois, 6 mois, ou plus ?
+            <div class="msg-ts">22:48</div>
+          </div>
+          <div class="msg msg-in" style="animation-delay:2.7s">
+            On aimerait conclure avant la rentrée, donc 3 mois.
+            <div class="msg-ts">22:49</div>
+          </div>
+          <div class="msg msg-out" style="animation-delay:3.3s">
+            Vous avez déjà un financement en cours ou vous démarrez les démarches ?
+            <div class="msg-ts">22:49</div>
+          </div>
+          <div class="msg msg-in" style="animation-delay:3.9s">
+            On a un accord de principe pour 380 000€.
+            <div class="msg-ts">22:50</div>
+          </div>
+          <div class="msg msg-out" style="animation-delay:4.5s">
+            Parfait, votre dossier est solide. Je vous propose une visite : mardi 10h ou jeudi 17h ?
+            <div class="msg-ts">22:50</div>
+          </div>
+          <div class="msg msg-in" style="animation-delay:5.1s">
+            Mardi 10h c'est parfait !
+            <div class="msg-ts">22:51</div>
+          </div>
         </div>
-        <div class="msg msg-out">
-          Bonsoir ! Je suis Léa, assistante de votre conseiller. Pour mieux vous aider, votre bien fait environ combien de m² ?
-          <div class="msg-ts">22:47</div>
+        <div class="sms-result">
+          <span class="sms-result-pill">✓ Visite confirmée · 4 min après le message</span>
         </div>
-        <div class="msg msg-in">
-          85m², 3 pièces, Capitole.
-          <div class="msg-ts">22:49</div>
-        </div>
-        <div class="msg msg-out">
-          Parfait ! Je vous propose un créneau pour une estimation gratuite. Mardi 10h ou jeudi 14h ?
-          <div class="msg-ts">22:51</div>
-        </div>
-      </div>
-      <div class="sms-result">
-        <span class="sms-result-pill">✓ RDV proposé · 4 min après le lead</span>
       </div>
     </div>
   </div>
@@ -847,6 +868,29 @@
       });
     }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
     document.querySelectorAll('.fade-up').forEach(el => obs.observe(el));
+
+    /* ─── SMS mockup — scroll + loop ────────────────────── */
+    const SMS_DELAYS = [0.3, 0.9, 1.5, 2.1, 2.7, 3.3, 3.9, 4.5, 5.1, 5.9];
+
+    function scheduleSmsScroll() {
+      SMS_DELAYS.forEach(d => {
+        setTimeout(() => {
+          const chat = document.querySelector('.sms-chat');
+          if (chat) chat.scrollTop = chat.scrollHeight;
+        }, (d + 0.45) * 1000);
+      });
+    }
+
+    function resetSmsAnimation() {
+      const wrap = document.querySelector('.sms-animate-wrap');
+      if (!wrap) return;
+      const clone = wrap.cloneNode(true);
+      wrap.parentNode.replaceChild(clone, wrap);
+      scheduleSmsScroll();
+    }
+
+    scheduleSmsScroll();
+    setInterval(resetSmsAnimation, 10000);
 
     /* ─── FAQ ────────────────────────────────────────────── */
     function toggleFaq(btn) {
