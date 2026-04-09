@@ -29,13 +29,13 @@ SEQUENCES: dict[NurturingSequence, list[dict]] = {
         {"delai_jours": 1,  "canal": Canal.SMS,      "contexte": "relance_douce"},
         {"delai_jours": 3,  "canal": Canal.EMAIL,     "contexte": "comparables_marche"},
         {"delai_jours": 7,  "canal": Canal.SMS,       "contexte": "urgence_acheteurs"},
-        {"delai_jours": 14, "canal": Canal.WHATSAPP,  "contexte": "nouvelle_estimation"},
+        {"delai_jours": 14, "canal": Canal.SMS,       "contexte": "nouvelle_estimation"},
         {"delai_jours": 30, "canal": Canal.EMAIL,     "contexte": "bilan_marche_mensuel"},
     ],
     NurturingSequence.ACHETEUR_QUALIFIE: [
         {"delai_jours": 2,  "canal": Canal.SMS,      "contexte": "nouveaux_biens"},
         {"delai_jours": 5,  "canal": Canal.EMAIL,     "contexte": "biens_selection"},
-        {"delai_jours": 10, "canal": Canal.WHATSAPP,  "contexte": "alerte_bien_rare"},
+        {"delai_jours": 10, "canal": Canal.SMS,       "contexte": "alerte_bien_rare"},
         {"delai_jours": 21, "canal": Canal.EMAIL,     "contexte": "bilan_recherche"},
     ],
     NurturingSequence.LEAD_FROID: [
@@ -277,12 +277,6 @@ class NurturingAgent:
                 body=message,
                 from_number=client_sms_number,
             )
-            return result.get("success", False)
-
-        elif canal == Canal.WHATSAPP:
-            if not lead.telephone:
-                return False
-            result = self._get_twilio().send_whatsapp(to=lead.telephone, body=message)
             return result.get("success", False)
 
         elif canal == Canal.EMAIL:
