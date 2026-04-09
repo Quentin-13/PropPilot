@@ -10,26 +10,21 @@
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:          #0c0c0e;
-      --surface:     #141416;
-      --surface-2:   #1a1a1e;
-      --border:      #242428;
-      --border-hover:#383840;
-      --text:        #f2f2f2;
-      --muted:       #8a8a9a;
-      --subtle:      #3a3a42;
-      --accent:      #a8ff57;
-      --accent-dim:  #2a4a10;
-      --accent-hover:#bfff7a;
-      --radius-sm:   6px;
-      --radius:      10px;
-      --radius-lg:   16px;
-      --font:        'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --bg:        #09090b;
+      --surface:   #111113;
+      --surface-2: #18181b;
+      --border:    #27272a;
+      --text:      #fafafa;
+      --muted:     #71717a;
+      --accent:    #a3e635;
+      --accent-2:  #1a2e05;
+      --red:       #ef4444;
+      --font:      'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
     html { scroll-behavior: smooth; }
@@ -44,793 +39,658 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* ─── ANIMATIONS ─────────────────────────────────────────── */
+    .container { max-width: 1120px; margin: 0 auto; padding: 0 40px; }
+
+    /* ─── ANIMATIONS ─────────────────────────────────── */
     .fade-up {
       opacity: 0;
-      transform: translateY(28px);
-      transition: opacity 0.55s ease, transform 0.55s ease;
+      transform: translateY(20px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
     }
     .fade-up.visible { opacity: 1; transform: translateY(0); }
-    .fade-up-delay-1 { transition-delay: 0.08s; }
-    .fade-up-delay-2 { transition-delay: 0.16s; }
-    .fade-up-delay-3 { transition-delay: 0.24s; }
-    .fade-up-delay-4 { transition-delay: 0.32s; }
-    .fade-up-delay-5 { transition-delay: 0.40s; }
-    .fade-up-delay-6 { transition-delay: 0.48s; }
-    .fade-up-delay-7 { transition-delay: 0.56s; }
+    .fade-up-d1 { transition-delay: 0.1s; }
+    .fade-up-d2 { transition-delay: 0.2s; }
+    .fade-up-d3 { transition-delay: 0.3s; }
+    .fade-up-d4 { transition-delay: 0.4s; }
+    .fade-up-d5 { transition-delay: 0.5s; }
 
-    /* ─── LAYOUT ─────────────────────────────────────────────── */
-    .container { max-width: 1120px; margin: 0 auto; padding: 0 40px; }
-    section { padding: 100px 0; border-top: 1px solid var(--border); }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
 
-    /* ─── NAV ────────────────────────────────────────────────── */
+    /* ─── NAVBAR ─────────────────────────────────────── */
     nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      height: 60px;
+      height: 56px;
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 40px;
-      background: rgba(12,12,14,0.90);
-      backdrop-filter: blur(16px);
+      background: rgba(9,9,11,0.88);
+      backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--border);
     }
     .nav-logo {
-      font-weight: 700; font-size: 18px; color: #ffffff;
-      text-decoration: none;
+      font-size: 17px; font-weight: 600; color: #fff;
+      text-decoration: none; letter-spacing: -0.01em;
     }
-    .nav-buttons { display: flex; align-items: center; gap: 8px; }
-    .nav-btn-login {
-      background: transparent; color: var(--text);
-      padding: 8px 18px; border-radius: var(--radius-sm);
-      font-size: 14px; text-decoration: none;
-      border: 1px solid var(--border);
+    .nav-right { display: flex; align-items: center; gap: 8px; }
+    .nav-login {
+      padding: 7px 16px; border-radius: 7px;
+      border: 1px solid var(--border); background: transparent;
+      color: var(--text); font-size: 14px; text-decoration: none;
       transition: border-color 0.15s;
       white-space: nowrap;
     }
-    .nav-btn-login:hover { border-color: var(--border-hover); }
-    .nav-btn-signup {
-      background: var(--accent); color: #0c0c0e;
-      padding: 8px 18px; border-radius: var(--radius-sm);
-      font-size: 14px; font-weight: 600; text-decoration: none;
-      transition: background 0.15s;
-      white-space: nowrap;
+    .nav-login:hover { border-color: #52525b; }
+    .nav-cta {
+      padding: 7px 16px; border-radius: 7px;
+      background: var(--accent); color: #09090b;
+      font-size: 14px; font-weight: 700; text-decoration: none;
+      transition: filter 0.15s; white-space: nowrap;
     }
-    .nav-btn-signup:hover { background: var(--accent-hover); }
+    .nav-cta:hover { filter: brightness(1.08); }
 
-    /* ─── SECTION LABELS ─────────────────────────────────────── */
-    .section-label {
-      display: inline-block;
-      font-size: 12px; font-weight: 600;
-      letter-spacing: 0.06em;
-      color: var(--accent);
-      background: var(--accent-dim);
-      border: 1px solid rgba(168,255,87,0.2);
-      padding: 4px 12px; border-radius: 20px;
-      margin-bottom: 14px;
-    }
-    .section-title {
-      font-size: clamp(28px, 4vw, 48px);
-      font-weight: 700; line-height: 1.15;
-      letter-spacing: -0.025em;
-      color: #ffffff; margin-bottom: 14px;
-    }
-    .section-subtitle {
-      font-size: 16px; color: var(--muted);
-      max-width: 480px; line-height: 1.7;
-    }
-    .section-header { margin-bottom: 64px; }
-    .section-header.centered { text-align: center; }
-    .section-header.centered .section-subtitle { margin: 0 auto; }
-
-    /* ─── HERO ───────────────────────────────────────────────── */
+    /* ─── HERO ───────────────────────────────────────── */
     .hero {
-      padding: 160px 40px 120px;
-      text-align: center;
-      position: relative; overflow: hidden;
-      border-top: none;
-      background: radial-gradient(
-        ellipse 70% 40% at 50% 0%,
-        rgba(168,255,87,0.07) 0%,
-        transparent 70%
-      ), var(--bg);
+      padding: 140px 40px 100px;
+      display: grid;
+      grid-template-columns: 55fr 45fr;
+      gap: 64px;
+      align-items: center;
+      max-width: 1120px;
+      margin: 0 auto;
     }
+
     .hero-badge {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: var(--accent-dim);
-      border: 1px solid rgba(168,255,87,0.25);
-      border-radius: 20px;
-      padding: 5px 16px;
-      font-size: 13px; color: var(--accent);
-      margin-bottom: 36px;
+      display: inline-flex; align-items: center; gap: 7px;
+      background: var(--accent-2);
+      border: 1px solid rgba(163,230,53,0.3);
+      border-radius: 20px; padding: 5px 14px;
+      font-size: 12px; color: var(--accent);
+      font-weight: 500; margin-bottom: 28px;
     }
+
     .hero h1 {
-      font-size: clamp(44px, 6.5vw, 84px);
+      font-size: clamp(42px, 5.5vw, 72px);
       font-weight: 800;
       letter-spacing: -0.03em;
-      line-height: 1.05;
-      color: #ffffff;
-      max-width: 860px;
-      margin: 0 auto 24px;
+      line-height: 1.06;
+      color: #fff;
+      margin-bottom: 24px;
     }
-    .hero-sub {
-      font-size: 18px; color: var(--muted);
-      max-width: 460px; margin: 0 auto 52px;
-      font-weight: 400; line-height: 1.7;
-    }
-    .hero-actions { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
-    .btn {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 15px 32px; border-radius: var(--radius-sm);
-      font-weight: 700; font-size: 16px;
-      text-decoration: none; cursor: pointer;
-      transition: background 0.15s; border: none;
-    }
-    .btn-primary { background: var(--accent); color: #0c0c0e; }
-    .btn-primary:hover { background: var(--accent-hover); }
-    .btn-outline {
-      background: transparent; color: var(--text);
-      border: 1px solid var(--border);
-    }
-    .btn-outline:hover { border-color: var(--border-hover); }
-    .hero-agent-chips {
-      display: flex; flex-wrap: wrap; gap: 8px;
-      justify-content: center; margin-top: 40px;
-    }
-    .agent-chip {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: var(--surface-2); border: 1px solid var(--border);
-      border-radius: 20px; padding: 6px 14px;
-      font-size: 13px; font-weight: 500; color: var(--text);
-      text-decoration: none;
-      transition: border-color 0.15s;
-    }
-    .agent-chip:hover { border-color: var(--border-hover); }
 
-    /* ─── STATS BAND ─────────────────────────────────────────── */
+    .hero-sub {
+      color: var(--muted); font-size: 17px; line-height: 1.7;
+      margin-bottom: 36px; max-width: 420px;
+    }
+
+    .hero-cta-wrap { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+    .btn-hero {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--accent); color: #09090b;
+      padding: 14px 28px; border-radius: 8px;
+      font-size: 15px; font-weight: 700; text-decoration: none;
+      transition: filter 0.15s;
+    }
+    .btn-hero:hover { filter: brightness(1.08); }
+    .hero-footnote { font-size: 12px; color: var(--muted); }
+
+    /* ─── SMS MOCKUP ─────────────────────────────────── */
+    .sms-mockup {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 20px;
+      width: 100%;
+      max-width: 320px;
+      box-shadow: 0 0 80px rgba(163,230,53,0.07);
+      justify-self: end;
+    }
+
+    .sms-header {
+      display: flex; align-items: center; gap: 10px;
+      padding-bottom: 14px; margin-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sms-avatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--accent-2);
+      border: 1px solid rgba(163,230,53,0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: var(--accent);
+      flex-shrink: 0;
+    }
+    .sms-agent-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .sms-status {
+      font-size: 11px; color: var(--accent); display: flex; align-items: center; gap: 4px;
+    }
+    .sms-status::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent); display: inline-block;
+    }
+
+    .sms-body { display: flex; flex-direction: column; gap: 10px; }
+
+    .msg {
+      max-width: 82%; padding: 10px 14px; font-size: 13px;
+      line-height: 1.5;
+    }
+    .msg-in {
+      background: var(--surface);
+      border-radius: 12px 12px 12px 4px;
+      color: var(--text);
+      opacity: 0;
+      animation: fadeInUp 0.4s ease forwards;
+    }
+    .msg-out {
+      background: var(--accent-2);
+      border: 1px solid rgba(163,230,53,0.2);
+      border-radius: 12px 12px 4px 12px;
+      color: var(--text);
+      align-self: flex-end;
+      opacity: 0;
+      animation: fadeInUp 0.4s ease forwards;
+    }
+    .msg-ts { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .msg-in .msg-ts { text-align: left; }
+    .msg-out .msg-ts { text-align: right; }
+
+    .msg-in:nth-child(1)  { animation-delay: 0.3s; }
+    .msg-out:nth-child(2) { animation-delay: 0.8s; }
+    .msg-in:nth-child(3)  { animation-delay: 1.4s; }
+    .msg-out:nth-child(4) { animation-delay: 2.0s; }
+
+    .sms-result {
+      margin-top: 12px; text-align: center;
+      opacity: 0;
+      animation: fadeInUp 0.4s ease 2.6s forwards;
+    }
+    .sms-result-pill {
+      display: inline-block;
+      background: var(--accent-2);
+      color: var(--accent);
+      font-size: 11px; font-weight: 600;
+      border-radius: 20px; padding: 4px 12px;
+      border: 1px solid rgba(163,230,53,0.2);
+    }
+
+    /* ─── STATS BAND ─────────────────────────────────── */
     .stats-band {
       background: var(--surface);
       border-top: 1px solid var(--border);
       border-bottom: 1px solid var(--border);
-      padding: 24px 40px;
+      padding: 28px 0;
     }
-    .stats-band-inner {
-      max-width: 1120px; margin: 0 auto;
-      display: flex; justify-content: center; gap: 64px; align-items: center;
+    .stats-inner {
+      max-width: 1120px; margin: 0 auto; padding: 0 40px;
+      display: flex; justify-content: center; align-items: center; gap: 80px;
     }
     .stat-item { text-align: center; }
-    .stat-value { font-size: 22px; font-weight: 700; color: #ffffff; }
-    .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .stat-val { font-size: 32px; font-weight: 700; color: var(--text); line-height: 1; }
+    .stat-lbl { font-size: 13px; color: var(--muted); margin-top: 4px; }
 
-    /* ─── PROBLEM ────────────────────────────────────────────── */
-    .problem { background: var(--surface); }
+    /* ─── SECTION BASE ───────────────────────────────── */
+    section {
+      padding: 100px 0;
+      border-top: 1px solid var(--border);
+    }
+    .section-title {
+      font-size: clamp(26px, 3.5vw, 42px);
+      font-weight: 700; letter-spacing: -0.025em; line-height: 1.15;
+      color: #fff; margin-bottom: 12px;
+    }
+    .section-sub {
+      font-size: 15px; color: var(--muted); line-height: 1.7; max-width: 460px;
+    }
+    .section-head { margin-bottom: 56px; }
+    .section-head.center { text-align: center; }
+    .section-head.center .section-sub { margin: 0 auto; }
+
+    /* ─── PROBLEM ────────────────────────────────────── */
+    .section-problem { background: var(--surface); }
     .problem-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 20px;
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
     }
     .problem-card {
       background: var(--surface-2); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: 28px 24px;
+      border-radius: 12px; padding: 28px 24px;
       transition: border-color 0.2s, transform 0.2s;
     }
-    .problem-card:hover { border-color: var(--border-hover); transform: translateY(-2px); }
-    .problem-stat {
-      font-size: 52px; font-weight: 800;
-      color: var(--accent);
-      letter-spacing: -0.03em;
-      line-height: 1; margin-bottom: 16px;
+    .problem-card:hover { border-color: #3f3f46; transform: translateY(-2px); }
+    .problem-val {
+      font-size: 48px; font-weight: 800; letter-spacing: -0.03em;
+      line-height: 1; margin-bottom: 12px; color: var(--red);
     }
-    .problem-text { color: var(--muted); font-size: 15px; line-height: 1.7; }
-    .problem-agent-tag {
-      display: inline-flex; align-items: center; gap: 6px;
-      margin-top: 20px; padding: 4px 12px;
-      border-radius: 20px; font-size: 12px; font-weight: 600;
-      background: var(--accent-dim);
-      border: 1px solid rgba(168,255,87,0.2);
-      color: var(--accent);
+    .problem-title {
+      font-size: 15px; font-weight: 600; color: var(--text);
+      margin-bottom: 8px;
     }
+    .problem-desc { font-size: 14px; color: var(--muted); line-height: 1.65; }
 
-    /* ─── TEAM ───────────────────────────────────────────────── */
-    .team { background: var(--bg); }
-    .team-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 16px;
+    /* ─── AGENTS ─────────────────────────────────────── */
+    .section-agents { background: var(--bg); }
+    .agents-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
+    }
+    .agents-grid .agent-card:last-child:nth-child(odd) {
+      grid-column: 1 / -1; max-width: 560px; margin: 0 auto; width: 100%;
     }
     .agent-card {
       background: var(--surface-2); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: 28px 24px;
-      display: flex; flex-direction: column;
+      border-radius: 12px; padding: 24px;
       transition: border-color 0.2s, transform 0.2s;
     }
-    .agent-card:hover { border-color: var(--border-hover); transform: translateY(-2px); }
-    .agent-avatar {
-      width: 36px; height: 36px; border-radius: 50%;
+    .agent-card:hover { border-color: rgba(163,230,53,0.4); transform: translateY(-2px); }
+    .agent-top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .agent-init {
+      width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+      background: var(--accent-2);
       display: flex; align-items: center; justify-content: center;
       font-size: 14px; font-weight: 700; color: var(--accent);
-      background: var(--accent-dim);
-      margin-bottom: 16px; flex-shrink: 0;
     }
-    .agent-name { font-size: 18px; font-weight: 700; color: #ffffff; margin-bottom: 4px; }
-    .agent-role {
-      font-size: 12px; color: var(--muted); font-weight: 500;
-      margin-bottom: 14px; letter-spacing: 0.06em; text-transform: uppercase;
-    }
-    .agent-desc { font-size: 14px; color: var(--muted); line-height: 1.7; flex: 1; margin-bottom: 20px; }
+    .agent-meta {}
+    .agent-name { font-size: 15px; font-weight: 600; color: var(--text); }
+    .agent-role { font-size: 11px; color: var(--muted); font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; }
     .agent-stat {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 5px 12px; border-radius: 20px;
-      font-size: 12px; font-weight: 600;
-      background: var(--accent-dim);
-      border: 1px solid rgba(168,255,87,0.2);
-      color: var(--accent); align-self: flex-start;
+      font-size: 13px; color: var(--accent); margin-bottom: 8px;
+      display: flex; align-items: center; gap: 4px;
     }
+    .agent-desc { font-size: 14px; color: var(--muted); line-height: 1.65; }
 
-    /* ─── METRICS ────────────────────────────────────────────── */
-    .metrics { background: var(--surface); }
-    .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 1px;
-      background: var(--border);
-      border-radius: var(--radius-lg); overflow: hidden;
-    }
-    .metric-item {
-      background: var(--surface-2); padding: 36px 24px;
-      text-align: center; transition: background 0.2s;
-    }
-    .metric-item:hover { background: #202024; }
-    .metric-value {
-      font-size: 52px; font-weight: 800;
-      color: var(--accent);
-      letter-spacing: -0.03em;
-      line-height: 1; margin-bottom: 8px;
-    }
-    .metric-label { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 8px; }
-    .metric-agent { font-size: 12px; color: var(--muted); }
-
-    /* ─── CONTACT SECTION ────────────────────────────────────── */
-    .contact-section { background: var(--bg); }
-
-    /* ─── HOW IT WORKS ───────────────────────────────────────── */
-    .how-it-works { background: var(--surface); }
-    .steps-track {
-      display: flex; gap: 0; position: relative;
-    }
-    .steps-track::before {
+    /* ─── TIMELINE ───────────────────────────────────── */
+    .section-timeline { background: var(--surface); }
+    .timeline-wrap { max-width: 640px; margin: 0 auto; }
+    .timeline-steps { position: relative; }
+    .timeline-steps::before {
       content: '';
-      position: absolute;
-      top: 44px;
-      left: calc(12.5% + 32px);
-      right: calc(12.5% + 32px);
-      height: 1px;
-      background: var(--border);
-      z-index: 0;
+      position: absolute; left: 13px; top: 28px; bottom: 28px;
+      width: 1px; background: var(--border);
     }
-    .step {
-      flex: 1; display: flex; flex-direction: column;
-      align-items: center; text-align: center;
-      padding: 0 16px; position: relative; z-index: 1;
+    .tl-step {
+      display: flex; gap: 20px; padding-bottom: 36px; position: relative;
     }
-    .step-bubble {
-      width: 88px; height: 88px; border-radius: 50%;
-      background: var(--surface-2); border: 1px solid var(--border);
+    .tl-step:last-child { padding-bottom: 0; }
+    .tl-left { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; }
+    .tl-circle {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--accent-2);
+      border: 1px solid rgba(163,230,53,0.35);
       display: flex; align-items: center; justify-content: center;
-      font-size: 24px; margin-bottom: 24px; position: relative;
+      font-size: 11px; font-weight: 700; color: var(--accent);
+      z-index: 1; position: relative;
+    }
+    .tl-body { padding-top: 4px; flex: 1; }
+    .tl-time { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .tl-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .tl-desc { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+    /* ─── METRICS ────────────────────────────────────── */
+    .section-metrics { background: var(--bg); }
+    .metrics-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px;
+    }
+    .metric-card {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 32px;
       transition: border-color 0.2s;
     }
-    .step:hover .step-bubble { border-color: var(--border-hover); }
-    .step-num {
-      position: absolute; top: -4px; right: -4px;
-      width: 22px; height: 22px; border-radius: 50%;
-      background: var(--accent); color: #0c0c0e;
-      font-size: 11px; font-weight: 700;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .step-title { font-size: 15px; font-weight: 600; color: #ffffff; margin-bottom: 10px; }
-    .step-desc { font-size: 13px; color: var(--muted); line-height: 1.65; max-width: 200px; }
-
-    /* ─── COUNTERS ───────────────────────────────────────────── */
-    .counters { background: var(--bg); }
-    .counters-grid {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
-    }
-    .counter-card {
-      background: var(--surface-2); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: 40px 24px;
-      text-align: center; transition: border-color 0.2s, transform 0.2s;
-    }
-    .counter-card:hover { border-color: var(--border-hover); transform: translateY(-2px); }
-    .counter-value {
-      font-size: clamp(36px, 5vw, 52px); font-weight: 800;
+    .metric-card:hover { border-color: #3f3f46; }
+    .metric-val {
+      font-size: 56px; font-weight: 800; letter-spacing: -0.03em;
       color: var(--accent); line-height: 1; margin-bottom: 8px;
-      font-variant-numeric: tabular-nums; letter-spacing: -0.03em;
     }
-    .counter-suffix { color: var(--accent); }
-    .counter-label { font-size: 13px; color: var(--muted); font-weight: 500; line-height: 1.4; }
+    .metric-lbl { font-size: 14px; color: var(--muted); line-height: 1.5; }
+    .metric-agent { font-size: 12px; color: var(--muted); font-style: italic; margin-top: 4px; }
 
-    /* ─── GUARANTEE ──────────────────────────────────────────── */
-    .guarantee { background: var(--surface); }
-    .guarantee-inner { max-width: 720px; margin: 0 auto; text-align: center; }
-    .guarantee-badge {
-      display: inline-flex; align-items: center; gap: 12px;
-      background: var(--accent-dim);
-      border: 1px solid rgba(168,255,87,0.25);
-      padding: 16px 28px; border-radius: var(--radius-lg);
-      font-size: 14px; font-weight: 700; color: var(--accent);
-      letter-spacing: 0.04em; text-transform: uppercase; margin-top: 40px;
-    }
-
-    /* ─── PRICING ────────────────────────────────────────────── */
-    .pricing { background: var(--bg); }
-    .pricing-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 16px; align-items: start;
-    }
-    .pricing-card {
-      background: var(--surface-2); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: 32px 28px;
-      position: relative; transition: border-color 0.2s, transform 0.2s;
-    }
-    .pricing-card:hover { border-color: var(--border-hover); transform: translateY(-2px); }
-    .pricing-card.featured { border-color: var(--accent); }
-    .pricing-badge {
-      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
-      background: var(--accent); color: #0c0c0e;
-      font-size: 11px; font-weight: 700;
-      padding: 3px 14px; border-radius: 20px;
-      white-space: nowrap;
-    }
-    .pricing-tier { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }
-    .pricing-price { font-size: 42px; font-weight: 700; color: #ffffff; line-height: 1; margin-bottom: 4px; }
-    .pricing-price span#price-independant,
-    .pricing-price span#price-starter,
-    .pricing-price span#price-pro,
-    .pricing-price span#price-elite { font-size: 42px; font-weight: 700; color: #ffffff; }
-    .pricing-price span:not([id]) { font-size: 16px; font-weight: 400; color: var(--muted); }
-    .pricing-desc { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
-    .pricing-features { list-style: none; margin-bottom: 28px; }
-    .pricing-features li {
-      display: flex; align-items: flex-start; gap: 10px;
-      font-size: 14px; color: var(--text);
-      padding: 7px 0; border-bottom: 1px solid var(--border);
-    }
-    .pricing-features li:last-child { border-bottom: none; }
-    .pricing-features li::before { content: '✓'; color: var(--accent); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
-    .pricing-note { text-align: center; margin-top: 32px; font-size: 13px; color: var(--muted); }
-    .pricing-toggle {
-      display: flex; align-items: center; justify-content: center;
-      gap: 12px; margin-bottom: 40px;
-    }
-    .toggle-label { font-size: 15px; font-weight: 600; color: var(--muted); }
-    .toggle-label.active { color: var(--text); }
-    .toggle-switch {
-      position: relative; width: 52px; height: 28px;
-      background: var(--accent); border-radius: 14px; cursor: pointer;
-      border: none; outline: none; transition: background 0.2s;
-    }
-    .toggle-switch::after {
-      content: ''; position: absolute; top: 3px; left: 3px;
-      width: 22px; height: 22px; background: #0c0c0e;
-      border-radius: 50%; transition: transform 0.2s;
-    }
-    .toggle-switch.no-commit::after { transform: translateX(24px); }
-    .toggle-switch.no-commit { background: var(--subtle); }
-    .pricing-badge-economy {
-      background: var(--accent-dim); color: var(--accent);
-      font-size: 11px; font-weight: 700; padding: 2px 8px;
-      border-radius: 20px; margin-bottom: 6px; display: inline-block;
-      border: 1px solid rgba(168,255,87,0.2);
-    }
-    .btn-pricing-primary {
-      display: block; width: 100%; text-align: center;
-      background: var(--accent); color: #0c0c0e;
-      padding: 13px 24px; border-radius: var(--radius-sm);
-      font-size: 15px; font-weight: 700; text-decoration: none;
-      transition: background 0.15s;
-    }
-    .btn-pricing-primary:hover { background: var(--accent-hover); }
-    .btn-pricing-secondary {
-      display: block; width: 100%; text-align: center;
-      background: transparent; color: var(--text);
-      padding: 13px 24px; border-radius: var(--radius-sm);
-      font-size: 15px; font-weight: 600; text-decoration: none;
-      border: 1px solid var(--border);
-      transition: border-color 0.15s;
-    }
-    .btn-pricing-secondary:hover { border-color: var(--border-hover); }
-
-    /* ─── FAQ ────────────────────────────────────────────────── */
-    .faq { background: var(--surface); }
-    .faq-list { max-width: 760px; margin: 0 auto; }
-    .faq-item { border-bottom: 1px solid var(--border); }
-    .faq-question {
-      width: 100%; text-align: left;
-      background: none; border: none; cursor: pointer;
-      padding: 20px 0;
-      display: flex; align-items: center; justify-content: space-between; gap: 16px;
-      font-size: 15px; font-weight: 500; color: #ffffff;
-      font-family: inherit; transition: color 0.15s;
-    }
-    .faq-question:hover { color: var(--accent); }
-    .faq-icon {
-      width: 24px; height: 24px; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px; color: var(--accent); font-weight: 300;
-      transition: transform 0.25s;
-    }
-    .faq-item.open .faq-icon { transform: rotate(45deg); }
-    .faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.35s ease, padding 0.25s; }
-    .faq-item.open .faq-answer { max-height: 200px; padding-bottom: 20px; }
-    .faq-answer-inner { color: var(--muted); font-size: 15px; line-height: 1.75; }
-
-    /* ─── FINAL CTA ──────────────────────────────────────────── */
-    .final-cta {
+    /* ─── GUARANTEE ──────────────────────────────────── */
+    .section-guarantee {
       background: var(--surface);
       text-align: center;
     }
-    .final-proof {
-      display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
-      gap: 24px; margin-top: 20px;
+    .guarantee-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--accent-2);
+      border: 1px solid rgba(163,230,53,0.3);
+      border-radius: 24px; padding: 8px 24px;
+      font-size: 14px; color: var(--accent); font-weight: 600;
+      margin-bottom: 24px;
     }
-    .final-proof span { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
-    .final-proof span::before { content: '✓'; color: var(--accent); font-weight: 700; }
+    .guarantee-body {
+      font-size: 16px; color: var(--muted); max-width: 480px;
+      margin: 0 auto; line-height: 1.7;
+    }
 
-    /* ─── FOOTER ─────────────────────────────────────────────── */
-    footer {
-      background: var(--bg);
+    /* ─── FAQ ────────────────────────────────────────── */
+    .section-faq { background: var(--bg); }
+    .faq-wrap { max-width: 720px; margin: 0 auto; }
+    .faq-item { border-bottom: 1px solid var(--border); }
+    .faq-q {
+      width: 100%; text-align: left; background: none; border: none;
+      cursor: pointer; padding: 20px 0;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      font-size: 15px; font-weight: 500; color: var(--text);
+      font-family: inherit; transition: color 0.15s;
+    }
+    .faq-q:hover { color: var(--accent); }
+    .faq-icon {
+      flex-shrink: 0; font-size: 20px; font-weight: 300;
+      color: var(--accent); transition: transform 0.25s; line-height: 1;
+    }
+    .faq-item.open .faq-icon { transform: rotate(45deg); }
+    .faq-a { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; }
+    .faq-item.open .faq-a { max-height: 220px; }
+    .faq-a-inner {
+      color: var(--muted); font-size: 14px; line-height: 1.75;
+      padding-bottom: 20px;
+    }
+
+    /* ─── FINAL CTA ──────────────────────────────────── */
+    .section-cta {
+      background: var(--surface);
       border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+      padding: 120px 0;
+    }
+    .cta-title {
+      font-size: clamp(32px, 5vw, 56px);
+      font-weight: 800; letter-spacing: -0.03em; line-height: 1.1;
+      color: #fff; margin-bottom: 20px;
+    }
+    .cta-sub {
+      font-size: 18px; color: var(--muted); max-width: 440px;
+      margin: 0 auto 40px; line-height: 1.6;
+    }
+    .btn-cta {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--accent); color: #09090b;
+      padding: 16px 36px; border-radius: 8px;
+      font-size: 16px; font-weight: 700; text-decoration: none;
+      transition: filter 0.15s;
+    }
+    .btn-cta:hover { filter: brightness(1.08); }
+    .cta-footnote {
+      font-size: 13px; color: var(--muted); margin-top: 16px;
+    }
+
+    /* ─── FOOTER ─────────────────────────────────────── */
+    footer {
+      background: var(--bg); border-top: 1px solid var(--border);
       padding: 40px 0;
     }
     .footer-inner {
       max-width: 1120px; margin: 0 auto; padding: 0 40px;
-      display: grid; grid-template-columns: 1fr auto;
-      gap: 32px; align-items: center;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 32px; flex-wrap: wrap;
     }
-    .footer-brand { font-weight: 700; font-size: 15px; color: var(--text); margin-bottom: 6px; }
-    .footer-tagline { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+    .footer-brand { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .footer-tag { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
     .footer-email { font-size: 13px; color: var(--muted); text-decoration: none; transition: color 0.15s; }
-    .footer-email:hover { color: #ffffff; }
+    .footer-email:hover { color: #fff; }
     .footer-flag { font-size: 13px; color: var(--muted); margin-top: 6px; }
-    .footer-links { display: flex; flex-wrap: wrap; gap: 20px; }
+    .footer-links { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
     .footer-links a { font-size: 13px; color: var(--muted); text-decoration: none; transition: color 0.15s; }
-    .footer-links a:hover { color: #ffffff; }
-
-    /* ─── MISC ───────────────────────────────────────────────── */
-    .source {
-      font-size: 10px; color: var(--muted);
-      vertical-align: super; margin-left: 1px; opacity: 0.7;
-    }
-    .sources-footer {
-      margin-top: 32px; padding-top: 16px;
+    .footer-links a:hover { color: #fff; }
+    .sources-note {
+      max-width: 1120px; margin: 20px auto 0; padding: 16px 40px 0;
       border-top: 1px solid var(--border);
-      font-size: 11px; color: var(--muted);
-      line-height: 1.9; opacity: 0.7;
-      max-width: 680px; margin-left: auto; margin-right: auto;
+      font-size: 11px; color: var(--muted); line-height: 1.9; opacity: 0.7;
     }
 
-    /* ─── RESPONSIVE ─────────────────────────────────────────── */
-    @media (max-width: 768px) {
-      .container { padding: 0 20px; }
-      nav { padding: 0 20px; }
-      .hero { padding: 120px 20px 80px; }
-      .stats-band { padding: 20px; }
-      .stats-band-inner { flex-direction: column; gap: 24px; }
-      .hero h1 { font-size: clamp(36px, 8vw, 52px); }
-      .hero-sub { font-size: 16px; }
-      .hero-actions { flex-direction: column; align-items: center; }
-      .btn { width: 100%; max-width: 320px; justify-content: center; }
-      .hero-agent-chips { gap: 6px; }
-      section { padding: 72px 0; }
-      .metrics-grid { grid-template-columns: repeat(2, 1fr); }
-      .team-grid { grid-template-columns: 1fr; }
-      .pricing-grid { grid-template-columns: 1fr; }
+    /* ─── RESPONSIVE ─────────────────────────────────── */
+    @media (max-width: 900px) {
       .problem-grid { grid-template-columns: 1fr; }
-      .steps-track { flex-direction: column; gap: 32px; }
-      .steps-track::before { display: none; }
-      .step { flex-direction: row; text-align: left; gap: 20px; align-items: flex-start; }
-      .step-bubble { flex-shrink: 0; width: 64px; height: 64px; font-size: 20px; margin-bottom: 0; }
-      .step-desc { max-width: none; }
-      .counters-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-      .counter-card { padding: 28px 16px; }
-      .footer-inner { grid-template-columns: 1fr; }
-      .footer-links { gap: 14px; }
-      .guarantee-badge { padding: 14px 20px; font-size: 13px; flex-direction: column; text-align: center; gap: 8px; }
+      .agents-grid { grid-template-columns: 1fr; }
+      .agents-grid .agent-card:last-child:nth-child(odd) { grid-column: auto; max-width: none; }
     }
-    @media (max-width: 480px) {
+
+    @media (max-width: 768px) {
+      nav { padding: 0 20px; }
+      .container { padding: 0 20px; }
+      .hero {
+        padding: 100px 20px 72px;
+        grid-template-columns: 1fr;
+        gap: 48px;
+      }
+      .hero h1 { font-size: clamp(36px, 8vw, 56px); }
+      .sms-mockup { justify-self: center; max-width: 100%; }
+      .stats-inner { flex-direction: column; gap: 28px; padding: 0 20px; }
+      section { padding: 72px 0; }
       .metrics-grid { grid-template-columns: 1fr; }
-      .nav-btn-login { display: none; }
-      .footer-inner { padding: 0 20px; }
+      .footer-inner { flex-direction: column; gap: 24px; padding: 0 20px; }
+      .sources-note { padding: 16px 20px 0; }
+    }
+
+    @media (max-width: 480px) {
+      .nav-login { display: none; }
     }
   </style>
 </head>
 <body>
 
-  <!-- ─── NAV ──────────────────────────────────────────────────── -->
+  <!-- ─── NAV ──────────────────────────────────────────── -->
   <nav>
     <a href="#" class="nav-logo">PropPilot</a>
-    <div class="nav-buttons">
-      <a href="https://proppilot-dashboard-production.up.railway.app/?auth=login" class="nav-btn-login">Espace client</a>
-      <a href="https://calendly.com/contact-proppilot/appel-proppilot-20min" target="_blank" class="nav-btn-signup">Réserver un appel</a>
+    <div class="nav-right">
+      <a href="https://proppilot-dashboard-production.up.railway.app/?auth=login" class="nav-login">Espace client</a>
+      <a href="https://calendly.com/contact-proppilot/appel-proppilot-20min" target="_blank" class="nav-cta">Réserver un appel</a>
     </div>
   </nav>
 
-  <!-- ─── HERO ─────────────────────────────────────────────────── -->
-  <section class="hero">
-    <div class="hero-badge fade-up">
-      ● Automatisation leads · Immobilier France
+  <!-- ─── HERO ─────────────────────────────────────────── -->
+  <div class="hero">
+    <!-- Colonne gauche -->
+    <div>
+      <div class="hero-badge fade-up">● Immobilier · Réponse en 5 min</div>
+      <h1 class="fade-up fade-up-d1">
+        Vos leads dorment.<br />
+        Votre équipe, non.
+      </h1>
+      <p class="hero-sub fade-up fade-up-d2">
+        Chaque lead qualifié en 90 secondes.<br />
+        Chaque RDV posé automatiquement.<br />
+        Même à 23h un dimanche.
+      </p>
+      <div class="hero-cta-wrap fade-up fade-up-d3">
+        <a href="https://calendly.com/contact-proppilot/appel-proppilot-20min" target="_blank" class="btn-hero">
+          Réserver un appel gratuit →
+        </a>
+        <span class="hero-footnote">Sans engagement · 60 jours satisfait ou remboursé</span>
+      </div>
     </div>
-    <h1 class="fade-up fade-up-delay-1">
-      Vos leads dorment.<br />
-      Votre équipe IA, non.
-    </h1>
-    <p class="hero-sub fade-up fade-up-delay-2">
-      Chaque lead contacté en moins de 5 minutes.<br />
-      Chaque prospect qualifié automatiquement.<br />
-      Chaque rendez-vous posé dans votre agenda.<br />
-      Même à 23h un dimanche.
-    </p>
-    <div class="hero-actions fade-up fade-up-delay-3">
-      <a href="https://calendly.com/contact-proppilot/appel-proppilot-20min" target="_blank" class="btn btn-primary">Réserver un appel gratuit →</a>
-    </div>
-    <p style="font-size:13px;color:var(--muted);margin-top:20px;letter-spacing:0.02em;" class="fade-up fade-up-delay-4">
-      Réponse automatique · 24h/24 · 60 jours satisfait ou remboursé
-    </p>
-    <div class="hero-agent-chips fade-up fade-up-delay-5">
-      <a href="#equipe" class="agent-chip">Léa — Leads</a>
-      <a href="#equipe" class="agent-chip">Marc — Nurturing</a>
-      <a href="#equipe" class="agent-chip">Hugo — Annonces</a>
-      <a href="#equipe" class="agent-chip">Thomas — Estimation</a>
-      <a href="#equipe" class="agent-chip">Julie — Anomalies</a>
-    </div>
-  </section>
 
-  <!-- ─── STATS BAND ───────────────────────────────────────────── -->
-  <div class="stats-band">
-    <div class="stats-band-inner">
-      <div class="stat-item">
-        <div class="stat-value">21x</div>
-        <div class="stat-label">Plus efficace de répondre en 5 min<sup>1</sup></div>
+    <!-- Colonne droite — mockup SMS -->
+    <div class="sms-mockup fade-up fade-up-d2">
+      <div class="sms-header">
+        <div class="sms-avatar">L</div>
+        <div>
+          <div class="sms-agent-name">Léa · PropPilot</div>
+          <div class="sms-status">En ligne</div>
+        </div>
       </div>
-      <div class="stat-item">
-        <div class="stat-value">74%</div>
-        <div class="stat-label">Signent avec le 1er à répondre<sup>3</sup></div>
+      <div class="sms-body">
+        <div class="msg msg-in">
+          Bonjour, je suis intéressé par l'estimation de mon appartement à Toulouse.
+          <div class="msg-ts">22:47</div>
+        </div>
+        <div class="msg msg-out">
+          Bonsoir ! Je suis Léa, assistante de votre conseiller. Pour mieux vous aider, votre bien fait environ combien de m² ?
+          <div class="msg-ts">22:47</div>
+        </div>
+        <div class="msg msg-in">
+          85m², 3 pièces, Capitole.
+          <div class="msg-ts">22:49</div>
+        </div>
+        <div class="msg msg-out">
+          Parfait ! Je vous propose un créneau pour une estimation gratuite. Mardi 10h ou jeudi 14h ?
+          <div class="msg-ts">22:51</div>
+        </div>
       </div>
-      <div class="stat-item">
-        <div class="stat-value">7–13</div>
-        <div class="stat-label">Points de contact pour convertir<sup>2</sup></div>
+      <div class="sms-result">
+        <span class="sms-result-pill">✓ RDV proposé · 4 min après le lead</span>
       </div>
     </div>
   </div>
 
-  <!-- ─── PROBLEM ───────────────────────────────────────────────── -->
-  <section class="problem">
+  <!-- ─── STATS BAND ────────────────────────────────────── -->
+  <div class="stats-band">
+    <div class="stats-inner">
+      <div class="stat-item">
+        <div class="stat-val">21×</div>
+        <div class="stat-lbl">Contacter en 5 min vs 30 min <sup>¹</sup></div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val">74%</div>
+        <div class="stat-lbl">Signent avec le 1er à répondre <sup>³</sup></div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val">7→13</div>
+        <div class="stat-lbl">Points de contact pour convertir <sup>²</sup></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── PROBLÈME ──────────────────────────────────────── -->
+  <section class="section-problem">
     <div class="container">
-      <div class="section-header fade-up">
-        <span class="section-label">Le problème</span>
-        <h2 class="section-title">Chaque jour sans eux,<br />vous perdez de l'argent.</h2>
+      <div class="section-head fade-up">
+        <h2 class="section-title">Chaque jour sans PropPilot, vous perdez.</h2>
+        <p class="section-sub">Les chiffres ne mentent pas.</p>
       </div>
       <div class="problem-grid">
-        <div class="problem-card fade-up fade-up-delay-1">
-          <div class="problem-stat">21x</div>
-          <p class="problem-text">Contacter un lead dans les 5 premières minutes est <strong>21 fois plus efficace</strong> qu'attendre 30 minutes. Léa répond automatiquement, même à 23h le dimanche.<span class="source">¹</span></p>
-          <span class="problem-agent-tag">Léa règle ce problème</span>
+        <div class="problem-card fade-up fade-up-d1">
+          <div class="problem-val">5 min</div>
+          <div class="problem-title">La fenêtre pour répondre</div>
+          <p class="problem-desc">Contacter un lead 30 minutes après sa demande est 21× moins efficace. Léa répond automatiquement, même à 23h le dimanche. <sup>¹</sup></p>
         </div>
-        <div class="problem-card fade-up fade-up-delay-2">
-          <div class="problem-stat">74%</div>
-          <p class="problem-text">Des propriétaires signent avec la <strong>première agence qui les contacte</strong>. Marc relance chacun de vos leads automatiquement sur 90 jours.<span class="source">²</span></p>
-          <span class="problem-agent-tag">Marc règle ce problème</span>
+        <div class="problem-card fade-up fade-up-d2">
+          <div class="problem-val">1 sur 3</div>
+          <div class="problem-title">Leads jamais rappelés</div>
+          <p class="problem-desc">Sur 100 leads, 33 partent sans jamais avoir eu de réponse. Marc relance chacun sur 90 jours avec des séquences personnalisées. <sup>²</sup></p>
         </div>
-        <div class="problem-card fade-up fade-up-delay-3">
-          <div class="problem-stat">3h/j</div>
-          <p class="problem-text">C'est le temps perdu en rédaction d'annonces et relances manuelles. Hugo rédige une annonce en 30 secondes. Marc envoie le lien de RDV par SMS. Récupérez ces 3h pour faire des visites.</p>
-          <span class="problem-agent-tag">Hugo + Marc</span>
+        <div class="problem-card fade-up fade-up-d3">
+          <div class="problem-val">0€</div>
+          <div class="problem-title">Commission perdue ce soir</div>
+          <p class="problem-desc">Chaque lead non traité après 18h est une commission donnée au concurrent. 74% signent avec la première agence qui les contacte. <sup>³</sup></p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ─── TEAM ──────────────────────────────────────────────────── -->
-  <section id="equipe" class="team">
+  <!-- ─── ÉQUIPE ────────────────────────────────────────── -->
+  <section id="equipe" class="section-agents">
     <div class="container">
-      <div class="section-header centered fade-up">
-        <span class="section-label">L'équipe</span>
-        <h2 class="section-title">Votre équipe.<br />Disponible maintenant.</h2>
-        <p class="section-subtitle">7 spécialistes immobilier français. Tous inclus dès votre premier abonnement.</p>
+      <div class="section-head center fade-up">
+        <h2 class="section-title">Votre équipe. Toujours disponible.</h2>
+        <p class="section-sub">5 spécialistes immobilier. Tous inclus dès votre premier abonnement.</p>
       </div>
-      <div class="team-grid">
-        <div class="agent-card fade-up fade-up-delay-1">
-          <div class="agent-avatar">L</div>
-          <div class="agent-name">Léa</div>
-          <div class="agent-role">Qualification des leads</div>
+      <div class="agents-grid">
+        <div class="agent-card fade-up fade-up-d1">
+          <div class="agent-top">
+            <div class="agent-init">L</div>
+            <div class="agent-meta">
+              <div class="agent-name">Léa</div>
+              <div class="agent-role">Qualification des leads</div>
+            </div>
+          </div>
+          <div class="agent-stat">⚡ Réponse en 90 secondes</div>
           <p class="agent-desc">Léa répond à chaque nouveau lead en moins de 90 secondes, pose les 7 bonnes questions et détecte les acheteurs sérieux. Elle ne dort jamais.</p>
-          <span class="agent-stat">Réponse en 90 secondes</span>
         </div>
-        <div class="agent-card fade-up fade-up-delay-2">
-          <div class="agent-avatar">M</div>
-          <div class="agent-name">Marc</div>
-          <div class="agent-role">Nurturing &amp; relances</div>
+        <div class="agent-card fade-up fade-up-d2">
+          <div class="agent-top">
+            <div class="agent-init">M</div>
+            <div class="agent-meta">
+              <div class="agent-name">Marc</div>
+              <div class="agent-role">Nurturing &amp; relances</div>
+            </div>
+          </div>
+          <div class="agent-stat">⚡ Relance sur 30 jours</div>
           <p class="agent-desc">Marc ne laisse jamais un prospect dans l'oubli. Il relance, personnalise et insiste avec tact. Vos leads froids deviennent chauds.</p>
-          <span class="agent-stat">Relance sur 30 jours</span>
         </div>
-        <div class="agent-card fade-up fade-up-delay-3">
-          <div class="agent-avatar">H</div>
-          <div class="agent-name">Hugo</div>
-          <div class="agent-role">Rédaction d'annonces</div>
+        <div class="agent-card fade-up fade-up-d3">
+          <div class="agent-top">
+            <div class="agent-init">H</div>
+            <div class="agent-meta">
+              <div class="agent-name">Hugo</div>
+              <div class="agent-role">Rédaction d'annonces</div>
+            </div>
+          </div>
+          <div class="agent-stat">⚡ Annonce rédigée en 30 secondes</div>
           <p class="agent-desc">Hugo rédige une annonce SEO de 400 mots en 30 secondes. Conforme DPE, loi Carrez, loi Hoguet. Version réseaux sociaux incluse automatiquement.</p>
-          <span class="agent-stat">Annonce rédigée en 30 secondes</span>
         </div>
-        <div class="agent-card fade-up fade-up-delay-6">
-          <div class="agent-avatar">T</div>
-          <div class="agent-name">Thomas</div>
-          <div class="agent-role">Estimation &amp; marché</div>
+        <div class="agent-card fade-up fade-up-d4">
+          <div class="agent-top">
+            <div class="agent-init">T</div>
+            <div class="agent-meta">
+              <div class="agent-name">Thomas</div>
+              <div class="agent-role">Estimation &amp; marché</div>
+            </div>
+          </div>
+          <div class="agent-stat">⚡ Estimation argumentée en 60 secondes</div>
           <p class="agent-desc">Thomas analyse les données DVF réelles de votre secteur et produit une estimation argumentée avec rapport PDF exportable pour vos rendez-vous vendeurs.</p>
-          <span class="agent-stat">Estimation argumentée en 60 secondes</span>
         </div>
-        <div class="agent-card fade-up fade-up-delay-7">
-          <div class="agent-avatar">J</div>
-          <div class="agent-name">Julie</div>
-          <div class="agent-role">Détection d'anomalies</div>
-          <p class="agent-desc">Julie lit chaque dossier et repère ce que l'œil humain fatigué peut manquer&nbsp;: financement flou, délai irréaliste, titre de propriété manquant.</p>
-          <span class="agent-stat">0 anomalie manquée</span>
+        <div class="agent-card fade-up fade-up-d5">
+          <div class="agent-top">
+            <div class="agent-init">J</div>
+            <div class="agent-meta">
+              <div class="agent-name">Julie</div>
+              <div class="agent-role">Détection d'anomalies</div>
+            </div>
+          </div>
+          <div class="agent-stat">⚡ 0 anomalie manquée</div>
+          <p class="agent-desc">Julie lit chaque dossier et repère ce que l'œil humain fatigué peut manquer : financement flou, délai irréaliste, titre de propriété manquant.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ─── METRICS ───────────────────────────────────────────────── -->
-  <section class="metrics">
+  <!-- ─── TIMELINE ──────────────────────────────────────── -->
+  <section id="comment-ca-marche" class="section-timeline">
     <div class="container">
-      <div class="section-header centered fade-up">
-        <span class="section-label">Résultats</span>
-        <h2 class="section-title">Ce que votre équipe obtient<br />pour vous en 60 jours</h2>
+      <div class="section-head center fade-up">
+        <h2 class="section-title">De l'arrivée du lead au RDV. Automatiquement.</h2>
+        <p class="section-sub">4 étapes. Aucune action de votre part. PropPilot s'en charge.</p>
       </div>
-      <div class="metrics-grid">
-        <div class="metric-item fade-up fade-up-delay-1">
-          <div class="metric-value">+340%</div>
-          <div class="metric-label">Taux de réponse<br />leads entrants</div>
-          <div class="metric-agent">Léa</div>
-        </div>
-        <div class="metric-item fade-up fade-up-delay-2">
-          <div class="metric-value">-87%</div>
-          <div class="metric-label">Temps sur tâches<br />administratives</div>
-          <div class="metric-agent">Hugo</div>
-        </div>
-        <div class="metric-item fade-up fade-up-delay-3">
-          <div class="metric-value">+4.2</div>
-          <div class="metric-label">Mandats supplémentaires<br />par mois</div>
-          <div class="metric-agent">Marc &amp; Léa</div>
-        </div>
-        <div class="metric-item fade-up fade-up-delay-4">
-          <div class="metric-value">60 sec</div>
-          <div class="metric-label">Pour une estimation<br />complète avec PDF</div>
-          <div class="metric-agent">Thomas</div>
-        </div>
-        <div class="metric-item fade-up fade-up-delay-5">
-          <div class="metric-value">0</div>
-          <div class="metric-label">Dossier problématique<br />non détecté</div>
-          <div class="metric-agent">Julie</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ─── CONTACT ───────────────────────────────────────────────── -->
-  <section id="contact" class="contact-section">
-    <div class="container">
-      <div style="max-width:680px;margin:0 auto;text-align:center;">
-        <span class="section-label">Parlons-en</span>
-        <h2 class="section-title">
-          Votre prochain lead arrive<br />
-          peut-être ce soir à 23h.
-        </h2>
-        <p style="color:var(--muted);font-size:16px;line-height:1.7;margin:20px auto 40px;max-width:520px;">
-          Chaque situation est différente. On échange 20 minutes,
-          on comprend votre volume, et on vous propose
-          une solution adaptée.
-        </p>
-        <a href="https://calendly.com/contact-proppilot/appel-proppilot-20min"
-           target="_blank"
-           class="btn btn-primary">
-          Réserver un appel gratuit →
-        </a>
-        <p style="margin-top:16px;font-size:13px;color:var(--muted);">
-          Aucun engagement · Réponse sous 24h
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ─── HOW IT WORKS ─────────────────────────────────────────── -->
-  <section class="how-it-works" id="comment-ca-marche">
-    <div class="container">
-      <div class="section-header centered fade-up">
-        <span class="section-label">Comment ça marche</span>
-        <h2 class="section-title">De l'arrivée du lead<br />au RDV booké, automatiquement.</h2>
-        <p class="section-subtitle">4 étapes. Aucune action de votre part. PropPilot s'en charge.</p>
-      </div>
-      <div class="steps-track">
-        <div class="step fade-up fade-up-delay-1">
-          <div class="step-bubble">
-            🎯
-            <span class="step-num">1</span>
+      <div class="timeline-wrap">
+        <div class="timeline-steps">
+          <div class="tl-step fade-up fade-up-d1">
+            <div class="tl-left">
+              <div class="tl-circle">1</div>
+            </div>
+            <div class="tl-body">
+              <div class="tl-time">22:47</div>
+              <div class="tl-title">Lead reçu</div>
+              <p class="tl-desc">SeLoger, LeBonCoin, votre site. PropPilot capte instantanément.</p>
+            </div>
           </div>
-          <div class="step-title">Un lead arrive</div>
-          <p class="step-desc">SeLoger, LeBonCoin, votre site… PropPilot reçoit le lead instantanément.</p>
-        </div>
-        <div class="step fade-up fade-up-delay-2">
-          <div class="step-bubble">
-            🤖
-            <span class="step-num">2</span>
+          <div class="tl-step fade-up fade-up-d2">
+            <div class="tl-left">
+              <div class="tl-circle">2</div>
+            </div>
+            <div class="tl-body">
+              <div class="tl-time">22:47</div>
+              <div class="tl-title">Léa qualifie</div>
+              <p class="tl-desc">Projet, budget, délai. Score automatique en 2 min.</p>
+            </div>
           </div>
-          <div class="step-title">Léa qualifie en 2 minutes</div>
-          <p class="step-desc">Notre IA analyse le projet, le budget, la timeline... Score de qualité automatique.</p>
-        </div>
-        <div class="step fade-up fade-up-delay-3">
-          <div class="step-bubble">
-            📱
-            <span class="step-num">3</span>
+          <div class="tl-step fade-up fade-up-d3">
+            <div class="tl-left">
+              <div class="tl-circle">3</div>
+            </div>
+            <div class="tl-body">
+              <div class="tl-time">22:49</div>
+              <div class="tl-title">Marc relance</div>
+              <p class="tl-desc">Séquence SMS sur 90 jours si pas de réponse.</p>
+            </div>
           </div>
-          <div class="step-title">Marc relance sur 90 jours</div>
-          <p class="step-desc">Séquence SMS personnalisée selon le score. Aucun lead n'est perdu, même les froids.</p>
-        </div>
-        <div class="step fade-up fade-up-delay-4">
-          <div class="step-bubble">
-            📅
-            <span class="step-num">4</span>
-          </div>
-          <div class="step-title">Le RDV est proposé par SMS</div>
-          <p class="step-desc">Marc envoie un lien de réservation. Le prospect choisit son créneau directement.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ─── COUNTERS ───────────────────────────────────────────────── -->
-  <section class="counters">
-    <div class="container">
-      <div class="counters-grid">
-        <div class="counter-card fade-up fade-up-delay-1">
-          <div class="counter-value" data-target="135" data-suffix="">
-            <span class="counter-display">0</span>
-            <span class="counter-suffix"></span>
-          </div>
-          <div class="counter-label">tests validés</div>
-        </div>
-        <div class="counter-card fade-up fade-up-delay-2">
-          <div class="counter-value" data-target="5" data-suffix="">
-            <span class="counter-display">0</span>
-            <span class="counter-suffix"></span>
-          </div>
-          <div class="counter-label">agents IA spécialisés</div>
-        </div>
-        <div class="counter-card fade-up fade-up-delay-3">
-          <div class="counter-value" data-target="5" data-prefix="&lt; " data-suffix=" min">
-            <span class="counter-prefix" style="font-size:0.6em;opacity:0.7;">&lt;&nbsp;</span><span class="counter-display">0</span><span class="counter-suffix" style="font-size:0.55em;opacity:0.7;">&nbsp;min</span>
-          </div>
-          <div class="counter-label">de temps de réponse</div>
-        </div>
-        <div class="counter-card fade-up fade-up-delay-4">
-          <div class="counter-value" data-target="24" data-suffix="">
-            <span class="counter-display">0</span><span class="counter-suffix" style="font-size:0.55em;opacity:0.7;">h/24&nbsp;7j/7</span>
-          </div>
-          <div class="counter-label">disponibilité garantie</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ─── GUARANTEE ─────────────────────────────────────────────── -->
-  <section class="guarantee">
-    <div class="container">
-      <div class="guarantee-inner">
-        <div class="fade-up">
-          <span class="section-label">Sans risque</span>
-          <h2 class="section-title">Vous ne prenez aucun risque.</h2>
-          <p class="section-subtitle" style="margin:0 auto;text-align:center;">
-            Si vous n'êtes pas satisfait dans les 60 jours suivant votre inscription, nous vous remboursons intégralement. Sans questions. Sans formulaire.
-          </p>
-          <div style="display:flex;justify-content:center;margin-top:40px;">
-            <div class="guarantee-badge">
-              🛡️ GARANTIE 60 JOURS — REMBOURSEMENT INTÉGRAL
+          <div class="tl-step fade-up fade-up-d4">
+            <div class="tl-left">
+              <div class="tl-circle">4</div>
+            </div>
+            <div class="tl-body">
+              <div class="tl-time">22:51</div>
+              <div class="tl-title">RDV proposé par SMS</div>
+              <p class="tl-desc">Lien de réservation. Le prospect choisit son créneau.</p>
             </div>
           </div>
         </div>
@@ -838,96 +698,129 @@
     </div>
   </section>
 
-  <!-- ─── FAQ ───────────────────────────────────────────────────── -->
-  <section id="faq" class="faq">
+  <!-- ─── MÉTRIQUES ─────────────────────────────────────── -->
+  <section class="section-metrics">
     <div class="container">
-      <div class="section-header centered fade-up">
-        <span class="section-label">FAQ</span>
-        <h2 class="section-title">Vos questions, leurs réponses.</h2>
+      <div class="section-head center fade-up">
+        <h2 class="section-title">Ce que ça change en 60 jours.</h2>
       </div>
-      <div class="faq-list fade-up">
+      <div class="metrics-grid">
+        <div class="metric-card fade-up fade-up-d1">
+          <div class="metric-val">+21×</div>
+          <div class="metric-lbl">Efficacité de réponse aux leads</div>
+          <div class="metric-agent">Léa</div>
+        </div>
+        <div class="metric-card fade-up fade-up-d2">
+          <div class="metric-val">−87%</div>
+          <div class="metric-lbl">Temps sur tâches administratives</div>
+          <div class="metric-agent">Hugo</div>
+        </div>
+        <div class="metric-card fade-up fade-up-d3">
+          <div class="metric-val">74%</div>
+          <div class="metric-lbl">Signent avec le 1er à répondre</div>
+          <div class="metric-agent">Marc</div>
+        </div>
+        <div class="metric-card fade-up fade-up-d4">
+          <div class="metric-val">60s</div>
+          <div class="metric-lbl">Estimation complète avec PDF</div>
+          <div class="metric-agent">Thomas</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── GARANTIE ──────────────────────────────────────── -->
+  <section class="section-guarantee">
+    <div class="container fade-up">
+      <div class="guarantee-badge">🛡️ 60 Jours Satisfait ou Remboursé</div>
+      <h2 class="section-title" style="margin-bottom:16px;">Vous ne prenez aucun risque.</h2>
+      <p class="guarantee-body">
+        Si vous n'êtes pas satisfait dans les 60 jours suivant votre inscription,
+        nous vous remboursons intégralement. Sans questions. Sans formulaire.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─── FAQ ───────────────────────────────────────────── -->
+  <section id="faq" class="section-faq">
+    <div class="container">
+      <div class="section-head center fade-up">
+        <h2 class="section-title">Questions fréquentes.</h2>
+      </div>
+      <div class="faq-wrap fade-up">
         <div class="faq-item">
-          <button class="faq-question" onclick="toggleFaq(this)">
+          <button class="faq-q" onclick="toggleFaq(this)">
             Est-ce que Léa et Marc remplacent mes négociateurs ?
             <span class="faq-icon">+</span>
           </button>
-          <div class="faq-answer">
-            <div class="faq-answer-inner">Non. Ils remplacent les 3h de tâches répétitives qui leur volent chaque jour. Vos agents se concentrent sur les visites et les signatures. L'équipe IA gère tout le reste.</div>
+          <div class="faq-a">
+            <div class="faq-a-inner">Non. Ils remplacent les 3h de tâches répétitives qui leur volent chaque jour. Vos agents se concentrent sur les visites et les signatures. L'équipe IA gère tout le reste.</div>
           </div>
         </div>
         <div class="faq-item">
-          <button class="faq-question" onclick="toggleFaq(this)">
+          <button class="faq-q" onclick="toggleFaq(this)">
             Combien de temps pour que l'équipe soit opérationnelle ?
             <span class="faq-icon">+</span>
           </button>
-          <div class="faq-answer">
-            <div class="faq-answer-inner">5 minutes. Vous entrez votre numéro et votre agenda, et Léa est prête à répondre à votre premier lead. Aucune formation, aucune configuration technique.</div>
+          <div class="faq-a">
+            <div class="faq-a-inner">5 minutes. Vous entrez votre numéro et votre agenda, et Léa est prête à répondre à votre premier lead. Aucune formation, aucune configuration technique.</div>
           </div>
         </div>
         <div class="faq-item">
-          <button class="faq-question" onclick="toggleFaq(this)">
+          <button class="faq-q" onclick="toggleFaq(this)">
             Est-ce conforme au RGPD ?
             <span class="faq-icon">+</span>
           </button>
-          <div class="faq-answer">
-            <div class="faq-answer-inner">Oui. Toutes les données traitées par Léa, Marc et leurs collègues sont hébergées en France, chiffrées, et vous restez propriétaire de vos contacts.</div>
+          <div class="faq-a">
+            <div class="faq-a-inner">Oui. Toutes les données traitées par Léa, Marc et leurs collègues sont hébergées en France, chiffrées, et vous restez propriétaire de vos contacts.</div>
           </div>
         </div>
         <div class="faq-item">
-          <button class="faq-question" onclick="toggleFaq(this)">
+          <button class="faq-q" onclick="toggleFaq(this)">
             Que se passe-t-il quand Marc atteint sa limite ?
             <span class="faq-icon">+</span>
           </button>
-          <div class="faq-answer">
-            <div class="faq-answer-inner">Il vous prévient à 80% du quota avec un message clair. Vous pouvez upgrader en 1 clic pour qu'il continue sans aucune interruption.</div>
+          <div class="faq-a">
+            <div class="faq-a-inner">Il vous prévient à 80% du quota avec un message clair. Vous pouvez upgrader en 1 clic pour qu'il continue sans aucune interruption.</div>
           </div>
         </div>
         <div class="faq-item">
-          <button class="faq-question" onclick="toggleFaq(this)">
+          <button class="faq-q" onclick="toggleFaq(this)">
             Puis-je voir l'équipe en action avant de m'engager ?
             <span class="faq-icon">+</span>
           </button>
-          <div class="faq-answer">
-            <div class="faq-answer-inner">Oui. Demandez une démo live de 30 minutes. Vous verrez Léa qualifier un vrai lead en direct, Hugo rédiger une annonce, et Thomas produire une estimation complète.</div>
+          <div class="faq-a">
+            <div class="faq-a-inner">Oui. Demandez une démo live de 30 minutes. Vous verrez Léa qualifier un vrai lead en direct, Hugo rédiger une annonce, et Thomas produire une estimation complète.</div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ─── FINAL CTA ──────────────────────────────────────────────── -->
-  <section class="final-cta">
-    <div class="container">
-      <div style="max-width:700px;margin:0 auto;" class="fade-up">
-        <span class="section-label">Commencer</span>
-        <h2 class="section-title">
-          Votre prochaine vente arrive<br />
-          peut-être ce soir à 23h.
-        </h2>
-        <p class="section-subtitle" style="margin:0 auto 40px;">
-          Chaque minute compte. Parlons-en avant qu'il parte chez quelqu'un d'autre.
-        </p>
-        <a href="https://calendly.com/contact-proppilot/appel-proppilot-20min"
-           target="_blank"
-           class="btn btn-primary">
-          Réserver un appel gratuit →
-        </a>
-        <p style="font-size:13px;color:var(--muted);margin-top:16px;">Sans carte bancaire · Réponse sous 2h</p>
-        <div class="final-proof">
-          <span>Aucun engagement</span>
-          <span>Réponse sous 24h</span>
-          <span>Appel de 20 minutes</span>
-        </div>
-      </div>
+  <!-- ─── CTA FINAL ─────────────────────────────────────── -->
+  <section class="section-cta">
+    <div class="container fade-up">
+      <h2 class="cta-title">
+        Votre prochaine vente arrive<br />
+        peut-être ce soir à 23h.
+      </h2>
+      <p class="cta-sub">
+        Chaque minute compte. Parlons-en avant
+        qu'il parte chez un concurrent.
+      </p>
+      <a href="https://calendly.com/contact-proppilot/appel-proppilot-20min" target="_blank" class="btn-cta">
+        Réserver un appel gratuit →
+      </a>
+      <p class="cta-footnote">Sans engagement · Réponse sous 2h · 60j satisfait ou remboursé</p>
     </div>
   </section>
 
-  <!-- ─── FOOTER ─────────────────────────────────────────────────── -->
+  <!-- ─── FOOTER ─────────────────────────────────────────── -->
   <footer>
     <div class="footer-inner">
       <div>
         <div class="footer-brand">PropPilot</div>
-        <div class="footer-tagline">Léa, Marc, Hugo, Thomas et Julie travaillent pour vous.</div>
+        <div class="footer-tag">Léa, Marc, Hugo, Thomas et Julie travaillent pour vous.</div>
         <a href="mailto:contact@proppilot.fr" class="footer-email">contact@proppilot.fr</a>
         <div class="footer-flag">Fait en France 🇫🇷</div>
       </div>
@@ -939,61 +832,23 @@
         <a href="https://proppilot-dashboard-production.up.railway.app/?auth=login" style="opacity:0.4;font-size:12px;">Espace client</a>
       </div>
     </div>
-    <div class="sources-footer container">
-      <p>
-        ¹ Journal de l'Agence / LeadResponseManagement.org —
-        Répondre dans les 5 premières minutes est 21x plus
-        efficace qu'après 30 minutes.<br />
-        ² Immobilier 2.0 / NAR — 74% des propriétaires
-        signent avec la première agence qui les contacte.<br />
-        ³ MIT / InsideSales.com — Il faut en moyenne 7 à 13 points de contact pour convertir un prospect immobilier.
-      </p>
+    <div class="sources-note">
+      ¹ Journal de l'Agence / LeadResponseManagement.org — Répondre dans les 5 premières minutes est 21× plus efficace qu'après 30 minutes.<br />
+      ² MIT / InsideSales.com — Il faut en moyenne 7 à 13 points de contact pour convertir un prospect immobilier.<br />
+      ³ Immobilier 2.0 / NAR — 74% des propriétaires signent avec la première agence qui les contacte.
     </div>
   </footer>
 
   <script>
-    /* ─── Fade-up au scroll ─────────────────────────────────────── */
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-          observer.unobserve(entry.target);
-        }
+    /* ─── Fade-up au scroll ──────────────────────────────── */
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); }
       });
-    }, { threshold: 0.1, rootMargin: '0px 0px -48px 0px' });
-    document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+    document.querySelectorAll('.fade-up').forEach(el => obs.observe(el));
 
-    /* ─── Compteurs animés ──────────────────────────────────────── */
-    function animateCounter(el) {
-      const target = parseInt(el.dataset.target, 10);
-      const display = el.querySelector('.counter-display');
-      if (!display) return;
-      const duration = 1400;
-      const steps = 50;
-      const step = duration / steps;
-      let current = 0;
-      const increment = target / steps;
-      const timer = setInterval(() => {
-        current += increment;
-        if (current >= target) {
-          current = target;
-          clearInterval(timer);
-        }
-        display.textContent = Math.round(current);
-      }, step);
-    }
-
-    const counterObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          animateCounter(entry.target);
-          counterObserver.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.3 });
-    document.querySelectorAll('.counter-value[data-target]').forEach(el => counterObserver.observe(el));
-
-    /* ─── FAQ ────────────────────────────────────────────────────── */
+    /* ─── FAQ ────────────────────────────────────────────── */
     function toggleFaq(btn) {
       const item = btn.closest('.faq-item');
       const isOpen = item.classList.contains('open');
