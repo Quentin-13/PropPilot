@@ -884,8 +884,8 @@
     /* ─── SMS mockup — affichage séquentiel sans scroll ─── */
     (function() {
       var MAX_VISIBLE = 4;
-      var DELAYS = [800, 1800, 2600, 3400, 4200, 5000, 5800, 6600, 7400];
-      var LOOP_INTERVAL = 11000;
+      var DELAYS = [800, 3200, 5800, 8400, 11000, 13600, 16200, 18800, 21400];
+      var LOOP_INTERVAL = 26000;
 
       function runSmsAnimation() {
         var msgs = Array.from(document.querySelectorAll('.sms-msg'));
