@@ -59,6 +59,19 @@
       to   { opacity: 1; transform: translateY(0); }
     }
 
+    @keyframes slideInLeft {
+      from { opacity: 0; transform: translateX(-18px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(18px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
     /* ─── NAVBAR ─────────────────────────────────────── */
     nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
@@ -178,8 +191,6 @@
       background: var(--surface);
       border-radius: 12px 12px 12px 4px;
       color: var(--text);
-      opacity: 0;
-      animation: fadeInUp 0.4s ease both;
     }
     .msg-out {
       background: var(--accent-2);
@@ -187,23 +198,23 @@
       border-radius: 12px 12px 4px 12px;
       color: var(--text);
       align-self: flex-end;
-      opacity: 0;
-      animation: fadeInUp 0.4s ease both;
     }
+    .sms-msg { display: none; opacity: 0; }
     .msg-ts { font-size: 11px; color: var(--muted); margin-top: 3px; }
     .msg-in .msg-ts { text-align: left; }
     .msg-out .msg-ts { text-align: right; }
 
     .sms-chat {
-      max-height: 420px; overflow-y: hidden;
+      height: 380px; overflow: hidden;
+      display: flex; flex-direction: column;
+      justify-content: flex-end;
+      gap: 10px; padding: 16px;
       position: relative;
-      display: flex; flex-direction: column; gap: 10px;
     }
 
     .sms-result {
       margin-top: 12px; text-align: center;
-      opacity: 0;
-      animation: fadeInUp 0.4s ease 5.9s both;
+      display: none; opacity: 0;
     }
     .sms-result-pill {
       display: inline-block;
@@ -510,39 +521,39 @@
       </div>
       <div class="sms-animate-wrap">
         <div class="sms-chat">
-          <div class="msg msg-in sms-msg" style="animation-delay:0.3s">
+          <div class="msg msg-in sms-msg sms-left">
             Bonjour, annonce LBC-2847391, la maison à Tournefeuille, encore disponible ?
             <div class="msg-ts">22:47</div>
           </div>
-          <div class="msg msg-out sms-msg" style="animation-delay:0.9s">
+          <div class="msg msg-out sms-msg sms-right">
             Bonsoir ! Oui toujours dispo. C'est pour habiter ou investir ?
             <div class="msg-ts">22:47</div>
           </div>
-          <div class="msg msg-in sms-msg" style="animation-delay:1.5s">
+          <div class="msg msg-in sms-msg sms-left">
             Pour habiter, famille avec 2 enfants.
             <div class="msg-ts">22:48</div>
           </div>
-          <div class="msg msg-out sms-msg" style="animation-delay:2.1s">
+          <div class="msg msg-out sms-msg sms-right">
             Votre projet c'est pour quand ? Plutôt 3 mois, 6 mois ou plus ?
             <div class="msg-ts">22:48</div>
           </div>
-          <div class="msg msg-in sms-msg" style="animation-delay:2.7s">
+          <div class="msg msg-in sms-msg sms-left">
             Avant la rentrée, donc 3 mois.
             <div class="msg-ts">22:49</div>
           </div>
-          <div class="msg msg-out sms-msg" style="animation-delay:3.3s">
+          <div class="msg msg-out sms-msg sms-right">
             Vous avez un financement en cours ou vous démarrez les démarches ?
             <div class="msg-ts">22:49</div>
           </div>
-          <div class="msg msg-in sms-msg" style="animation-delay:3.9s">
+          <div class="msg msg-in sms-msg sms-left">
             Accord de principe pour 380 000€.
             <div class="msg-ts">22:50</div>
           </div>
-          <div class="msg msg-out sms-msg" style="animation-delay:4.5s">
+          <div class="msg msg-out sms-msg sms-right">
             Parfait, dossier solide ! Visite mardi 10h ou jeudi 17h ?
             <div class="msg-ts">22:50</div>
           </div>
-          <div class="msg msg-in sms-msg" style="animation-delay:5.1s">
+          <div class="msg msg-in sms-msg sms-left">
             Mardi 10h c'est parfait !
             <div class="msg-ts">22:51</div>
           </div>
@@ -870,40 +881,70 @@
     }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
     document.querySelectorAll('.fade-up').forEach(el => obs.observe(el));
 
-    /* ─── SMS mockup — scroll + loop ────────────────────── */
-    document.addEventListener('DOMContentLoaded', function() {
-      var chat = document.querySelector('.sms-chat');
-      if (chat) chat.scrollTop = 0;
-    });
+    /* ─── SMS mockup — affichage séquentiel sans scroll ─── */
+    (function() {
+      var MAX_VISIBLE = 4;
+      var DELAYS = [800, 1800, 2600, 3400, 4200, 5000, 5800, 6600, 7400];
+      var LOOP_INTERVAL = 11000;
 
-    var smsDelays = [400, 1200, 2000, 2800, 3600, 4400, 5200, 5900];
+      function runSmsAnimation() {
+        var msgs = Array.from(document.querySelectorAll('.sms-msg'));
+        var badge = document.querySelector('.sms-badge-final');
 
-    function scrollChatToBottom() {
-      var chat = document.querySelector('.sms-chat');
-      if (!chat) return;
-      chat.scrollTo({ top: chat.scrollHeight, behavior: 'smooth' });
-    }
+        // Reset — tout cacher
+        msgs.forEach(function(m) {
+          m.style.display = 'none';
+          m.style.opacity = '0';
+          m.style.animation = 'none';
+          m.style.transition = '';
+        });
+        if (badge) {
+          badge.style.display = 'none';
+          badge.style.opacity = '0';
+        }
 
-    function scheduleSmsScroll() {
-      smsDelays.forEach(function(delay) {
-        setTimeout(scrollChatToBottom, delay + 350);
+        // Afficher chaque message avec delay
+        msgs.forEach(function(msg, i) {
+          setTimeout(function() {
+            // Cacher les messages trop anciens
+            var visible = msgs.filter(function(m) {
+              return m.style.display !== 'none';
+            });
+            if (visible.length >= MAX_VISIBLE) {
+              var oldest = visible[0];
+              oldest.style.transition = 'opacity 0.3s';
+              oldest.style.opacity = '0';
+              setTimeout(function() {
+                oldest.style.display = 'none';
+              }, 300);
+            }
+
+            // Afficher le nouveau message
+            msg.style.display = 'block';
+            msg.style.animation = 'none';
+            msg.offsetHeight; // reflow
+            var isLeft = msg.classList.contains('sms-left');
+            msg.style.animation = isLeft
+              ? 'slideInLeft 0.35s ease-out forwards'
+              : 'slideInRight 0.35s ease-out forwards';
+          }, DELAYS[i]);
+        });
+
+        // Badge final
+        var lastDelay = DELAYS[msgs.length - 1];
+        if (badge) {
+          setTimeout(function() {
+            badge.style.display = 'flex';
+            badge.style.animation = 'fadeIn 0.4s ease-out forwards';
+          }, lastDelay + 600);
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(runSmsAnimation, 500);
+        setInterval(runSmsAnimation, LOOP_INTERVAL);
       });
-    }
-
-    function resetSmsAnimation() {
-      var chat = document.querySelector('.sms-chat');
-      var messages = document.querySelectorAll('.sms-msg, .sms-badge-final');
-      if (chat) chat.scrollTop = 0;
-      messages.forEach(function(el) {
-        el.style.animation = 'none';
-        el.offsetHeight; // force reflow
-        el.style.animation = '';
-      });
-      scheduleSmsScroll();
-    }
-
-    scheduleSmsScroll();
-    setInterval(resetSmsAnimation, 12000);
+    })();
 
     /* ─── FAQ ────────────────────────────────────────────── */
     function toggleFaq(btn) {
