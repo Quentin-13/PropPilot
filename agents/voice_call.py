@@ -87,69 +87,11 @@ class VoiceCallAgent:
 
     def call_hot_lead(self, lead_id: str) -> dict:
         """
-        Lance un appel sortant vers un lead chaud (score ≥ 7).
-        À appeler quand un lead n'a pas répondu au SMS dans les 30 min.
-
-        Returns:
-            {"success": bool, "call_id": str, "message": str}
+        Appels sortants désactivés — architecture 1 numéro 06/07 (entrant uniquement).
+        Les prospects appellent le 06/07, Sophie répond et déclenche la qualification SMS.
         """
-        lead = get_lead(lead_id)
-        if not lead:
-            return {"success": False, "message": "Lead introuvable"}
-
-        if lead.score < 7:
-            return {"success": False, "message": f"Score {lead.score} trop faible pour appel sortant (min 7)"}
-
-        if not lead.telephone:
-            return {"success": False, "message": "Pas de numéro de téléphone"}
-
-        # Vérification quota minutes voix
-        usage_check = check_and_consume(self.client_id, "voice_minute", amount=3.0, tier=self.tier)
-        if not usage_check["allowed"]:
-            return {"success": False, "message": usage_check["message"], "limit_reached": True}
-
-        # Slots disponibles pour le script d'appel (Sophie propose 3 créneaux)
-        calendar = CalendarTool()
-        slots = calendar.get_next_slots_for_voice(n=3)
-        slot_1 = slots[0] if len(slots) > 0 else "mardi à 10h"
-        slot_2 = slots[1] if len(slots) > 1 else "jeudi à 14h"
-        slot_3 = slots[2] if len(slots) > 2 else "vendredi à 11h"
-
-        # Générer l'audio d'introduction Sophie (ElevenLabs)
-        self.synthesize_sophie_intro(lead)
-
-        # Lancer l'appel via Twilio avec URL TwiML
-        twiml_url = f"{self.settings.api_url.rstrip('/')}/twiml/sophie/{lead_id}"
-        twilio = TwilioTool()
-        result = twilio.make_outbound_call(
-            to=lead.telephone,
-            twiml_url=twiml_url,
-        )
-
-        if result["success"]:
-            call_sid = result.get("call_sid", "")
-            self._save_call_to_db(
-                lead_id=lead_id,
-                call_id=call_sid,
-                direction="outbound",
-                statut="registered",
-            )
-            add_conversation_message(
-                lead_id=lead_id,
-                client_id=self.client_id,
-                role="assistant",
-                contenu=f"[Appel sortant initié vers {lead.telephone} — call_sid: {call_sid}]",
-                canal=Canal.APPEL,
-            )
-            logger.info(f"Appel sortant initié : {call_sid} → {lead.telephone}")
-        else:
-            call_sid = ""
-
-        return {
-            "success": result["success"],
-            "call_id": call_sid,
-            "message": f"Appel initié vers {lead.telephone}" if result["success"] else result.get("error", "Erreur appel"),
-        }
+        logger.info(f"[VoiceCall] Appels sortants désactivés (lead {lead_id})")
+        return {"success": False, "message": "Appels sortants non disponibles — le prospect doit appeler le 06/07"}
 
     def call_leads_not_responded(self, min_score: int = 7, sms_delay_min: int = 30) -> list[dict]:
         """
@@ -205,11 +147,6 @@ class VoiceCallAgent:
         if not lead:
             return {"lead_updated": False, "error": "Lead introuvable"}
 
-        # Récupérer la durée depuis Twilio si non fournie
-        if not duration_s:
-            twilio = TwilioTool()
-            call_status = twilio.get_call_status(call_id)
-            duration_s = call_status.get("duration", 0)
         analysis = {}
 
         # Résumé + score post-appel via Claude

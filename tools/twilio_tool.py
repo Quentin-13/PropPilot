@@ -1,5 +1,6 @@
 """
-TwilioTool — SMS + WhatsApp + Appels sortants.
+TwilioTool — SMS sortants + message vocal appels entrants.
+1 numéro 06/07 unique gère voix entrante + SMS.
 Mock automatique si TWILIO_ACCOUNT_SID absent.
 """
 from __future__ import annotations
@@ -15,7 +16,8 @@ logger = logging.getLogger(__name__)
 class TwilioTool:
     """
     Wrapper Twilio avec fallback mock automatique.
-    Toutes les méthodes retournent {"success": bool, "sid": str, ...}
+    send_sms() : SMS sortants Marc
+    generate_inbound_twiml() : message vocal appels entrants Sophie
     """
 
     def __init__(self):
@@ -36,17 +38,17 @@ class TwilioTool:
 
     def send_sms(self, to: str, body: str, from_number: Optional[str] = None) -> dict:
         """
-        Envoie un SMS.
+        Envoie un SMS via le numéro 06/07.
 
         Args:
             to: Numéro destinataire (format E.164 : +33...)
             body: Corps du SMS (160 chars recommandé)
-            from_number: Numéro expéditeur (défaut : TWILIO_PHONE_NUMBER)
+            from_number: Numéro expéditeur (défaut : TWILIO_SMS_NUMBER)
 
         Returns:
             {"success": bool, "sid": str, "mock": bool, "error": Optional[str]}
         """
-        from_num = from_number or self.settings.twilio_sms_number or self.settings.twilio_phone_number
+        from_num = from_number or self.settings.twilio_sms_number
 
         if self.mock_mode or not from_num:
             logger.info(f"[MOCK Twilio SMS] {from_num} → {to}: {body[:60]}")
@@ -112,73 +114,31 @@ class TwilioTool:
             logger.error(f"Erreur WhatsApp Twilio : {e}")
             return {"success": False, "sid": "", "mock": False, "error": str(e)}
 
-    def make_outbound_call(
+    def generate_inbound_twiml(
         self,
-        to: str,
-        twiml_url: str,
-        from_number: Optional[str] = None,
-    ) -> dict:
+        agent_name: str = "votre conseiller",
+        agency_name: str = "l'agence",
+    ) -> str:
         """
-        Lance un appel sortant.
-
-        Args:
-            to: Numéro à appeler (E.164)
-            twiml_url: URL TwiML pour le script d'appel
-            from_number: Numéro appelant
-
-        Returns:
-            {"success": bool, "call_sid": str, "mock": bool}
+        Génère le TwiML pour les appels entrants sur le 06/07.
+        Sophie joue le message puis raccroche — un SMS de qualification
+        est déclenché en background.
         """
-        from_num = from_number or self.settings.twilio_phone_number or "+33100000000"
-
-        if self.mock_mode:
-            logger.info(f"[MOCK CALL] Outbound call to: {to} | TwiML: {twiml_url}")
-            return {
-                "success": True,
-                "call_sid": f"mock_call_{_generate_id()}",
-                "mock": True,
-                "to": to,
-                "status": "initiated",
-            }
-
-        try:
-            client = self._get_client()
-            call = client.calls.create(
-                url=twiml_url,
-                to=to,
-                from_=from_num,
-            )
-            return {
-                "success": True,
-                "call_sid": call.sid,
-                "mock": False,
-                "status": call.status,
-            }
-        except Exception as e:
-            logger.error(f"Erreur appel Twilio : {e}")
-            return {"success": False, "call_sid": "", "mock": False, "error": str(e)}
-
-    def get_call_status(self, call_sid: str) -> dict:
-        """Récupère le statut d'un appel."""
-        if self.mock_mode or call_sid.startswith("mock_"):
-            return {
-                "sid": call_sid,
-                "status": "completed",
-                "duration": 180,
-                "mock": True,
-            }
-
-        try:
-            client = self._get_client()
-            call = client.calls(call_sid).fetch()
-            return {
-                "sid": call.sid,
-                "status": call.status,
-                "duration": int(call.duration or 0),
-                "mock": False,
-            }
-        except Exception as e:
-            return {"sid": call_sid, "status": "error", "error": str(e)}
+        message = (
+            f"Bonjour, vous avez bien joint {agency_name}. "
+            f"{agent_name} n'est pas disponible en ce moment. "
+            f"Ne raccrochez pas, vous allez recevoir un SMS "
+            f"dans quelques instants pour la suite de votre demande. "
+            f"À très vite !"
+        )
+        return (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            "<Response>\n"
+            f'    <Say language="fr-FR" voice="Polly.Lea">{message}</Say>\n'
+            "    <Pause length=\"1\"/>\n"
+            "    <Hangup/>\n"
+            "</Response>"
+        )
 
     def validate_number(self, phone: str) -> bool:
         """Valide qu'un numéro est au format E.164."""

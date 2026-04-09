@@ -64,8 +64,28 @@ st.markdown("---")
 if st.session_state.wizard_step == 1:
     st.markdown("## Étape 1 — Identité de votre agence")
 
+    # Récupérer first_name depuis la DB
+    current_first_name = ""
+    try:
+        from memory.database import get_connection
+        with get_connection() as conn:
+            row = conn.execute(
+                "SELECT first_name FROM users WHERE id = %s LIMIT 1",
+                (client_id,),
+            ).fetchone()
+            if row and row[0]:
+                current_first_name = row[0]
+    except Exception:
+        pass
+
     with st.form("step1_form"):
         agency_name = st.text_input("Nom de l'agence *", value=agency_name)
+        first_name = st.text_input(
+            "Votre prénom",
+            value=current_first_name,
+            placeholder="ex : Thomas",
+            help="Utilisé dans le message vocal Sophie quand un prospect appelle votre 06/07. Laissez vide → 'votre conseiller'.",
+        )
         col_a, col_b = st.columns(2)
         with col_a:
             commission_rate = st.number_input(
@@ -92,7 +112,17 @@ if st.session_state.wizard_step == 1:
             if not agency_name:
                 st.error("Le nom de l'agence est requis")
             else:
-                # Mise à jour du .env (ou session state pour la démo)
+                # Sauvegarder first_name en DB
+                try:
+                    from memory.database import get_connection
+                    with get_connection() as conn:
+                        conn.execute(
+                            "UPDATE users SET first_name = %s WHERE id = %s",
+                            (first_name.strip(), client_id),
+                        )
+                except Exception as e:
+                    st.warning(f"Impossible de sauvegarder le prénom : {e}")
+                # Mise à jour du session state
                 st.session_state.config_agency_name = agency_name
                 st.session_state.config_commission_rate = commission_rate / 100
                 st.session_state.config_avg_price = avg_price
@@ -131,9 +161,10 @@ elif st.session_state.wizard_step == 2:
             )
 
         phone_number = st.text_input(
-            "Numéro Twilio (format E.164)",
-            value=settings.twilio_phone_number or "",
-            placeholder="+33100000001",
+            "Numéro 06/07 Twilio (format E.164)",
+            value=settings.twilio_sms_number or "",
+            placeholder="+336XXXXXXXX",
+            help="Votre numéro 06/07 Twilio — reçoit les appels ET les SMS prospects",
         )
 
         test_number = st.text_input(

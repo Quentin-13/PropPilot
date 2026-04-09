@@ -641,302 +641,91 @@ async def portal_webhook(portal_name: str, request: Request):
     return JSONResponse(result)
 
 
-# ─── TwiML Sophie (Twilio appels voix) ────────────────────────────────────────
+# ─── Webhooks Twilio voix / SMS ───────────────────────────────────────────────
 
-@app.get("/twiml/sophie/{lead_id}", tags=["twiml"], response_class=Response)
-async def twiml_sophie_intro(lead_id: str):
-    """
-    Endpoint TwiML pour l'intro Sophie lors d'un appel sortant Twilio.
-    Twilio appelle cette URL au début de l'appel.
-    """
-    from memory.lead_repository import get_lead
-    settings = get_settings()
-
-    lead = get_lead(lead_id)
-    prenom = lead.prenom if lead and lead.prenom else "cher contact"
-    projet = lead.projet.value if lead and lead.projet else "immobilier"
-    localisation = f" sur {lead.localisation}" if lead and lead.localisation else ""
-    agence = settings.agency_name
-
-    script = (
-        f"Bonjour {prenom}, je suis Sophie, assistante de {agence}. "
-        f"J'appelle concernant votre projet {projet}{localisation}. "
-        "Est-ce que vous avez quelques minutes pour en parler ?"
-    )
-
-    response_url = f"{settings.api_url.rstrip('/')}/twiml/sophie/{lead_id}/response"
-    twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say language="fr-FR" voice="alice">{script}</Say>
-  <Gather input="speech" language="fr-FR" timeout="5" speechTimeout="auto"
-          action="{response_url}" method="POST">
-    <Say language="fr-FR" voice="alice">Je vous écoute.</Say>
-  </Gather>
-  <Redirect method="POST">{response_url}</Redirect>
-</Response>"""
-    return Response(content=twiml, media_type="text/xml")
-
-
-@app.post("/twiml/sophie/{lead_id}/response", tags=["twiml"], response_class=Response)
-async def twiml_sophie_response(lead_id: str, request: Request):
-    """
-    Reçoit la réponse vocale Twilio <Gather>, génère la réponse Sophie via Claude
-    et retourne du TwiML <Say>+<Gather>.
-    Si RDV détecté → book via CalendarTool et raccrocher.
-    """
-    import json as _json
-    form_data = dict(await request.form())
-    speech_result = form_data.get("SpeechResult", "")
-    call_sid = form_data.get("CallSid", "")
-    settings = get_settings()
-
-    from memory.lead_repository import get_lead, add_conversation_message
-    from memory.models import Canal as _Canal
-
-    lead = get_lead(lead_id)
-    if not lead:
-        twiml = """<?xml version="1.0" encoding="UTF-8"?>
-<Response><Say language="fr-FR" voice="alice">Désolée, une erreur est survenue. Au revoir.</Say><Hangup/></Response>"""
-        return Response(content=twiml, media_type="text/xml")
-
-    # Enregistrement de la réponse du prospect
-    if speech_result:
-        add_conversation_message(
-            lead_id=lead_id,
-            client_id=lead.client_id,
-            role="user",
-            contenu=f"[Appel vocal] {speech_result}",
-            canal=_Canal.APPEL,
-        )
-
-    # Détection RDV dans la réponse
-    rdv_keywords = ["oui", "d'accord", "parfait", "bien sûr", "ok", "disponible", "mardi", "jeudi", "vendredi", "lundi", "mercredi"]
-    negative_keywords = ["non", "pas maintenant", "pas intéressé", "rappeler", "occupé"]
-    rdv_detected = any(kw in speech_result.lower() for kw in rdv_keywords) and \
-                   not any(kw in speech_result.lower() for kw in negative_keywords)
-
-    if rdv_detected:
-        # Booking RDV automatique
-        from tools.calendar_tool import CalendarTool
-        from memory.lead_repository import update_lead
-        from memory.models import LeadStatus as _LeadStatus
-        cal = CalendarTool()
-        slots = cal.get_available_slots(days_ahead=7, user_id=lead.client_id)
-        rdv_msg = "Parfait, je note votre disponibilité. Je vous confirme le rendez-vous par SMS. À très bientôt !"
-        if slots:
-            cal.book_appointment(lead=lead, slot=slots[0], user_id=lead.client_id, send_email=bool(lead.email))
-            lead.statut = _LeadStatus.RDV_BOOKÉ
-            update_lead(lead)
-        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
-<Response><Say language="fr-FR" voice="alice">{rdv_msg}</Say><Hangup/></Response>"""
-        return Response(content=twiml, media_type="text/xml")
-
-    # Générer une réponse Sophie via Claude
-    reply_text = ""
-    if settings.anthropic_available and speech_result:
-        try:
-            import anthropic as _anthropic
-            client = _anthropic.Anthropic(api_key=settings.anthropic_api_key)
-            prenom = lead.prenom or "cher contact"
-            messages_resp = client.messages.create(
-                model=settings.claude_model,
-                max_tokens=150,
-                system=(
-                    f"Tu es Sophie, conseillère de {settings.agency_name}. "
-                    "Réponds en 1-2 phrases courtes, à l'oral, en français naturel. "
-                    "Objectif : proposer un RDV de 15 minutes. Sois chaleureuse et concise."
-                ),
-                messages=[{"role": "user", "content": speech_result}],
-            )
-            reply_text = messages_resp.content[0].text.strip()
-        except Exception as e:
-            logger.warning(f"Erreur Claude voice response : {e}")
-
-    if not reply_text:
-        reply_text = "Je comprends. Seriez-vous disponible pour un échange de 15 minutes cette semaine ?"
-
-    # Enregistrement réponse Sophie
-    add_conversation_message(
-        lead_id=lead_id,
-        client_id=lead.client_id,
-        role="assistant",
-        contenu=f"[Appel vocal Sophie] {reply_text}",
-        canal=_Canal.APPEL,
-    )
-
-    response_url = f"{settings.api_url.rstrip('/')}/twiml/sophie/{lead_id}/response"
-    twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say language="fr-FR" voice="alice">{reply_text}</Say>
-  <Gather input="speech" language="fr-FR" timeout="5" speechTimeout="auto"
-          action="{response_url}" method="POST">
-  </Gather>
-  <Say language="fr-FR" voice="alice">Je n'ai pas entendu votre réponse. Je vous rappellerai. Au revoir !</Say>
-  <Hangup/>
-</Response>"""
-    return Response(content=twiml, media_type="text/xml")
-
-
-@app.post("/webhooks/twilio/voice", tags=["webhooks"])
+@app.post("/webhooks/twilio/voice", tags=["webhooks"], response_class=Response)
 @rate_limit(max_calls=30, window_seconds=60)
-async def twilio_voice_incoming(request: Request, background_tasks: BackgroundTasks):
+async def twilio_voice_inbound(request: Request, background_tasks: BackgroundTasks):
     """
-    Webhook Twilio voice entrant.
-    Quand quelqu'un appelle le numéro PropPilot :
-    1. Message vocal court en français
-    2. Récupère le numéro de l'appelant
-    3. Déclenche un SMS via smsmode
-    4. Raccroche proprement
+    Appel entrant sur le 06/07 :
+    1. Joue le message vocal Sophie (personnalisé avec prénom + agence)
+    2. Envoie un SMS de qualification en background
     """
     if not await validate_twilio_signature(request):
         raise HTTPException(status_code=403, detail="Signature invalide")
 
-    from twilio.twiml.voice_response import VoiceResponse
-
     form = await request.form()
-    caller = sanitize_phone_number(form.get("From", ""))
-    call_sid = form.get("CallSid", "unknown")
+    from_number = sanitize_phone_number(form.get("From", ""))
+    to_number = form.get("To", "")
 
-    logger.info(f"[Twilio] Appel entrant — {caller} — {call_sid}")
+    logger.info(f"[Twilio voice] Appel entrant — {from_number} → {to_number}")
 
-    response = VoiceResponse()
-    response.say(
-        "Bonjour, nous avons bien noté votre appel. "
-        "Vous allez recevoir un SMS dans quelques instants "
-        "pour échanger avec votre conseiller. "
-        "À très bientôt.",
-        voice="Polly.Lea",
-        language="fr-FR",
-    )
-    response.hangup()
+    # Lookup client par numéro 06/07
+    agent_name = "votre conseiller"
+    agency_name = "l'agence"
+    client_id = None
+    tier = "Starter"
 
-    if caller and caller != "anonymous":
-        try:
-            from tools.twilio_tool import TwilioTool
-
-            settings = get_settings()
-            client_id = settings.agency_client_id
-            tier = settings.agency_tier
-            client_sms_number = None
-
-            try:
-                from memory.database import get_connection
-                with get_connection() as conn:
-                    row = conn.execute(
-                        "SELECT id, plan, twilio_sms_number FROM users "
-                        "WHERE plan_active = TRUE AND is_admin = FALSE "
-                        "ORDER BY created_at DESC LIMIT 1"
-                    ).fetchone()
-                    if row:
-                        client_id = row["id"]
-                        tier = row["plan"]
-                        client_sms_number = row["twilio_sms_number"]
-            except Exception as db_err:
-                logger.warning(f"[Twilio] DB lookup failed: {db_err}")
-
-            twilio = TwilioTool()
-            caller_e164 = (
-                f"+{caller.lstrip('+')}" if not caller.startswith("+") else caller
-            )
-
-            sms_body = (
-                "Bonjour, suite à votre appel, "
-                "je suis l'assistante de votre conseiller "
-                "immobilier. Comment puis-je vous aider ? "
-                "Vous pouvez me répondre directement par SMS."
-            )
-            result = twilio.send_sms(
-                to=caller_e164, body=sms_body, from_number=client_sms_number
-            )
-
-            if result.get("success"):
-                logger.info(f"[Twilio voice→SMS] SMS envoyé à {caller_e164}")
-
-                def _process():
-                    from orchestrator import process_incoming_message
-                    process_incoming_message(
-                        telephone=caller_e164,
-                        message="[APPEL ENTRANT — prospect a appelé]",
-                        client_id=client_id,
-                        tier=tier,
-                        canal="sms",
-                    )
-
-                background_tasks.add_task(_process)
+    try:
+        from memory.database import get_connection
+        with get_connection() as conn:
+            row = conn.execute(
+                "SELECT id, plan, agency_name, first_name FROM users "
+                "WHERE twilio_sms_number = %s AND plan_active = TRUE LIMIT 1",
+                (to_number,),
+            ).fetchone()
+            if row:
+                client_id = row["id"]
+                tier = row["plan"]
+                agency_name = row["agency_name"] or agency_name
+                agent_name = row["first_name"] or agent_name
             else:
-                logger.error(f"[Twilio voice→SMS] Échec envoi : {result}")
+                # Fallback : premier client actif
+                row = conn.execute(
+                    "SELECT id, plan, agency_name, first_name FROM users "
+                    "WHERE plan_active = TRUE AND is_admin = FALSE "
+                    "ORDER BY created_at DESC LIMIT 1"
+                ).fetchone()
+                if row:
+                    client_id = row["id"]
+                    tier = row["plan"]
+                    agency_name = row["agency_name"] or agency_name
+                    agent_name = row["first_name"] or agent_name
+    except Exception as e:
+        logger.warning(f"[Twilio voice] DB lookup: {e}")
 
-        except Exception as e:
-            logger.error(f"[Twilio] Erreur déclenchement SMS : {e}")
-    else:
-        logger.warning("[Twilio] Numéro masqué — impossible d'envoyer SMS")
+    # SMS de qualification en background
+    if client_id and from_number:
+        _cid, _tier = client_id, tier
 
-    return Response(content=str(response), media_type="application/xml")
+        def _qualify():
+            from orchestrator import process_incoming_message
+            process_incoming_message(
+                telephone=from_number,
+                message="[APPEL ENTRANT — qualification automatique]",
+                client_id=_cid,
+                tier=_tier,
+                canal="sms",
+            )
 
+        background_tasks.add_task(_qualify)
 
-
-
-@app.post("/webhooks/twilio/call-status", tags=["webhooks"])
-async def twilio_call_status_webhook(request: Request):
-    """
-    Webhook Twilio — statut final de l'appel (completed, failed, no-answer).
-    Configurez dans Twilio Console > Phone Numbers > Voice > Status Callback.
-    """
-    form_data = dict(await request.form())
-    call_sid = form_data.get("CallSid", "")
-    call_status = form_data.get("CallStatus", "")
-    call_duration = int(form_data.get("CallDuration", 0))
-
-    logger.info(f"Twilio call-status : {call_sid} → {call_status} ({call_duration}s)")
-
-    # Retrouver le lead associé à ce call_sid
-    from memory.database import get_connection as _get_conn
-    with _get_conn() as conn:
-        row = conn.execute(
-            "SELECT lead_id, client_id FROM calls WHERE retell_call_id = ? OR id = ?",
-            (call_sid, call_sid),
-        ).fetchone()
-
-    if not row:
-        logger.warning(f"call-status webhook : call_sid {call_sid} non trouvé en DB")
-        return JSONResponse({"status": "ignored", "reason": "call_not_found"})
-
-    lead_id = row["lead_id"]
-    client_id = row["client_id"]
-
-    if call_status == "completed":
-        from agents.voice_call import VoiceCallAgent
-        settings = get_settings()
-        agent = VoiceCallAgent(client_id=client_id, tier=settings.agency_tier)
-        result = agent.process_call_ended(
-            call_id=call_sid,
-            lead_id=lead_id,
-            duration_s=call_duration,
-        )
-        from memory.journey_repository import log_action as _log
-        _log(
-            lead_id=lead_id,
-            client_id=client_id,
-            stage="voice_call",
-            action_done="call_completed",
-            action_result=f"duration={call_duration}s",
-            agent_name="sophie",
-            metadata={"call_sid": call_sid, "rdv_booked": result.get("rdv_booked")},
-        )
-        return JSONResponse({"status": "processed", **result})
-
-    # Appel échoué / non répondu
-    from memory.journey_repository import log_action as _log
-    _log(
-        lead_id=lead_id,
-        client_id=client_id,
-        stage="voice_call",
-        action_done=f"call_{call_status}",
-        action_result=call_status,
-        agent_name="sophie",
-        metadata={"call_sid": call_sid},
+    # TwiML — message vocal Sophie
+    from tools.twilio_tool import TwilioTool
+    twiml = TwilioTool().generate_inbound_twiml(
+        agent_name=agent_name,
+        agency_name=agency_name,
     )
-    return JSONResponse({"status": "logged", "call_status": call_status})
+    return Response(content=twiml, media_type="application/xml")
+
+
+@app.post("/twiml/sophie/inbound", tags=["twiml"], response_class=Response)
+async def twiml_sophie_inbound_redirect(request: Request, background_tasks: BackgroundTasks):
+    """Rétro-compatibilité — redirige vers le nouveau webhook voix."""
+    return await twilio_voice_inbound(request, background_tasks)
+
+
+
 
 
 @app.post("/webhooks/twilio/sms", tags=["webhooks"], response_class=Response)

@@ -25,11 +25,9 @@ class Settings(BaseSettings):
     claude_model: str = "claude-sonnet-4-5"
 
 
-    # Twilio (voix + SMS 06/07)
+    # Twilio — 1 numéro 06/07 unique (voix entrante + SMS)
     twilio_account_sid: Optional[str] = Field(default=None, alias="TWILIO_ACCOUNT_SID")
     twilio_auth_token: Optional[str] = Field(default=None, alias="TWILIO_AUTH_TOKEN")
-    twilio_phone_number: Optional[str] = Field(default=None, alias="TWILIO_PHONE_NUMBER")
-    twilio_voice_number: Optional[str] = Field(default=None, alias="TWILIO_VOICE_NUMBER")
     twilio_sms_number: Optional[str] = Field(default=None, alias="TWILIO_SMS_NUMBER")
     twilio_whatsapp_number: str = Field(default="+14155238886", alias="TWILIO_WHATSAPP_NUMBER")
 

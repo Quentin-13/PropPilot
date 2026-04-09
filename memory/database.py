@@ -305,6 +305,7 @@ def _run_migrations(conn) -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS smspartner_number TEXT DEFAULT NULL",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS twilio_sms_number TEXT DEFAULT NULL",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name TEXT DEFAULT NULL",
     ]:
         conn.execute(col_sql)
 
