@@ -1,7 +1,7 @@
 """
 Orchestrateur LangGraph — StateGraph principal.
-Gère le flux lead : qualification → scoring → routage → nurturing/RDV/appel voix.
-Intègre : LeadQualifier, Nurturing, VoiceCall (leads chauds non joignables).
+Gère le flux lead : qualification → scoring → routage → nurturing/RDV (SMS uniquement).
+Intègre : LeadQualifier, Nurturing.
 """
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ class AgencyState(TypedDict):
     status: str             # "new" | "qualifying" | "scored" | "routed" | "error"
     error: Optional[str]
 
-    # Appel voix (optionnel)
+    # Appel voix — conservé pour compatibilité ascendante (entrants uniquement)
     voice_call_id: Optional[str]
     voice_call_triggered: bool
 
@@ -300,8 +300,8 @@ def node_propose_rdv(state: AgencyState) -> AgencyState:
         stage="rdv_proposal",
         action_done="rdv_proposed",
         action_result=rdv_msg[:200],
-        next_action="trigger_voice_call",
-        agent_name="sophie",
+        next_action="end",
+        agent_name="lea",
         metadata={"canal": state.get("canal", "sms"), "score": state.get("score", 0)},
     )
 
@@ -311,60 +311,6 @@ def node_propose_rdv(state: AgencyState) -> AgencyState:
         "status": "rdv_proposed",
         "messages_log": state["messages_log"] + [f"RDV proposé au lead {state['lead_id']}"],
     }
-
-
-def node_trigger_voice_call(state: AgencyState) -> AgencyState:
-    """
-    Déclenche un appel voix sortant via Retell AI pour les leads chauds
-    qui n'ont pas répondu au SMS de RDV après un délai configurable.
-    Optionnel — ne bloque pas le flux si l'appel échoue.
-    """
-    lead_id = state.get("lead_id")
-    if not lead_id:
-        return {**state, "status": "voice_skipped"}
-
-    # Pas d'appel vocal pour les leads LOCATION
-    try:
-        from memory.lead_repository import get_lead as _get_lead
-        from memory.models import ProjetType as _ProjetType
-        _lead = _get_lead(lead_id)
-        if _lead and _lead.projet == _ProjetType.LOCATION:
-            logger.info(f"Appel voix ignoré — lead LOCATION : {lead_id}")
-            return {**state, "voice_call_triggered": False, "status": "rdv_proposed"}
-    except Exception:
-        pass
-
-    try:
-        from agents.voice_call import VoiceCallAgent
-        voice_agent = VoiceCallAgent(client_id=state["client_id"], tier=state["tier"])
-        result = voice_agent.call_hot_lead(lead_id)
-
-        if result.get("success"):
-            call_id = result.get("call_id", "")
-            logger.info(f"Appel voix déclenché : {call_id} pour lead {lead_id}")
-            log_action(
-                lead_id=lead_id,
-                client_id=state["client_id"],
-                stage="voice_call",
-                action_done="call_initiated",
-                action_result=call_id,
-                agent_name="sophie",
-                metadata={"call_id": call_id},
-            )
-            return {
-                **state,
-                "voice_call_id": call_id,
-                "voice_call_triggered": True,
-                "status": "voice_call_initiated",
-                "messages_log": state["messages_log"] + [f"Appel voix initié : {call_id[:12]}"],
-            }
-        else:
-            logger.info(f"Appel voix non déclenché : {result.get('message', '')}")
-            return {**state, "voice_call_triggered": False, "status": "rdv_proposed"}
-
-    except Exception as e:
-        logger.warning(f"Erreur déclenchement appel voix : {e}")
-        return {**state, "voice_call_triggered": False, "status": "rdv_proposed"}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -407,19 +353,6 @@ def route_after_scoring(
 # GRAPH CONSTRUCTION
 # ─────────────────────────────────────────────────────────────
 
-def route_after_rdv_proposal(
-    state: AgencyState,
-) -> Literal["trigger_voice_call", "end"]:
-    """
-    Après proposition RDV, décide si on déclenche aussi un appel voix.
-    L'appel voix est déclenché si le score est ≥ 8 (lead très chaud).
-    """
-    score = state.get("score", 0)
-    if score >= 8:
-        return "trigger_voice_call"
-    return "end"
-
-
 def build_graph() -> StateGraph:
     """Construit et compile le graphe LangGraph."""
     graph = StateGraph(AgencyState)
@@ -431,7 +364,6 @@ def build_graph() -> StateGraph:
     graph.add_node("route_lead", node_route_lead)
     graph.add_node("trigger_nurturing", node_trigger_nurturing)
     graph.add_node("propose_rdv", node_propose_rdv)
-    graph.add_node("trigger_voice_call", node_trigger_voice_call)
 
     # Edges
     graph.add_edge(START, "check_existing_lead")
@@ -469,15 +401,7 @@ def build_graph() -> StateGraph:
         },
     )
     graph.add_edge("trigger_nurturing", END)
-    graph.add_conditional_edges(
-        "propose_rdv",
-        route_after_rdv_proposal,
-        {
-            "trigger_voice_call": "trigger_voice_call",
-            "end": END,
-        },
-    )
-    graph.add_edge("trigger_voice_call", END)
+    graph.add_edge("propose_rdv", END)
 
     return graph.compile()
 

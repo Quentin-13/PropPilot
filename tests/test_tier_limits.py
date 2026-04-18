@@ -93,7 +93,7 @@ def test_independant_no_account_manager():
 
 
 def test_independant_prix():
-    assert TIERS["Indépendant"].prix_mensuel == 290
+    assert TIERS["Indépendant"].prix_mensuel == 250
 
 
 def test_independant_garantie_50():

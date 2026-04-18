@@ -46,7 +46,7 @@ def test_handle_new_lead_creates_lead():
     assert result["status"] == "new_lead"
     assert result["lead_id"] is not None
     assert result["message"] != ""
-    assert "Sophie" in result["message"] or "MOCK" in result["message"] or "Bonjour" in result["message"]
+    assert "Léa" in result["message"] or "MOCK" in result["message"] or "Bonjour" in result["message"]
 
 
 def test_handle_new_lead_with_prenom():

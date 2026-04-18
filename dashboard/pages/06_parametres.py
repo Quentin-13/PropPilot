@@ -84,7 +84,7 @@ if st.session_state.wizard_step == 1:
             "Votre prénom",
             value=current_first_name,
             placeholder="ex : Thomas",
-            help="Utilisé dans le message vocal Sophie quand un prospect appelle votre 06/07. Laissez vide → 'votre conseiller'.",
+            help="Utilisé dans le message vocal quand un prospect appelle votre 07. Laissez vide → 'votre conseiller'.",
         )
         col_a, col_b = st.columns(2)
         with col_a:

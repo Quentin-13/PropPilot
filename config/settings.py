@@ -25,11 +25,18 @@ class Settings(BaseSettings):
     claude_model: str = "claude-sonnet-4-5"
 
 
-    # Twilio — 1 numéro 06/07 unique (voix entrante + SMS)
+    # Twilio — pool de numéros 07 dédiés (1 par client)
     twilio_account_sid: Optional[str] = Field(default=None, alias="TWILIO_ACCOUNT_SID")
     twilio_auth_token: Optional[str] = Field(default=None, alias="TWILIO_AUTH_TOKEN")
     twilio_sms_number: Optional[str] = Field(default=None, alias="TWILIO_SMS_NUMBER")
     twilio_whatsapp_number: str = Field(default="+14155238886", alias="TWILIO_WHATSAPP_NUMBER")
+    # Pool multi-clients : numéros 07 disponibles, séparés par des virgules
+    twilio_available_numbers_raw: str = Field(default="", alias="TWILIO_AVAILABLE_NUMBERS")
+
+    @property
+    def twilio_available_numbers(self) -> list[str]:
+        """Parse la liste des numéros Twilio disponibles depuis la variable d'env."""
+        return [n.strip() for n in (self.twilio_available_numbers_raw or "").split(",") if n.strip()]
 
     # SendGrid
     sendgrid_api_key: Optional[str] = Field(default=None, alias="SENDGRID_API_KEY")
@@ -68,6 +75,11 @@ class Settings(BaseSettings):
 
     # URL de l'API FastAPI (pour le dashboard)
     api_url: str = Field(default="http://localhost:8000", alias="API_URL")
+
+    # ElevenLabs
+    elevenlabs_api_key: Optional[str] = Field(default=None, alias="ELEVENLABS_API_KEY")
+    elevenlabs_voice_id: Optional[str] = Field(default=None, alias="ELEVENLABS_VOICE_ID")
+    elevenlabs_model_id: str = Field(default="eleven_multilingual_v2", alias="ELEVENLABS_MODEL_ID")
 
     # Stripe
     stripe_secret_key: Optional[str] = Field(default=None, alias="STRIPE_SECRET_KEY")
@@ -127,6 +139,12 @@ class Settings(BaseSettings):
         return bool(self.sendgrid_api_key)
 
     @property
+    def elevenlabs_available(self) -> bool:
+        if self.testing or self.mock_mode == "always":
+            return False
+        return bool(self.elevenlabs_api_key)
+
+    @property
     def stripe_available(self) -> bool:
         if self.testing or self.mock_mode == "always":
             return False
@@ -143,3 +161,68 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Singleton settings — chargé une seule fois."""
     return Settings()
+
+
+def assign_twilio_number(user_id: str) -> Optional[str]:
+    """
+    Attribue un numéro Twilio libre à un client.
+    Cherche d'abord dans la DB un numéro non attribué du pool TWILIO_AVAILABLE_NUMBERS.
+    Retourne le numéro assigné, ou None si le pool est épuisé.
+    """
+    settings = get_settings()
+    pool = settings.twilio_available_numbers
+    if not pool:
+        return None
+
+    from memory.database import get_connection
+
+    with get_connection() as conn:
+        # Vérifier si l'user a déjà un numéro
+        row = conn.execute(
+            "SELECT twilio_sms_number FROM users WHERE id = %s",
+            (user_id,),
+        ).fetchone()
+        if row and row["twilio_sms_number"]:
+            return row["twilio_sms_number"]
+
+        # Trouver les numéros déjà assignés
+        taken_rows = conn.execute(
+            "SELECT twilio_sms_number FROM users WHERE twilio_sms_number IS NOT NULL"
+        ).fetchall()
+        taken = {r["twilio_sms_number"] for r in taken_rows}
+
+        # Prendre le premier libre
+        available = [n for n in pool if n not in taken]
+        if not available:
+            return None
+
+        number = available[0]
+        conn.execute(
+            "UPDATE users SET twilio_sms_number = %s WHERE id = %s",
+            (number, user_id),
+        )
+
+    return number
+
+
+def release_twilio_number(user_id: str) -> bool:
+    """
+    Libère le numéro Twilio d'un client (résiliation).
+    Retourne True si un numéro a été libéré.
+    """
+    from memory.database import get_connection
+
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT twilio_sms_number FROM users WHERE id = %s",
+            (user_id,),
+        ).fetchone()
+        if not row or not row["twilio_sms_number"]:
+            return False
+
+        conn.execute(
+            "UPDATE users SET twilio_sms_number = NULL WHERE id = %s",
+            (user_id,),
+        )
+
+    return True

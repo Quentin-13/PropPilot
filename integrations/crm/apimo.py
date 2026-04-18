@@ -106,11 +106,11 @@ class ApimoCRMConnector(BaseCRMConnector):
 
     async def create_appointment(self, crm_lead_id: str, datetime_slot: datetime, agent_name: str) -> bool:
         """
-        Sophie a booké un RDV → on ajoute une note dans Apimo.
+        PropPilot a booké un RDV → on ajoute une note dans Apimo.
         Apimo n'expose pas de création de RDV dans l'API publique.
         """
         note_text = (
-            f"[PropPilot — Sophie] RDV booké\n"
+            f"[PropPilot] RDV booké\n"
             f"Date : {datetime_slot.strftime('%d/%m/%Y à %H:%M')}\n"
             f"Agent : {agent_name}"
         )

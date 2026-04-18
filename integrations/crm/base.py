@@ -58,7 +58,7 @@ class BaseCRMConnector(ABC):
 
     @abstractmethod
     async def create_appointment(self, crm_lead_id: str, datetime_slot: datetime, agent_name: str) -> bool:
-        """Crée un RDV dans le CRM source quand Sophie book un RDV."""
+        """Crée un RDV dans le CRM source quand PropPilot book un RDV."""
 
     @abstractmethod
     async def push_listing(self, listing_data: dict) -> str:

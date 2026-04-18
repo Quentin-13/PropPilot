@@ -117,7 +117,7 @@ class HektorConnector(BaseCRMConnector):
             return True  # Mock : toujours succès
 
     async def create_appointment(self, crm_lead_id: str, datetime_slot: datetime, agent_name: str) -> bool:
-        """Sophie a booké un RDV → on le crée dans l'agenda Hektor."""
+"""PropPilot a booké un RDV → on le crée dans l'agenda Hektor."""
         if self._mock_mode:
             self._log(f"[MOCK] create_appointment {crm_lead_id} @ {datetime_slot.isoformat()}")
             return True
@@ -131,8 +131,8 @@ class HektorConnector(BaseCRMConnector):
                         "date": datetime_slot.isoformat(),
                         "agent": agent_name,
                         "type": "visite",
-                        "source": "PropPilot — Sophie",
-                        "notes": "RDV créé automatiquement par Sophie (PropPilot)",
+                        "source": "PropPilot",
+                        "notes": "RDV créé automatiquement par PropPilot",
                     },
                 )
                 return r.status_code in (200, 201)

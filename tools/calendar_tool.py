@@ -262,7 +262,7 @@ class CalendarTool:
         budget = getattr(lead, "budget", "") or ""
         localisation = getattr(lead, "localisation", "") or ""
         description = (
-            f"RDV qualifié par Sophie (PropPilot)\n\n"
+            f"RDV qualifié par PropPilot\n\n"
             f"Lead : {nom_complet}\n"
             f"Projet : {projet_label}\n"
             f"Budget : {budget}\n"
@@ -343,7 +343,7 @@ class CalendarTool:
                 <p>Notre équipe vous accueillera avec plaisir. En cas d'empêchement,
                 n'hésitez pas à nous contacter par email ou téléphone.</p>
                 <p style="color: #64748b; font-size: 0.9rem; margin-top: 32px;">
-                    Cet email a été envoyé par Sophie, votre assistante IA PropPilot.
+                    Cet email a été envoyé par PropPilot, votre assistant IA immobilier.
                 </p>
             </div>
         </div>
@@ -352,7 +352,7 @@ class CalendarTool:
             f"RDV confirmé avec {agency}\n\n"
             f"Date : {slot_label}\n\n"
             f"En cas d'empêchement, contactez-nous par email.\n\n"
-            f"— Sophie, assistante PropPilot"
+            f"— L'équipe PropPilot"
         )
 
         email_tool = EmailTool()

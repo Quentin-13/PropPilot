@@ -35,7 +35,7 @@ class LeadQualifierAgent:
     Gère le flux de conversation jusqu'au scoring + routage.
     """
 
-    CONSEILLER_PRENOM = "Sophie"
+    CONSEILLER_PRENOM = "Léa"
     CONSEILLER_TITRE = "conseillère immobilier"
 
     def __init__(self, client_id: str, tier: str = "Starter"):

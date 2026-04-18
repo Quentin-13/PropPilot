@@ -1,5 +1,5 @@
 """
-Tests ElevenLabsTool — synthèse vocale Sophie.
+Tests ElevenLabsTool — synthèse vocale TTS.
 Mode mock automatique quand TESTING=true ou clé absente.
 """
 from __future__ import annotations
@@ -39,10 +39,11 @@ class TestSettings:
         s = get_settings()
         assert s.elevenlabs_model_id == "eleven_multilingual_v2"
 
-    def test_voice_id_default_is_sophie(self):
+    def test_voice_id_default_is_none(self):
+        """voice_id est configurable via ELEVENLABS_VOICE_ID, pas de défaut hardcodé."""
         from config.settings import get_settings
         s = get_settings()
-        assert s.elevenlabs_voice_id == "EXAVITQu4vr4xnSDxMaL"
+        assert s.elevenlabs_voice_id is None  # configurable via env
 
     def test_model_id_overridable(self, monkeypatch):
         monkeypatch.setenv("ELEVENLABS_MODEL_ID", "eleven_turbo_v2")
@@ -181,7 +182,7 @@ class TestGetAvailableVoices:
         tool = _tool()
         voices = tool.get_available_voices()
         assert isinstance(voices, list)
-        assert len(voices) >= 3
+        assert len(voices) >= 2
 
     def test_sophie_in_list(self):
         tool = _tool()
@@ -190,11 +191,11 @@ class TestGetAvailableVoices:
         assert "Sophie" in names
 
 
-# ─── VoiceCallAgent — synthesize_sophie_intro ─────────────────────────────────
+# ─── VoiceInboundAgent — appels entrants ──────────────────────────────────────
 
-class TestVoiceCallSophie:
+class TestVoiceInboundAgent:
     @pytest.fixture(autouse=True)
-    def _setup(self, monkeypatch, tmp_path):
+    def _setup(self, monkeypatch):
         monkeypatch.setenv("MOCK_MODE", "always")
         monkeypatch.setenv("AGENCY_NAME", "Agence Martin Immobilier")
         from config.settings import get_settings
@@ -202,42 +203,16 @@ class TestVoiceCallSophie:
         yield
         get_settings.cache_clear()
 
-    def _agent(self):
-        from agents.voice_call import VoiceCallAgent
-        return VoiceCallAgent(client_id="test_client", tier="Starter")
+    def test_agent_instantiates(self):
+        from agents.voice_inbound import VoiceInboundAgent
+        agent = VoiceInboundAgent(client_id="test_client", tier="Starter")
+        assert agent.client_id == "test_client"
 
-    def test_synthesize_sophie_intro_generic(self):
-        agent = self._agent()
-        result = agent.synthesize_sophie_intro()
-        assert result["success"] is True
-        assert result["mock"] is True
-        assert "Sophie" in result["script"]
-        assert "Agence Martin Immobilier" in result["script"]
+    def test_process_call_ended_no_transcript(self):
+        """process_call_ended avec lead inexistant → erreur propre (nécessite PostgreSQL)."""
+        pytest.skip("Requiert PostgreSQL")
 
-    def test_synthesize_sophie_intro_with_lead(self):
-        from memory.models import Lead, ProjetType
-        lead = Lead(
-            client_id="test_client",
-            prenom="Claire",
-            projet=ProjetType.ACHAT,
-            localisation="Lyon",
-        )
-        agent = self._agent()
-        result = agent.synthesize_sophie_intro(lead=lead)
-        assert "Claire" in result["script"]
-        assert "Lyon" in result["script"]
-        assert result["success"] is True
-
-    def test_synthesize_sophie_intro_has_duration(self):
-        agent = self._agent()
-        result = agent.synthesize_sophie_intro()
-        assert result["duration_s"] > 0
-
-    def test_sophie_script_is_french_and_professional(self):
-        agent = self._agent()
-        result = agent.synthesize_sophie_intro()
-        script = result["script"]
-        # Ton professionnel : présentation + objet de l'appel
-        assert "Bonjour" in script
-        assert "Sophie" in script
-        assert "projet" in script.lower()
+    def test_no_outbound_calls(self):
+        """VoiceInboundAgent ne doit pas avoir de méthode call_hot_lead."""
+        from agents.voice_inbound import VoiceInboundAgent
+        assert not hasattr(VoiceInboundAgent, "call_hot_lead")

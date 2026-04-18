@@ -288,7 +288,9 @@ class TestSendConfirmation:
 
 # ─── Tâche 5 — VoiceCallAgent : 3 créneaux + confirmation ─────────────────────
 
-class TestVoiceCallCalendarIntegration:
+class TestVoiceInboundCalendarIntegration:
+    """Tests de l'intégration calendrier avec les appels entrants."""
+
     @pytest.fixture(autouse=True)
     def _setup(self, monkeypatch):
         monkeypatch.setenv("MOCK_MODE", "always")
@@ -298,57 +300,22 @@ class TestVoiceCallCalendarIntegration:
         yield
         get_settings.cache_clear()
 
-    def test_call_hot_lead_has_3_slots_in_dynamic_vars(self):
-        """call_hot_lead transmet creneau_3 en plus des 2 existants."""
-        from agents.voice_call import VoiceCallAgent
-
-        # On mock RetellTool pour capturer les dynamic_vars
-        captured = {}
-
-        class MockRetell:
-            def create_outbound_call(self, to_phone, retell_llm_dynamic_variables, metadata):
-                captured.update(retell_llm_dynamic_variables)
-                return {"success": True, "call_id": "mock_call_001"}
-
-        with patch("agents.voice_call.RetellTool", return_value=MockRetell()):
-            # Setup DB minimal
-            try:
-                from memory.database import init_database, get_connection
-                init_database()
-                from memory.lead_repository import create_lead
-                from memory.models import Lead, LeadStatus, ProjetType
-                lead = create_lead(Lead(
-                    client_id="test_c",
-                    prenom="Pierre",
-                    telephone="+33611223355",
-                    projet=ProjetType.ACHAT,
-                    score=8,
-                    statut=LeadStatus.QUALIFIE,
-                ))
-                agent = VoiceCallAgent(client_id="test_c", tier="Starter")
-                agent.call_hot_lead(lead.id)
-                assert "creneau_1" in captured
-                assert "creneau_2" in captured
-                assert "creneau_3" in captured
-            except Exception:
-                pytest.skip("PostgreSQL non disponible")
-
     def test_auto_book_rdv_sends_confirmation_email(self):
-        """_auto_book_rdv appelle book_appointment avec send_email=True."""
-        from agents.voice_call import VoiceCallAgent
+        """_auto_book_rdv appelle book_appointment avec send_email=True si email présent."""
+        from agents.voice_inbound import VoiceInboundAgent
         from memory.models import Lead, ProjetType
 
         lead = Lead(
             client_id="test_c",
-            prenom="Sophie",
-            email="sophie@test.fr",
+            prenom="Claire",
+            email="claire@test.fr",
             projet=ProjetType.ACHAT,
             localisation="Paris",
             score=9,
         )
         lead.id = "lead_test_001"
 
-        agent = VoiceCallAgent(client_id="test_c", tier="Starter")
+        agent = VoiceInboundAgent(client_id="test_c", tier="Starter")
         result = agent._auto_book_rdv(lead=lead, summary="RDV confirmé mardi à 10h")
 
         assert result is not None
@@ -356,7 +323,8 @@ class TestVoiceCallCalendarIntegration:
         assert "email_sent" in result
 
     def test_auto_book_rdv_no_email_without_lead_email(self):
-        from agents.voice_call import VoiceCallAgent
+        """_auto_book_rdv n'envoie pas d'email si le lead n'a pas d'adresse email."""
+        from agents.voice_inbound import VoiceInboundAgent
         from memory.models import Lead, ProjetType
 
         lead = Lead(
@@ -368,7 +336,7 @@ class TestVoiceCallCalendarIntegration:
         )
         lead.id = "lead_test_002"
 
-        agent = VoiceCallAgent(client_id="test_c", tier="Starter")
+        agent = VoiceInboundAgent(client_id="test_c", tier="Starter")
         result = agent._auto_book_rdv(lead=lead, summary="Pas d'email")
         assert result is not None
         assert result.get("email_sent") is False

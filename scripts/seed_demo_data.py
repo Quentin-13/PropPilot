@@ -193,7 +193,7 @@ LEADS_DATA = [
 CONVERSATIONS_DEMO = {
     "+33612345601": [
         ("user", "Bonjour, j'ai vu une annonce sur SeLoger pour un appartement à Lyon 6e"),
-        ("assistant", "[MOCK] Bonjour Mathieu ! Je suis Sophie, conseillère immobilier chez notre agence. Merci de nous avoir contactés ! Quel est votre projet immobilier : achat, vente, location ou estimation ?"),
+        ("assistant", "[MOCK] Bonjour Mathieu ! Je suis Léa, conseillère immobilier chez notre agence. Merci de nous avoir contactés ! Quel est votre projet immobilier : achat, vente, location ou estimation ?"),
         ("user", "Je cherche à acheter un appartement, 3 pièces minimum"),
         ("assistant", "[MOCK] Très bien ! Dans quel secteur de Lyon recherchez-vous précisément, et quel est votre budget ?"),
         ("user", "Lyon 6e ou 8e, budget 480 000€ maxi"),
@@ -205,7 +205,7 @@ CONVERSATIONS_DEMO = {
     ],
     "+33612345602": [
         ("user", "Je voudrais vendre mon appartement à Bordeaux Chartrons"),
-        ("assistant", "[MOCK] Bonjour Claire ! Je suis Sophie de l'agence. Pouvez-vous me donner quelques détails sur le bien ? Surface, nombre de pièces ?"),
+        ("assistant", "[MOCK] Bonjour Claire ! Je suis Léa de l'agence. Pouvez-vous me donner quelques détails sur le bien ? Surface, nombre de pièces ?"),
         ("user", "80m², 3 pièces, belle vue sur les quais, DPE B"),
         ("assistant", "[MOCK] Très beau bien ! Quel est votre prix de vente souhaité et dans quel délai ?"),
         ("user", "320 000€, j'aimerais vendre dans 3 mois max. Situation personnelle compliquée."),

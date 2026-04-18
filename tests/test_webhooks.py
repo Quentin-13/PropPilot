@@ -36,8 +36,10 @@ def _create_test_user(user_id: str = "test_user_wh"):
         return False
 
 
-def test_webhook_leads_user_not_found(client):
-    """User inexistant → 404."""
+def test_webhook_leads_user_not_found(client, _reset_db_between_tests):
+    """User inexistant → 404 (nécessite PostgreSQL)."""
+    if not _reset_db_between_tests:
+        pytest.skip("PostgreSQL non disponible")
     resp = client.post(
         "/webhooks/nonexistent_user_999/leads",
         json={"prenom": "Marie", "telephone": "+33600000001", "source": "seloger"},

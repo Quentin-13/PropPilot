@@ -62,10 +62,10 @@ def test_stripe_price_ids_all_plans():
 def test_stripe_price_ids_values():
     """Les price_id correspondent aux valeurs fournies."""
     from memory.stripe_billing import STRIPE_PRICE_IDS
-    assert STRIPE_PRICE_IDS["Indépendant"] == "price_1T7HCOL2FehJuqYZbPX1cpIK"
-    assert STRIPE_PRICE_IDS["Starter"]     == "price_1T6U3DL2FehJuqYZSnHDZRcF"
-    assert STRIPE_PRICE_IDS["Pro"]         == "price_1T6U3PL2FehJuqYZ5xK5YDJ3"
-    assert STRIPE_PRICE_IDS["Elite"]       == "price_1T6U3dL2FehJuqYZ7VoAwlGn"
+    assert STRIPE_PRICE_IDS["Indépendant"] == "price_1TBYHLL2FehJuqYZzGbLB6Yo"
+    assert STRIPE_PRICE_IDS["Starter"]     == "price_1TBYIVL2FehJuqYZIN0Ide2e"
+    assert STRIPE_PRICE_IDS["Pro"]         == "price_1TBYJpL2FehJuqYZINa8AS3q"
+    assert STRIPE_PRICE_IDS["Elite"]       == "price_1TBYKlL2FehJuqYZ24KzL7oJ"
 
 
 def test_plan_features_all_plans():
@@ -258,7 +258,7 @@ def test_stripe_plans_prices(api_client):
     """Les prix correspondent aux valeurs définies."""
     resp = api_client.get("/stripe/plans")
     prices = {p["name"]: p["prix_mensuel"] for p in resp.json()["plans"]}
-    assert prices["Indépendant"] == 290
+    assert prices["Indépendant"] == 250
     assert prices["Starter"] == 790
     assert prices["Pro"] == 1490
     assert prices["Elite"] == 2990

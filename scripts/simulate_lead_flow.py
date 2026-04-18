@@ -268,18 +268,9 @@ def simulate_full_mandate_flow() -> dict:
         log("Échec création lead — arrêt simulation", "error")
         return {"scenario": "full", "success": False}
 
-    # Step 2 : Simulation appel voix IA
-    print(f"\n  📞 ÉTAPE 2 : Appel voix IA (lead {lead_id[:12]})")
-    try:
-        from agents.voice_call import VoiceCallAgent
-        voice_agent = VoiceCallAgent(client_id=CLIENT_ID, tier=TIER)
-        call_result = voice_agent.call_hot_lead(lead_id)
-        if call_result.get("success"):
-            log(f"Appel initié : {call_result.get('call_id', 'mock')[:16]}", "success")
-        else:
-            log(f"Appel non effectué : {call_result.get('message', '')}", "warning")
-    except Exception as e:
-        log(f"Appel ignoré en simulation : {e}", "warning")
+    # Step 2 : Appels sortants désactivés — flux full SMS entrant
+    print(f"\n  📱 ÉTAPE 2 : Appels sortants désactivés (full SMS entrant)")
+    log("Le prospect appellera le 07 — qualification SMS déclenchée à l'appel entrant.", "info")
 
     # Step 3 : Génération annonce pour ce lead
     print("\n  ✍️ ÉTAPE 3 : Génération annonce SEO")

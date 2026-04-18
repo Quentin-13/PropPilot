@@ -468,10 +468,10 @@ async def retell_webhook(request: Request):
         logger.warning(f"Retell webhook sans lead_id ou call_id — ignoré")
         return JSONResponse({"status": "ignored", "reason": "missing_lead_id"})
 
-    # Traitement post-appel via VoiceCallAgent
-    from agents.voice_call import VoiceCallAgent
+    # Traitement post-appel via VoiceInboundAgent
+    from agents.voice_inbound import VoiceInboundAgent
     settings = get_settings()
-    agent = VoiceCallAgent(client_id=client_id, tier=settings.agency_tier)
+    agent = VoiceInboundAgent(client_id=client_id, tier=settings.agency_tier)
 
     try:
         result = agent.process_call_ended(call_id=call_id, lead_id=lead_id)
@@ -647,8 +647,8 @@ async def portal_webhook(portal_name: str, request: Request):
 @rate_limit(max_calls=30, window_seconds=60)
 async def twilio_voice_inbound(request: Request, background_tasks: BackgroundTasks):
     """
-    Appel entrant sur le 06/07 :
-    1. Joue le message vocal Sophie (personnalisé avec prénom + agence)
+    Appel entrant sur le 07 :
+    1. Joue le message vocal de l'agence (personnalisé avec nom + agence)
     2. Envoie un SMS de qualification en background
     """
     if not await validate_twilio_signature(request):
@@ -710,7 +710,7 @@ async def twilio_voice_inbound(request: Request, background_tasks: BackgroundTas
 
         background_tasks.add_task(_qualify)
 
-    # TwiML — message vocal Sophie
+    # TwiML — message vocal entrant
     from tools.twilio_tool import TwilioTool
     twiml = TwilioTool().generate_inbound_twiml(
         agent_name=agent_name,
@@ -719,9 +719,15 @@ async def twilio_voice_inbound(request: Request, background_tasks: BackgroundTas
     return Response(content=twiml, media_type="application/xml")
 
 
+@app.post("/twiml/inbound", tags=["twiml"], response_class=Response)
+async def twiml_inbound_redirect(request: Request, background_tasks: BackgroundTasks):
+    """Rétro-compatibilité — alias du webhook voix entrant."""
+    return await twilio_voice_inbound(request, background_tasks)
+
+
 @app.post("/twiml/sophie/inbound", tags=["twiml"], response_class=Response)
-async def twiml_sophie_inbound_redirect(request: Request, background_tasks: BackgroundTasks):
-    """Rétro-compatibilité — redirige vers le nouveau webhook voix."""
+async def twiml_sophie_inbound_compat(request: Request, background_tasks: BackgroundTasks):
+    """Rétro-compatibilité legacy — redirige vers le webhook voix entrant."""
     return await twilio_voice_inbound(request, background_tasks)
 
 
@@ -875,19 +881,16 @@ async def api_process_nurturing(request: Request):
 @app.post("/api/voice/call-hot-leads", tags=["api"])
 async def api_call_hot_leads(request: Request):
     """
-    Déclenche des appels sortants vers les leads chauds non joignables.
-    À appeler via un cron job (ex. toutes les 30 min en heures ouvrables).
+    Appels sortants automatiques désactivés — architecture full SMS.
+    Les prospects appellent le 07, l'agent répond et déclenche la qualification SMS.
+    Endpoint conservé pour compatibilité — retourne toujours disabled.
     """
-    from agents.voice_call import VoiceCallAgent
-
-    agent = VoiceCallAgent(client_id=request.state.user_id, tier=request.state.tier)
-    results = agent.call_leads_not_responded(min_score=7, sms_delay_min=30)
-
-    initiated = len([r for r in results if r.get("success")])
     return JSONResponse({
-        "total_leads": len(results),
-        "calls_initiated": initiated,
-        "results": results,
+        "disabled": True,
+        "message": "Appels sortants désactivés — flux commercial 100% SMS entrant.",
+        "total_leads": 0,
+        "calls_initiated": 0,
+        "results": [],
     })
 
 

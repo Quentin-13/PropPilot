@@ -107,131 +107,74 @@ def _set_session(
     st.session_state["is_admin"] = is_admin
 
 
-# ─── Sélection de forfait inline ──────────────────────────────────────────────
+# ─── Attente d'activation ─────────────────────────────────────────────────────
 
 def _show_plan_selection() -> None:
     """
-    Affiche la grille des 4 forfaits avec boutons de souscription.
-    Appelé quand l'utilisateur est authentifié mais plan_active=False.
+    Affiche la page "En attente d'activation" pour les comptes non encore activés.
+    L'activation est manuelle (Quentin envoie le lien Stripe après signature du devis).
     """
-    from memory.stripe_billing import PLAN_FEATURES
-    from config.settings import get_settings as _gs
-
-    settings = _gs()
-    token = st.session_state.get("token", "")
     agency_name = st.session_state.get("agency_name", "Mon Agence")
 
     st.markdown("""
     <style>
     [data-testid="stSidebarNav"] { display: none; }
-    /* Boutons forfait : bleu #3b82f6 */
-    [data-testid="stButton"] > button[kind="primary"] {
-        background-color: #3b82f6 !important;
-        border-color: #3b82f6 !important;
-        color: white !important;
-    }
-    [data-testid="stButton"] > button[kind="primary"]:hover {
-        background-color: #2563eb !important;
-        border-color: #2563eb !important;
-    }
     </style>
     """, unsafe_allow_html=True)
 
-    _, col, _ = st.columns([1, 4, 1])
+    _, col, _ = st.columns([1, 2, 1])
     with col:
         st.markdown(f"""
-        <div style="text-align: center; padding: 32px 0 24px 0;">
-            {_logo(56, "ps")}
-            <h1 style="margin: 8px 0 4px 0; font-size: 1.8rem; color: white;">Choisissez votre forfait</h1>
-            <p style="color: #cbd5e1; margin: 0;">
-                Tous les agents IA inclus dès le premier forfait.<br>
-                Seules les limites mensuelles diffèrent.
+        <div style="text-align: center; padding: 48px 0 32px 0;">
+            {_logo(64, "wa")}
+            <h1 style="margin: 12px 0 8px 0; font-size: 2rem; color: white;">Compte en attente</h1>
+            <p style="color: #94a3b8; font-size: 1rem; margin: 0;">
+                Bienvenue, <strong style="color: white;">{agency_name}</strong> !<br>
+                Votre compte a bien été créé.
             </p>
         </div>
         """, unsafe_allow_html=True)
 
-        # Message contextuel
-        inactive_reason = st.session_state.pop("plan_inactive_reason", None) if "plan_inactive_reason" in st.session_state else None
-        if inactive_reason == "inactive":
-            st.warning("Votre abonnement est inactif. Souscrivez à un forfait pour continuer.")
-        else:
-            st.info(f"Bienvenue, **{agency_name}** ! Choisissez un forfait pour accéder à PropPilot.")
-
-        st.markdown("")
-
-        # Grille forfaits
-        plan_names = ["Indépendant", "Starter", "Pro", "Elite"]
-        cols = st.columns(4)
-
-        def _create_checkout(plan_name: str) -> dict:
-            base = settings.api_url.rstrip("/")
-            try:
-                resp = httpx.post(
-                    f"{base}/stripe/create-checkout-session",
-                    json={
-                        "plan": plan_name,
-                        "success_url": "https://proppilot-dashboard-production.up.railway.app/10_success",
-                        "cancel_url": "https://proppilot-dashboard-production.up.railway.app/",
-                    },
-                    headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-                    timeout=10.0,
-                )
-                data = resp.json()
-                # FastAPI renvoie {"detail": "..."} sur les erreurs HTTP — normalisation
-                if not resp.is_success:
-                    return {"error": data.get("detail", f"Erreur HTTP {resp.status_code}")}
-                return data
-            except Exception as e:
-                return {"error": str(e)}
-
-        def _redirect(url: str) -> None:
-            st.markdown(
-                f'<meta http-equiv="refresh" content="0; url={url}">',
-                unsafe_allow_html=True,
-            )
-            st.info(f"Redirection en cours… [Cliquez ici si la redirection ne se lance pas]({url})")
-
-        for col, plan_name in zip(cols, plan_names):
-            features = PLAN_FEATURES[plan_name]
-            border = "#3b82f6" if plan_name == "Starter" else "#475569"
-
-            with col:
-                st.markdown(f"""
-                <div style="border: 2px solid {border}; border-radius: 10px; padding: 20px;
-                            text-align: center; min-height: 340px; background: rgba(255,255,255,0.04);">
-                    <div style="font-size: 17px; font-weight: 800; color: white;">
-                        {plan_name}
-                    </div>
-                    <div style="font-size: 26px; font-weight: 900; color: #f59e0b; margin: 8px 0;">
-                        {features['prix']}
-                    </div>
-                    <div style="font-size: 12px; color: #cbd5e1; margin-bottom: 10px;">
-                        {features['voix']} voix · {features['sms']}
-                    </div>
-                    <div style="text-align: left; font-size: 12px; color: #e2e8f0;">
-                        {''.join(f"<div>✅ {f}</div>" for f in features['features'][:5])}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-
-                st.markdown("")
-                if st.button(f"Choisir {plan_name}", key=f"plan_select_{plan_name}",
-                             use_container_width=True, type="primary"):
-                    with st.spinner(f"Préparation du paiement {plan_name}…"):
-                        result = _create_checkout(plan_name)
-                    checkout_url = result.get("checkout_url")
-                    if "error" in result or not checkout_url:
-                        st.error(f"Erreur : {result.get('error', 'Réponse inattendue du serveur.')}")
-                    else:
-                        _redirect(checkout_url)
-
-        st.markdown("")
         st.markdown("""
-        <div style="text-align: center; color: #94a3b8; font-size: 12px; margin-top: 16px;">
-            60 Jours Satisfait ou Remboursé · Paiement sécurisé Stripe ·
-            <a href="mailto:contact@proppilot.fr" style="color: #94a3b8;">contact@proppilot.fr</a>
+        <div style="background: #1e2130; border-radius: 12px; padding: 28px 32px;
+                    border-left: 4px solid #3b82f6; margin: 0 0 24px 0;">
+            <div style="font-size: 1.05rem; font-weight: 700; color: white; margin-bottom: 10px;">
+                Votre accès est en cours d'activation
+            </div>
+            <p style="color: #cbd5e1; margin: 0; line-height: 1.7;">
+                PropPilot fonctionne sur invitation — votre abonnement est activé manuellement
+                après signature de votre devis.<br><br>
+                Si vous avez déjà échangé avec nous et souhaitez démarrer,
+                contactez-nous ci-dessous.
+            </p>
         </div>
         """, unsafe_allow_html=True)
+
+        st.link_button(
+            "📅 Réserver un appel de démarrage",
+            "https://calendly.com/contact-proppilot/appel-proppilot-20min",
+            use_container_width=True,
+            type="primary",
+        )
+
+        st.markdown("")
+
+        st.markdown("""
+        <div style="text-align: center; color: #94a3b8; font-size: 0.9rem;">
+            Ou écrivez-nous directement :<br>
+            <a href="mailto:contact@proppilot.fr"
+               style="color: #60a5fa; font-weight: 600;">contact@proppilot.fr</a>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        if st.button("🚪 Déconnexion", use_container_width=False, key="_logout_btn_pending"):
+            from dashboard.auth_cookies import clear_session as _cookie_clear
+            _cookie_clear()
+            for key in ["authenticated", "token", "user_id", "agency_name", "plan", "plan_active", "is_admin"]:
+                st.session_state.pop(key, None)
+            st.rerun()
 
 
 # ─── Page login / signup ──────────────────────────────────────────────────────

@@ -191,7 +191,7 @@ class User:
     id: Optional[str] = None
     email: str = ""
     agency_name: str = ""
-    first_name: str = ""                      # Prénom du conseiller (message vocal Sophie)
+    first_name: str = ""                      # Prénom du conseiller (affiché dans les messages)
     plan: str = "Starter"
     plan_active: bool = False
     twilio_sms_number: Optional[str] = None  # Numéro 06/07 Twilio assigné à ce client

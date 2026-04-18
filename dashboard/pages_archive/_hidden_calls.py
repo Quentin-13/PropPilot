@@ -34,8 +34,8 @@ st.markdown(f"**{agency_name}** · Forfait {tier}")
 
 # ─── KPIs appels ──────────────────────────────────────────────────────────────
 
-from agents.voice_call import VoiceCallAgent
-agent = VoiceCallAgent(client_id=client_id, tier=tier)
+from agents.voice_inbound import VoiceInboundAgent
+agent = VoiceInboundAgent(client_id=client_id, tier=tier)
 
 # Appels depuis Retell (mock ou réel)
 calls = agent.get_calls_history(limit=50)

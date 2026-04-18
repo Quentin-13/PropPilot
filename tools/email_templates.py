@@ -96,13 +96,11 @@ def welcome_signup(agency_name: str, plans_url: str = "https://proppilot-dashboa
     <p>Votre compte a été créé avec succès. Vous êtes à quelques secondes de rejoindre
     200+ agences et mandataires qui ne perdent plus jamais un lead la nuit.</p>
 
-    <p><strong>Votre équipe de 7 collaborateurs IA vous attend :</strong></p>
+    <p><strong>Votre équipe de 5 collaborateurs IA vous attend :</strong></p>
     <ul>
       <li>🎯 <strong>Léa</strong> — Qualifie vos leads entrants 24h/24</li>
       <li>📱 <strong>Marc</strong> — Gère vos séquences de nurturing SMS</li>
-      <li>📞 <strong>Sophie</strong> — Effectue et reçoit vos appels voix</li>
       <li>📝 <strong>Hugo</strong> — Rédige vos annonces immobilières SEO</li>
-
       <li>📊 <strong>Thomas</strong> — Estime vos biens via DVF</li>
       <li>🔍 <strong>Julie</strong> — Détecte les anomalies dans vos dossiers</li>
     </ul>
