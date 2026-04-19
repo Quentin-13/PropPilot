@@ -55,10 +55,6 @@ class AgencyState(TypedDict):
     status: str             # "new" | "qualifying" | "scored" | "routed" | "error"
     error: Optional[str]
 
-    # Appel voix — conservé pour compatibilité ascendante (entrants uniquement)
-    voice_call_id: Optional[str]
-    voice_call_triggered: bool
-
 
 def make_initial_state(
     client_id: str,
@@ -91,8 +87,6 @@ def make_initial_state(
         messages_log=[],
         status="new",
         error=None,
-        voice_call_id=None,
-        voice_call_triggered=False,
     )
 
 

@@ -44,7 +44,7 @@ class ApimoCRMConnector(BaseCRMConnector):
             import httpx
             async with httpx.AsyncClient(timeout=10) as client:
                 r = await client.get(
-                    f"{self.api_base_url}/providers/{agency_id}",
+                    f"{self.api_base_url}/providers/{self.agency_id}",
                     headers=self._client._headers(),
                 )
                 if r.status_code == 200:

@@ -191,10 +191,12 @@ class User:
     id: Optional[str] = None
     email: str = ""
     agency_name: str = ""
-    first_name: str = ""                      # Prénom du conseiller (affiché dans les messages)
+    first_name: str = ""                           # Prénom du conseiller (affiché dans les messages)
     plan: str = "Starter"
     plan_active: bool = False
-    twilio_sms_number: Optional[str] = None  # Numéro 06/07 Twilio assigné à ce client
+    twilio_sms_number: Optional[str] = None       # Numéro 06/07 Twilio assigné à ce client
+    smspartner_number: Optional[str] = None       # Numéro SMSPartner alternatif
+    is_admin: bool = False                         # Accès back-office PropPilot
     created_at: datetime = field(default_factory=datetime.now)
 
 

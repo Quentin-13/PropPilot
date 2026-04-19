@@ -36,7 +36,7 @@ def log_action(
         action_result: Résultat de l'action (succès, message envoyé, score, ...)
         next_action: Prochaine action prévue
         next_action_at: Date/heure de la prochaine action
-        agent_name: Nom de l'agent responsable (lea, marc, sophie, orchestrateur)
+        agent_name: Nom de l'agent responsable (lea, marc, hugo, thomas, julie, orchestrateur)
         metadata: Données supplémentaires (JSON)
     """
     meta_json = json.dumps(metadata or {}, ensure_ascii=False)

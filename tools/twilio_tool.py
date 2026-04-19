@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 class TwilioTool:
     """
     Wrapper Twilio avec fallback mock automatique.
-    send_sms() : SMS sortants Marc
-    generate_inbound_twiml() : message vocal appels entrants Sophie
+    send_sms() : SMS sortants (Marc, Léa)
+    generate_inbound_twiml() : message vocal appels entrants (VoiceInboundAgent)
     """
 
     def __init__(self):
