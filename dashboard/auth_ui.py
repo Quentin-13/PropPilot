@@ -90,6 +90,9 @@ def _do_signup(email: str, password: str, agency_name: str) -> dict:
         return {"error": str(e)}
 
 
+_DEMO_EMAIL = "demo.dumortier@proppilot.fr"
+
+
 def _set_session(
     token: str,
     user_id: str,
@@ -97,6 +100,7 @@ def _set_session(
     plan: str,
     plan_active: bool = True,
     is_admin: bool = False,
+    email: str = "",
 ) -> None:
     st.session_state["authenticated"] = True
     st.session_state["token"] = token
@@ -105,6 +109,8 @@ def _set_session(
     st.session_state["plan"] = plan or "Starter"
     st.session_state["plan_active"] = plan_active
     st.session_state["is_admin"] = is_admin
+    st.session_state["email"] = email
+    st.session_state["is_demo"] = (email == _DEMO_EMAIL)
 
 
 # ─── Attente d'activation ─────────────────────────────────────────────────────
@@ -238,9 +244,10 @@ def show_auth_page() -> None:
                             plan=plan,
                             plan_active=plan_active,
                             is_admin=is_admin,
+                            email=email,
                         )
                         if remember:
-                            _cookie_save(uid, token, aname, plan, plan_active, is_admin)
+                            _cookie_save(uid, token, aname, plan, plan_active, is_admin, email)
                         if not plan_active:
                             st.session_state["plan_inactive_reason"] = "inactive"
                         st.rerun()
@@ -292,6 +299,15 @@ def show_auth_page() -> None:
         """, unsafe_allow_html=True)
 
 
+# ─── Garde mode démo ──────────────────────────────────────────────────────────
+
+def require_non_demo() -> None:
+    """Bloque la page pour les comptes démo (affiche message + st.stop)."""
+    if st.session_state.get("is_demo", False):
+        st.info("Cette fonctionnalité n'est pas disponible en mode démo.")
+        st.stop()
+
+
 # ─── Garde d'authentification ─────────────────────────────────────────────────
 
 def require_auth(require_active_plan: bool = True) -> None:
@@ -319,6 +335,7 @@ def require_auth(require_active_plan: bool = True) -> None:
                 plan=saved["plan"],
                 plan_active=saved["plan_active"],
                 is_admin=saved["is_admin"],
+                email=saved.get("email", ""),
             )
             st.rerun()
 
@@ -341,8 +358,8 @@ def render_sidebar_logout() -> None:
     """
     agency_name = st.session_state.get("agency_name", "Mon Agence")
     plan = st.session_state.get("plan", "Starter")
-
     is_admin = st.session_state.get("is_admin", False)
+    is_demo = st.session_state.get("is_demo", False)
 
     with st.sidebar:
         if is_admin:
@@ -354,6 +371,20 @@ def render_sidebar_logout() -> None:
   { display: none !important; }
 [data-testid="stSidebarNav"] li:nth-child(1)
   { display: block !important; }
+</style>
+""", unsafe_allow_html=True)
+        elif is_demo:
+            # Mode démo : Pipeline, Leads, Conversations, Calendrier, Stats uniquement
+            st.markdown("""
+<style>
+[data-testid="stSidebarNav"] a[href*="proprietaire"]  { display: none !important; }
+[data-testid="stSidebarNav"] a[href*="admin"]          { display: none !important; }
+[data-testid="stSidebarNav"] a[href*="utilisation"]    { display: none !important; }
+[data-testid="stSidebarNav"] a[href*="annonce"]        { display: none !important; }
+[data-testid="stSidebarNav"] a[href*="estimation"]     { display: none !important; }
+[data-testid="stSidebarNav"] a[href*="parametres"]     { display: none !important; }
+[data-testid="stSidebarNav"] a[href*="facturation"]    { display: none !important; }
+[data-testid="stSidebarNav"] a[href*="integrations"]   { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
         else:
@@ -373,12 +404,13 @@ def render_sidebar_logout() -> None:
 </style>
 """, unsafe_allow_html=True)
 
+        plan_line = "" if is_demo else f'<div style="font-size: 12px; color: #94a3b8;">Forfait {plan}</div>'
         st.markdown(f"""
         <div style="padding: 8px 0 20px 0; display: flex; align-items: center; gap: 10px;">
             {_logo(36, "sb")}
             <div>
               <div style="font-size: 16px; font-weight: 700; color: white;">{agency_name}</div>
-              <div style="font-size: 12px; color: #94a3b8;">Forfait {plan}</div>
+              {plan_line}
             </div>
         </div>
         """, unsafe_allow_html=True)

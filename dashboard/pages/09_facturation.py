@@ -16,8 +16,9 @@ from config.settings import get_settings
 
 st.set_page_config(page_title="Abonnement — PropPilot", layout="wide", page_icon="💳")
 
-from dashboard.auth_ui import require_auth, render_sidebar_logout
+from dashboard.auth_ui import require_auth, render_sidebar_logout, require_non_demo
 require_auth(require_active_plan=False)
+require_non_demo()
 render_sidebar_logout()
 
 settings = get_settings()

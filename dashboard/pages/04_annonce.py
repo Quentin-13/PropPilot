@@ -19,8 +19,9 @@ st.set_page_config(
     layout="wide",
 )
 
-from dashboard.auth_ui import require_auth, render_sidebar_logout
+from dashboard.auth_ui import require_auth, render_sidebar_logout, require_non_demo
 require_auth()
+require_non_demo()
 render_sidebar_logout()
 
 settings = get_settings()

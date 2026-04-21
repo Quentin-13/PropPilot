@@ -309,6 +309,12 @@ def _run_migrations(conn) -> None:
     ]:
         conn.execute(col_sql)
 
+    # Contrainte UNIQUE sur twilio_sms_number — un numéro 07 = un seul client
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_twilio_sms_number "
+        "ON users(twilio_sms_number) WHERE twilio_sms_number IS NOT NULL"
+    )
+
     # Migration lead_journey
     conn.execute(
         "ALTER TABLE lead_journey ADD COLUMN IF NOT EXISTS metadata TEXT DEFAULT '{}'"

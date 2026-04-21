@@ -23,7 +23,11 @@
       "Bash(ping:*)",
       "Bash(curl:*)",
       "Bash(mv /Users/quentin/PropPilot/dashboard/pages/04_calls.py /Users/quentin/PropPilot/dashboard/pages/_hidden_calls.py)",
-      "Bash(mv /Users/quentin/PropPilot/dashboard/pages/10_success.py /Users/quentin/PropPilot/dashboard/pages/_hidden_success.py)"
+      "Bash(mv /Users/quentin/PropPilot/dashboard/pages/10_success.py /Users/quentin/PropPilot/dashboard/pages/_hidden_success.py)",
+      "Bash(TESTING=true python:*)",
+      "Bash(TESTING=true python3:*)",
+      "Bash(pg_isready)",
+      "Bash(brew services *)"
     ]
   }
 }

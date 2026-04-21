@@ -3,10 +3,13 @@ Configuration centrale — lecture .env via Pydantic Settings v2.
 """
 from __future__ import annotations
 
+import logging
 import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal, Optional
+
+_log = logging.getLogger(__name__)
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -166,8 +169,9 @@ def get_settings() -> Settings:
 def assign_twilio_number(user_id: str) -> Optional[str]:
     """
     Attribue un numéro Twilio libre à un client.
-    Cherche d'abord dans la DB un numéro non attribué du pool TWILIO_AVAILABLE_NUMBERS.
-    Retourne le numéro assigné, ou None si le pool est épuisé.
+    Attribution atomique via CTE UPDATE…RETURNING : une seule instruction SQL
+    protège contre les races concurrentes. La contrainte UNIQUE DB est le filet.
+    Retourne le numéro assigné, ou None si le pool est épuisé / collision.
     """
     settings = get_settings()
     pool = settings.twilio_available_numbers
@@ -176,33 +180,45 @@ def assign_twilio_number(user_id: str) -> Optional[str]:
 
     from memory.database import get_connection
 
-    with get_connection() as conn:
-        # Vérifier si l'user a déjà un numéro
-        row = conn.execute(
-            "SELECT twilio_sms_number FROM users WHERE id = %s",
-            (user_id,),
-        ).fetchone()
-        if row and row["twilio_sms_number"]:
-            return row["twilio_sms_number"]
+    try:
+        with get_connection() as conn:
+            # Idempotent : renvoie le numéro déjà attribué
+            row = conn.execute(
+                "SELECT twilio_sms_number FROM users WHERE id = %s",
+                (user_id,),
+            ).fetchone()
+            if row and row["twilio_sms_number"]:
+                return row["twilio_sms_number"]
 
-        # Trouver les numéros déjà assignés
-        taken_rows = conn.execute(
-            "SELECT twilio_sms_number FROM users WHERE twilio_sms_number IS NOT NULL"
-        ).fetchall()
-        taken = {r["twilio_sms_number"] for r in taken_rows}
+            # Atomic : choisit le 1er numéro libre ET l'attribue en une seule instruction
+            result = conn.execute(
+                """
+                WITH free AS (
+                    SELECT n AS number
+                    FROM unnest(%s::text[]) AS t(n)
+                    WHERE n NOT IN (
+                        SELECT twilio_sms_number FROM users
+                        WHERE twilio_sms_number IS NOT NULL
+                    )
+                    LIMIT 1
+                )
+                UPDATE users
+                    SET twilio_sms_number = free.number
+                FROM free
+                WHERE users.id = %s AND users.twilio_sms_number IS NULL
+                RETURNING users.twilio_sms_number
+                """,
+                (pool, user_id),
+            ).fetchone()
 
-        # Prendre le premier libre
-        available = [n for n in pool if n not in taken]
-        if not available:
-            return None
+            if not result or not result["twilio_sms_number"]:
+                _log.warning("[Twilio] Pool épuisé — aucun numéro disponible pour user %s", user_id)
+                return None
+            return result["twilio_sms_number"]
 
-        number = available[0]
-        conn.execute(
-            "UPDATE users SET twilio_sms_number = %s WHERE id = %s",
-            (number, user_id),
-        )
-
-    return number
+    except Exception as exc:
+        _log.warning("[Twilio] assign_twilio_number erreur pour user %s: %s", user_id, exc)
+        return None
 
 
 def release_twilio_number(user_id: str) -> bool:

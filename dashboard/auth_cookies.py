@@ -15,7 +15,7 @@ SESSION_DAYS = 30
 _SECRET = "PROPPILOT_SECRET_2026"
 
 _FIELDS = ["user_id", "token", "agency_name", "plan",
-           "plan_active", "is_admin", "hmac"]
+           "plan_active", "is_admin", "email", "hmac"]
 
 # Singleton manuel — NE PAS utiliser @st.cache_resource :
 # CookieManager est un widget Streamlit et ne peut pas être mis en cache.
@@ -52,6 +52,7 @@ def save_session(
     plan: str,
     plan_active: bool,
     is_admin: bool,
+    email: str = "",
 ) -> None:
     """Écrit tous les champs de session dans des cookies valables 30 jours."""
     cm = get_cookie_manager()
@@ -66,6 +67,7 @@ def save_session(
             "plan":         plan,
             "plan_active":  str(plan_active),
             "is_admin":     str(is_admin),
+            "email":        email,
             "hmac":         _hmac(str(user_id)),
         }
         for key, val in values.items():
@@ -101,6 +103,7 @@ def load_session() -> dict | None:
             "plan":        cm.get(f"{_PREFIX}plan") or "Starter",
             "plan_active": cm.get(f"{_PREFIX}plan_active") == "True",
             "is_admin":    cm.get(f"{_PREFIX}is_admin") == "True",
+            "email":       cm.get(f"{_PREFIX}email") or "",
         }
     except Exception as e:
         logger.error(f"load_session error : {e}")

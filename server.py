@@ -308,6 +308,7 @@ async def auth_login(body: _LoginRequest):
             "plan": row["plan"] if row else "Starter",
             "plan_active": bool(row["plan_active"]) if row else False,
             "is_admin": bool(row["is_admin"]) if row else False,
+            "email": body.email,
         })
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
@@ -680,17 +681,10 @@ async def twilio_voice_inbound(request: Request, background_tasks: BackgroundTas
                 agency_name = row["agency_name"] or agency_name
                 agent_name = row["first_name"] or agent_name
             else:
-                # Fallback : premier client actif
-                row = conn.execute(
-                    "SELECT id, plan, agency_name, first_name FROM users "
-                    "WHERE plan_active = TRUE AND is_admin = FALSE "
-                    "ORDER BY created_at DESC LIMIT 1"
-                ).fetchone()
-                if row:
-                    client_id = row["id"]
-                    tier = row["plan"]
-                    agency_name = row["agency_name"] or agency_name
-                    agent_name = row["first_name"] or agent_name
+                logger.warning(
+                    "[Twilio voice] Numéro 'To' inconnu : %s — appel ignoré (numéro non attribué)",
+                    to_number,
+                )
     except Exception as e:
         logger.warning(f"[Twilio voice] DB lookup: {e}")
 
@@ -754,9 +748,8 @@ async def twilio_sms_incoming(request: Request, background_tasks: BackgroundTask
 
     logger.info(f"[Twilio SMS entrant] {from_number} → {to_number}: {body[:80]}")
 
-    settings = get_settings()
-    client_id = settings.agency_client_id
-    tier = settings.agency_tier
+    client_id: str | None = None
+    tier = "Starter"
 
     try:
         from memory.database import get_connection
@@ -770,16 +763,18 @@ async def twilio_sms_incoming(request: Request, background_tasks: BackgroundTask
                 client_id = row["id"]
                 tier = row["plan"]
             else:
-                row = conn.execute(
-                    "SELECT id, plan FROM users "
-                    "WHERE plan_active = TRUE AND is_admin = FALSE "
-                    "ORDER BY created_at DESC LIMIT 1"
-                ).fetchone()
-                if row:
-                    client_id = row["id"]
-                    tier = row["plan"]
+                logger.warning(
+                    "[Twilio SMS] Numéro 'To' inconnu : %s — message rejeté (numéro non attribué)",
+                    to_number,
+                )
     except Exception as e:
         logger.warning(f"[Twilio SMS] DB lookup: {e}")
+
+    if not client_id:
+        return Response(
+            content="<?xml version='1.0' encoding='UTF-8'?><Response></Response>",
+            media_type="application/xml",
+        )
 
     def _process():
         from orchestrator import process_incoming_message

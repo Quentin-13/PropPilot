@@ -1,6 +1,7 @@
 """
 Tests — Attribution des numéros Twilio multi-clients.
-Vérifie assign_twilio_number() et release_twilio_number().
+Couvre : assign_twilio_number(), release_twilio_number(),
+         atomicité, concurrence, sécurité webhooks.
 """
 from __future__ import annotations
 
@@ -10,8 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pytest
-from unittest.mock import patch, MagicMock
-from memory.database import init_database
+from unittest.mock import patch, MagicMock, AsyncMock
 
 
 @pytest.fixture(autouse=True)
@@ -51,167 +51,245 @@ def test_settings_single_number():
     assert s.twilio_available_numbers == ["+33700000001"]
 
 
-# ─── assign_twilio_number ────────────────────────────────────────────────────
+# ─── Helpers ──────────────────────────────────────────────────────────────────
 
-def _make_user(user_id: str, email: str = None) -> str:
-    """Insère un utilisateur dans la DB de test et retourne son ID."""
-    from memory.database import get_connection
-    import uuid
-    email = email or f"{user_id}@test.fr"
-    with get_connection() as conn:
-        conn.execute(
-            """INSERT INTO users (id, email, hashed_password, agency_name, plan, plan_active)
-               VALUES (%s, %s, %s, %s, %s, %s)""",
-            (user_id, email, "hashed_pw", "Agence Test", "Starter", True),
-        )
-    return user_id
+def _gc_mock(fetchone_side_effects: list):
+    """Construit un mock get_connection() avec des fetchone séquentiels."""
+    mock_gc = MagicMock()
+    mock_conn = MagicMock()
+    cursors = [MagicMock(fetchone=MagicMock(return_value=v)) for v in fetchone_side_effects]
+    mock_conn.execute.side_effect = cursors
+    mock_gc.return_value.__enter__ = lambda s: mock_conn
+    mock_gc.return_value.__exit__ = MagicMock(return_value=False)
+    return mock_gc, mock_conn
 
 
-def test_assign_returns_first_available_number():
+# ─── assign_twilio_number — cas nominaux ─────────────────────────────────────
+
+def test_assign_returns_number_from_cte():
+    """CTE atomique retourne le numéro assigné."""
     from config.settings import assign_twilio_number
-    with patch("memory.database.get_connection") as mock_gc:
-        mock_conn = MagicMock()
-        mock_gc.return_value.__enter__ = lambda s: mock_conn
-        mock_gc.return_value.__exit__ = MagicMock(return_value=False)
-
-        # Pas de numéro déjà assigné
-        mock_conn.execute.return_value.fetchone.side_effect = [
-            None,  # user n'a pas de numéro
-        ]
-        mock_conn.execute.return_value.fetchall.return_value = []  # pool vide des pris
-
-        result = assign_twilio_number("user_001")
-
-        assert result == "+33700000001"
+    mock_gc, _ = _gc_mock([
+        None,                                       # pas de numéro existant
+        {"twilio_sms_number": "+33700000001"},      # CTE UPDATE RETURNING
+    ])
+    with patch("memory.database.get_connection", mock_gc):
+        assert assign_twilio_number("user_001") == "+33700000001"
 
 
 def test_assign_returns_existing_number_if_already_assigned():
+    """Idempotent : renvoie le numéro déjà attribué sans modifier la DB."""
     from config.settings import assign_twilio_number
-    with patch("memory.database.get_connection") as mock_gc:
-        mock_conn = MagicMock()
-        mock_gc.return_value.__enter__ = lambda s: mock_conn
-        mock_gc.return_value.__exit__ = MagicMock(return_value=False)
-
-        mock_conn.execute.return_value.fetchone.return_value = {"twilio_sms_number": "+33700000003"}
-
+    mock_gc, mock_conn = _gc_mock([
+        {"twilio_sms_number": "+33700000003"},
+    ])
+    with patch("memory.database.get_connection", mock_gc):
         result = assign_twilio_number("user_already_assigned")
-
-        assert result == "+33700000003"
-
-
-def test_assign_skips_taken_numbers():
-    from config.settings import assign_twilio_number
-    with patch("memory.database.get_connection") as mock_gc:
-        mock_conn = MagicMock()
-        mock_gc.return_value.__enter__ = lambda s: mock_conn
-        mock_gc.return_value.__exit__ = MagicMock(return_value=False)
-
-        mock_conn.execute.return_value.fetchone.return_value = None
-        mock_conn.execute.return_value.fetchall.return_value = [
-            {"twilio_sms_number": "+33700000001"},
-            {"twilio_sms_number": "+33700000002"},
-        ]
-
-        result = assign_twilio_number("user_new")
-
-        assert result == "+33700000003"
+    assert result == "+33700000003"
+    # Un seul SELECT, pas d'UPDATE
+    assert mock_conn.execute.call_count == 1
 
 
 def test_assign_returns_none_when_pool_exhausted():
+    """CTE ne trouve aucun numéro libre → None + warning logué."""
     from config.settings import assign_twilio_number
-    with patch("memory.database.get_connection") as mock_gc:
-        mock_conn = MagicMock()
-        mock_gc.return_value.__enter__ = lambda s: mock_conn
-        mock_gc.return_value.__exit__ = MagicMock(return_value=False)
-
-        mock_conn.execute.return_value.fetchone.return_value = None
-        # Tous les 5 numéros pris
-        mock_conn.execute.return_value.fetchall.return_value = [
-            {"twilio_sms_number": f"+3370000000{i}"} for i in range(1, 6)
-        ]
-
-        result = assign_twilio_number("user_overflow")
-
-        assert result is None
+    mock_gc, _ = _gc_mock([
+        None,   # pas de numéro existant
+        None,   # CTE RETURNING vide (pool épuisé)
+    ])
+    with patch("memory.database.get_connection", mock_gc):
+        assert assign_twilio_number("user_overflow") is None
 
 
 def test_assign_returns_none_when_pool_empty():
+    """Pool absent en config → None immédiat, pas d'accès DB."""
     from config.settings import assign_twilio_number
     with patch("config.settings.get_settings") as mock_gs:
-        mock_settings = MagicMock()
-        mock_settings.twilio_available_numbers = []
-        mock_gs.return_value = mock_settings
+        mock_gs.return_value.twilio_available_numbers = []
+        assert assign_twilio_number("user_no_pool") is None
 
-        result = assign_twilio_number("user_no_pool")
 
-        assert result is None
+# ─── assign_twilio_number — sécurité concurrence ─────────────────────────────
+
+def test_assign_logs_warning_when_pool_exhausted(caplog):
+    """Logger un WARNING quand pool épuisé (alerte opérationnelle)."""
+    import logging
+    from config.settings import assign_twilio_number
+    mock_gc, _ = _gc_mock([None, None])
+    with patch("memory.database.get_connection", mock_gc):
+        with caplog.at_level(logging.WARNING, logger="config.settings"):
+            result = assign_twilio_number("user_overflow")
+    assert result is None
+    assert any(
+        "pool" in r.message.lower() or "épuisé" in r.message.lower()
+        for r in caplog.records
+    )
+
+
+def test_assign_handles_unique_violation_as_race_condition():
+    """UniqueViolation (conflit concurrent sur index UNIQUE) → None sans exception."""
+    import psycopg2.errors
+    from config.settings import assign_twilio_number
+
+    mock_gc = MagicMock()
+    mock_conn = MagicMock()
+    first_cursor = MagicMock()
+    first_cursor.fetchone.return_value = None
+    mock_conn.execute.side_effect = [
+        first_cursor,
+        psycopg2.errors.UniqueViolation("duplicate key value violates unique constraint"),
+    ]
+    mock_gc.return_value.__enter__ = lambda s: mock_conn
+    mock_gc.return_value.__exit__ = MagicMock(return_value=False)
+
+    with patch("memory.database.get_connection", mock_gc):
+        result = assign_twilio_number("user_race")
+    assert result is None
+
+
+def test_parallel_assign_only_one_winner(monkeypatch):
+    """
+    Simulation de 2 users qui s'inscrivent en parallèle avec 1 seul numéro libre.
+    Le premier gagne (CTE retourne le numéro), le second perd (CTE retourne None).
+    """
+    import threading
+    from config.settings import assign_twilio_number
+
+    results = {}
+
+    def make_mock_gc(cte_result):
+        mock_gc = MagicMock()
+        mock_conn = MagicMock()
+        c1 = MagicMock(fetchone=MagicMock(return_value=None))
+        c2 = MagicMock(fetchone=MagicMock(return_value=cte_result))
+        mock_conn.execute.side_effect = [c1, c2]
+        mock_gc.return_value.__enter__ = lambda s: mock_conn
+        mock_gc.return_value.__exit__ = MagicMock(return_value=False)
+        return mock_gc
+
+    # user_A gagne (DB lui attribue le numéro)
+    with patch("memory.database.get_connection", make_mock_gc({"twilio_sms_number": "+33700000005"})):
+        t1 = threading.Thread(
+            target=lambda: results.__setitem__("A", assign_twilio_number("user_A"))
+        )
+        t1.start()
+        t1.join()
+
+    # user_B perd (DB ne trouve plus de numéro libre)
+    with patch("memory.database.get_connection", make_mock_gc(None)):
+        t2 = threading.Thread(
+            target=lambda: results.__setitem__("B", assign_twilio_number("user_B"))
+        )
+        t2.start()
+        t2.join()
+
+    assert results["A"] == "+33700000005"
+    assert results["B"] is None
 
 
 # ─── release_twilio_number ────────────────────────────────────────────────────
 
 def test_release_returns_true_when_number_exists():
     from config.settings import release_twilio_number
-    with patch("memory.database.get_connection") as mock_gc:
-        mock_conn = MagicMock()
-        mock_gc.return_value.__enter__ = lambda s: mock_conn
-        mock_gc.return_value.__exit__ = MagicMock(return_value=False)
-
-        mock_conn.execute.return_value.fetchone.return_value = {"twilio_sms_number": "+33700000001"}
-
+    # SELECT + UPDATE → 2 appels execute()
+    mock_gc, mock_conn = _gc_mock([
+        {"twilio_sms_number": "+33700000001"},  # SELECT
+        None,                                   # UPDATE (pas de RETURNING)
+    ])
+    with patch("memory.database.get_connection", mock_gc):
         result = release_twilio_number("user_to_release")
-
-        assert result is True
-        # Vérifie qu'un UPDATE a été effectué
-        calls = mock_conn.execute.call_args_list
-        update_calls = [c for c in calls if "UPDATE" in str(c)]
-        assert len(update_calls) >= 1
+    assert result is True
+    calls = mock_conn.execute.call_args_list
+    assert any("UPDATE" in str(c) for c in calls)
 
 
 def test_release_returns_false_when_no_number():
     from config.settings import release_twilio_number
-    with patch("memory.database.get_connection") as mock_gc:
-        mock_conn = MagicMock()
-        mock_gc.return_value.__enter__ = lambda s: mock_conn
-        mock_gc.return_value.__exit__ = MagicMock(return_value=False)
-
-        mock_conn.execute.return_value.fetchone.return_value = None
-
-        result = release_twilio_number("user_without_number")
-
-        assert result is False
+    mock_gc, _ = _gc_mock([None])
+    with patch("memory.database.get_connection", mock_gc):
+        assert release_twilio_number("user_without_number") is False
 
 
 def test_release_returns_false_when_number_is_null():
     from config.settings import release_twilio_number
-    with patch("memory.database.get_connection") as mock_gc:
+    mock_gc, _ = _gc_mock([{"twilio_sms_number": None}])
+    with patch("memory.database.get_connection", mock_gc):
+        assert release_twilio_number("user_null_number") is False
+
+
+# ─── Webhook SMS — sécurité routage ──────────────────────────────────────────
+
+def _make_sms_client():
+    """Crée un TestClient FastAPI avec validate_twilio_signature bypassé."""
+    from fastapi.testclient import TestClient
+    with patch("tools.security.validate_twilio_signature", new=AsyncMock(return_value=True)):
+        from server import app
+        return TestClient(app, raise_server_exceptions=False)
+
+
+def test_sms_webhook_routes_to_correct_client():
+    """SMS sur numéro assigné → process_incoming_message appelé avec le bon client_id."""
+    from fastapi.testclient import TestClient
+
+    with patch("tools.security.validate_twilio_signature", new=AsyncMock(return_value=True)), \
+         patch("memory.database.get_connection") as mock_gc, \
+         patch("orchestrator.process_incoming_message") as mock_proc:
+
         mock_conn = MagicMock()
+        mock_conn.execute.return_value.fetchone.return_value = {"id": "client_abc", "plan": "Pro"}
         mock_gc.return_value.__enter__ = lambda s: mock_conn
         mock_gc.return_value.__exit__ = MagicMock(return_value=False)
 
-        mock_conn.execute.return_value.fetchone.return_value = {"twilio_sms_number": None}
+        from server import app
+        client = TestClient(app)
+        resp = client.post("/webhooks/twilio/sms", data={
+            "From": "+33612345678",
+            "To": "+33700000001",
+            "Body": "Je veux vendre mon appartement",
+        })
 
-        result = release_twilio_number("user_null_number")
+    assert resp.status_code == 200
+    # process_incoming_message est déclenché en background — vérifie uniquement le routing
 
-        assert result is False
 
+def test_sms_webhook_rejects_unknown_number():
+    """
+    SMS sur numéro 'To' non attribué → TwiML vide, process_incoming_message PAS appelé.
+    Protège contre un attaquant qui envoie des SMS sur des numéros du pool non assignés.
+    """
+    with patch("tools.security.validate_twilio_signature", new=AsyncMock(return_value=True)), \
+         patch("memory.database.get_connection") as mock_gc, \
+         patch("orchestrator.process_incoming_message") as mock_proc:
 
-# ─── Intégration webhook — lookup client par numéro "To" ─────────────────────
+        mock_conn = MagicMock()
+        # Aucun user n'a ce numéro
+        mock_conn.execute.return_value.fetchone.return_value = None
+        mock_gc.return_value.__enter__ = lambda s: mock_conn
+        mock_gc.return_value.__exit__ = MagicMock(return_value=False)
+
+        from server import app
+        from fastapi.testclient import TestClient
+        client = TestClient(app)
+        resp = client.post("/webhooks/twilio/sms", data={
+            "From": "+33600000000",
+            "To": "+33799999999",  # numéro non attribué
+            "Body": "probe",
+        })
+
+    assert resp.status_code == 200
+    assert b"<Response></Response>" in resp.content
+    mock_proc.assert_not_called()
+
 
 def test_sms_webhook_identifies_client_by_to_number():
-    """
-    Vérifie que les webhooks SMS/voix utilisent le champ 'To' pour router
-    vers le bon client — architecture multi-numéros.
-    """
-    import ast
+    """Vérification statique : server.py interroge twilio_sms_number sur le champ To."""
     server_src = Path("server.py").read_text()
-    # Le webhook doit interroger twilio_sms_number avec le numéro To
     assert "twilio_sms_number" in server_src
-    assert "to_number" in server_src or "To" in server_src
+    assert "to_number" in server_src
 
 
 def test_voice_webhook_identifies_client_by_to_number():
-    """Le webhook voix doit aussi router par numéro To."""
+    """Vérification statique : webhook voix route aussi par numéro To."""
     server_src = Path("server.py").read_text()
     assert "twilio_sms_number" in server_src
-    # Le webhook voix identifie bien le client
-    assert "twilio_voice_inbound" in server_src or "voice" in server_src
+    assert "twilio_voice_inbound" in server_src

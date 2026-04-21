@@ -40,6 +40,10 @@ if not token or not user_id:
     st.warning("Connectez-vous depuis la page d'accueil.")
     st.stop()
 
+if st.session_state.get("is_demo", False):
+    st.info("Cette fonctionnalité n'est pas disponible en mode démo.")
+    st.stop()
+
 
 # ─── Titre ────────────────────────────────────────────────────────────────────
 
