@@ -778,13 +778,41 @@ async def twilio_sms_incoming(request: Request, background_tasks: BackgroundTask
 
     def _process():
         from orchestrator import process_incoming_message
-        process_incoming_message(
+        from tools.twilio_tool import TwilioTool
+
+        final_state = process_incoming_message(
             telephone=from_number,
             message=body,
             client_id=client_id,
             tier=tier,
             canal="sms",
         )
+
+        message_sortant = final_state.get("message_sortant", "")
+        if not message_sortant:
+            logger.warning("[Twilio SMS] Orchestrateur n'a produit aucun message pour %s", from_number)
+            return
+
+        twilio = TwilioTool()
+        result = twilio.send_sms(
+            to=from_number,
+            body=message_sortant,
+            from_number=to_number,
+        )
+
+        if result.get("success"):
+            logger.info(
+                "[Twilio SMS] Réponse envoyée à %s : SID %s%s",
+                from_number,
+                result.get("sid", "—"),
+                " (mock)" if result.get("mock") else "",
+            )
+        else:
+            logger.error(
+                "[Twilio SMS] Échec envoi réponse à %s : %s",
+                from_number,
+                result.get("error", "erreur inconnue"),
+            )
 
     background_tasks.add_task(_process)
 
