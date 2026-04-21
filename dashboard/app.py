@@ -413,15 +413,14 @@ if leads_count > 0 and leads:
             return f'<span class="badge-warm">{s}</span>'
         return f'<span class="badge-cold">{s}</span>'
 
-    header = """
-    <div style="display:grid; grid-template-columns:2fr 1.5fr 80px 1.5fr 1.2fr;
-                gap:8px; padding:8px 12px; color:#64748b; font-size:0.78rem;
-                font-weight:600; text-transform:uppercase; letter-spacing:0.05em;
-                border-bottom:1px solid #1e2130; margin-bottom:4px;">
-        <span>Contact</span><span>Source</span><span>Score</span>
-        <span>Statut</span><span>Date</span>
-    </div>
-    """
+    header = (
+        '<div style="display:grid; grid-template-columns:2fr 1.5fr 80px 1.5fr 1.2fr;'
+        'gap:8px; padding:8px 12px; color:#64748b; font-size:0.78rem;'
+        'font-weight:600; text-transform:uppercase; letter-spacing:0.05em;'
+        'border-bottom:1px solid #1e2130; margin-bottom:4px;">'
+        '<span>Contact</span><span>Source</span><span>Score</span>'
+        '<span>Statut</span><span>Date</span></div>'
+    )
     rows_html = ""
     for lead in leads[:5]:
         prenom  = lead.prenom or ""
@@ -431,17 +430,17 @@ if leads_count > 0 and leads:
         statut  = lead.statut.value if hasattr(lead.statut, "value") else str(lead.statut)
         created = lead.created_at.strftime("%d/%m") if lead.created_at else "—"
 
-        rows_html += f"""
-        <div style="display:grid; grid-template-columns:2fr 1.5fr 80px 1.5fr 1.2fr;
-                    gap:8px; padding:10px 12px; background:#1e2130; border-radius:8px;
-                    margin-bottom:4px; align-items:center; font-size:0.88rem; color:#e2e8f0;">
-            <span style="font-weight:600;">{prenom} {nom}</span>
-            <span style="color:#94a3b8;">{source}</span>
-            <span>{_score_badge(score)}</span>
-            <span style="color:#94a3b8;">{statut}</span>
-            <span style="color:#64748b;">{created}</span>
-        </div>
-        """
+        rows_html += (
+            '<div style="display:grid; grid-template-columns:2fr 1.5fr 80px 1.5fr 1.2fr;'
+            'gap:8px; padding:10px 12px; background:#1e2130; border-radius:8px;'
+            'margin-bottom:4px; align-items:center; font-size:0.88rem; color:#e2e8f0;">'
+            f'<span style="font-weight:600;">{prenom} {nom}</span>'
+            f'<span style="color:#94a3b8;">{source}</span>'
+            f'<span>{_score_badge(score)}</span>'
+            f'<span style="color:#94a3b8;">{statut}</span>'
+            f'<span style="color:#64748b;">{created}</span>'
+            '</div>'
+        )
 
     st.markdown(header + rows_html, unsafe_allow_html=True)
     st.markdown("<div style='margin-bottom:32px;'></div>", unsafe_allow_html=True)

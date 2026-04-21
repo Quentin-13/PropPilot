@@ -13,9 +13,7 @@ import streamlit as st
 import json
 
 from config.settings import get_settings
-from memory.database import init_database
 
-init_database()
 settings = get_settings()
 
 st.set_page_config(page_title="Configuration — PropPilot", layout="wide", page_icon="⚙️")

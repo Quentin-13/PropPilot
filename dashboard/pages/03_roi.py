@@ -13,10 +13,8 @@ import streamlit as st
 from datetime import datetime, timedelta
 
 from config.settings import get_settings
-from memory.database import init_database
 from memory.lead_repository import get_pipeline_stats
 
-init_database()
 settings = get_settings()
 
 st.set_page_config(page_title="ROI — PropPilot", layout="wide", page_icon="💰")

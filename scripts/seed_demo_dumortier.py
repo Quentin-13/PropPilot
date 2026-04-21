@@ -57,8 +57,8 @@ LEADS = [
         "timeline": "3-4 mois",
         "financement": "Propriétaire sans crédit",
         "motivation": "Divorce, besoin de vendre pour répartir le patrimoine",
-        "statut": LeadStatus.QUALIFIE, "source": Canal.SMS,
-        "resume": "Vendeur urgent post-divorce. T3/65m² libre, DPE C. Très réactif.",
+        "statut": LeadStatus.RDV_BOOKÉ, "source": Canal.SMS,
+        "resume": "Vendeur urgent post-divorce. T3/65m² libre, DPE C. RDV estimation mercredi 14h30.",
         "jours": 2, "has_conv": True, "has_rdv": True,
     },
     {
@@ -413,9 +413,9 @@ def create_leads(user_id: str) -> dict[str, str]:
         days_ago = data.get("jours", 0)
         created = now - timedelta(days=days_ago)
 
-        # RDV dans les prochains jours pour les leads RDV_BOOKÉ
+        # RDV dans les prochains jours — piloté par has_rdv (source de vérité)
         rdv_date = None
-        if data["statut"] == LeadStatus.RDV_BOOKÉ:
+        if data.get("has_rdv") or data["statut"] == LeadStatus.RDV_BOOKÉ:
             rdv_date = now + timedelta(days=(3 - days_ago) if days_ago < 3 else 2)
 
         # Prochain followup pour les leads nurturing

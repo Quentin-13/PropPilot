@@ -15,10 +15,8 @@ from datetime import datetime
 
 from config.settings import get_settings
 from config.tier_limits import TIERS
-from memory.database import init_database
 from memory.usage_tracker import get_usage_summary
 
-init_database()
 settings = get_settings()
 
 st.set_page_config(page_title="Utilisation — PropPilot", layout="wide", page_icon="📊")

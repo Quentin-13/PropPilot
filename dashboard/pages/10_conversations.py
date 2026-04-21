@@ -12,10 +12,6 @@ sys.path.insert(0, str(ROOT))
 import streamlit as st
 from datetime import datetime
 
-from memory.database import init_database
-
-init_database()
-
 st.set_page_config(
     page_title="Conversations — PropPilot",
     page_icon="💬",
@@ -28,7 +24,7 @@ render_sidebar_logout()
 
 from config.settings import get_settings
 from memory.database import get_connection
-from memory.lead_repository import get_leads_by_client, get_conversation_history
+from memory.lead_repository import get_conversation_history
 
 settings = get_settings()
 client_id = st.session_state.get("user_id", settings.agency_client_id)
@@ -175,9 +171,9 @@ with col_chat:
         st.info("Aucun message dans cette conversation.")
     else:
         for msg in messages:
-            role = msg.get("role", "user")
-            contenu = msg.get("contenu", "")
-            created = msg.get("created_at")
+            role = msg.role
+            contenu = msg.contenu
+            created = msg.created_at
 
             if hasattr(created, "strftime"):
                 time_str = created.strftime("%d/%m %H:%M")

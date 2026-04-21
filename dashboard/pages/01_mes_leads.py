@@ -14,7 +14,6 @@ import pandas as pd
 from datetime import datetime
 
 from config.settings import get_settings
-from memory.database import init_database
 from memory.lead_repository import (
     get_leads_by_client,
     get_pipeline_stats,
@@ -23,7 +22,6 @@ from memory.lead_repository import (
 )
 from memory.models import Canal, Lead, LeadStatus
 
-init_database()
 settings = get_settings()
 
 st.set_page_config(page_title="Mes leads — PropPilot", layout="wide", page_icon="👥")

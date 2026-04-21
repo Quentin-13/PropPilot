@@ -16,9 +16,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 from config.settings import get_settings
-from memory.database import init_database
 
-init_database()
 settings = get_settings()
 
 st.set_page_config(page_title="Admin — PropPilot", layout="wide", page_icon="🔐")
