@@ -21,6 +21,7 @@ def pytest_configure(config):
     """Force DATABASE_URL et TESTING avant toute importation."""
     os.environ["DATABASE_URL"] = TEST_DATABASE_URL
     os.environ["TESTING"] = "true"
+    config.addinivalue_line("markers", "no_db: test qui n'a pas besoin de base de données")
 
 
 @pytest.fixture(autouse=True)

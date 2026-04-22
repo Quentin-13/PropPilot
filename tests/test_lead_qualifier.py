@@ -14,8 +14,12 @@ from agents.lead_qualifier import LeadQualifierAgent
 
 
 @pytest.fixture(autouse=True)
-def setup_db(tmp_path, monkeypatch):
-    """Utilise une DB temporaire pour les tests."""
+def setup_db(tmp_path, monkeypatch, request):
+    """Utilise une DB temporaire pour les tests. Ignoré pour les tests marqués 'no_db'."""
+    if request.node.get_closest_marker("no_db"):
+        yield
+        return
+
     db_path = str(tmp_path / "test.db")
     monkeypatch.setenv("DATABASE_PATH", db_path)
     monkeypatch.setenv("AGENCY_CLIENT_ID", "test_client")
@@ -202,3 +206,143 @@ def test_scoring_routes_cold_lead():
     assert result_lead.score == 2
     assert result_lead.statut == LeadStatus.NURTURING
     assert result_lead.nurturing_sequence == NurturingSequence.LEAD_FROID
+
+
+# ─────────────────────────────────────────────
+# Tests anti-dérive comportementale (bugs Léa)
+# ─────────────────────────────────────────────
+
+@pytest.mark.no_db
+def test_system_prompt_no_property_suggestion_rule():
+    """Le system prompt doit interdire explicitement de proposer des biens."""
+    from config.prompts import LEAD_QUALIFIER_SYSTEM
+    prompt = LEAD_QUALIFIER_SYSTEM.lower()
+    assert "catalogue" in prompt, "La règle 'pas d'accès au catalogue' doit être dans le prompt"
+    assert "négociateur" in prompt, "La règle de renvoi vers le négociateur doit être dans le prompt"
+
+
+@pytest.mark.no_db
+def test_system_prompt_one_sms_per_turn_rule():
+    """Le system prompt doit imposer un seul SMS par tour."""
+    from config.prompts import LEAD_QUALIFIER_SYSTEM
+    prompt = LEAD_QUALIFIER_SYSTEM.lower()
+    assert "un seul" in prompt or "1 sms" in prompt or "un seul message" in prompt or "un seul sms" in prompt
+
+
+@pytest.mark.no_db
+def test_system_prompt_anti_hallucination_rule():
+    """Le system prompt doit contenir la règle anti-hallucination."""
+    from config.prompts import LEAD_QUALIFIER_SYSTEM
+    prompt = LEAD_QUALIFIER_SYSTEM.lower()
+    assert "hallucination" in prompt or "invente" in prompt or "n'invente" in prompt or "vérifier" in prompt
+
+
+@pytest.mark.no_db
+def test_system_prompt_rdv_after_7_questions():
+    """Le system prompt doit interdire le RDV avant les 7 questions."""
+    from config.prompts import LEAD_QUALIFIER_SYSTEM
+    prompt = LEAD_QUALIFIER_SYSTEM.lower()
+    assert "7 questions" in prompt or "sept questions" in prompt or "après les 7" in prompt
+
+
+@pytest.mark.no_db
+def test_mock_responses_no_property_hallucination():
+    """Les réponses mock ne doivent jamais contenir de biens inventés."""
+    agent = LeadQualifierAgent(client_id="test_client", tier="Starter")
+
+    # Phrases caractéristiques d'une hallucination de biens
+    property_hallucination_patterns = [
+        "j'ai repéré",
+        "j'ai trouvé",
+        "j'ai sélectionné",
+        "j'ai un bien",
+        "appartement disponible",
+        "maison disponible",
+        "je vous propose ce bien",
+        "référence ",
+        "annonce n°",
+    ]
+
+    for i in range(7):
+        response = agent._mock_qualification_response(i)
+        response_lower = response.lower()
+        for pattern in property_hallucination_patterns:
+            assert pattern not in response_lower, (
+                f"Réponse mock {i} contient une hallucination de bien ('{pattern}'): {response}"
+            )
+
+
+@pytest.mark.no_db
+def test_mock_qualification_sequence_order():
+    """Les réponses mock doivent suivre la séquence des 7 questions dans l'ordre."""
+    agent = LeadQualifierAgent(client_id="test_client", tier="Starter")
+
+    # Mots-clés attendus dans l'ordre des questions
+    sequence_keywords = [
+        # Q1 — après 0 échange user : question sur localisation ou type de projet
+        ["ville", "secteur", "localisation", "géographique", "vendre", "achat", "projet"],
+        # Q2 — budget
+        ["budget", "prix", "loyer", "vendre"],
+        # Q3 — timeline
+        ["délai", "temps", "conclure", "combien de temps", "contrainte"],
+        # Q4 — situation actuelle
+        ["propriétaire", "compromis", "situation"],
+        # Q5 — financement
+        ["financement", "accord", "apport", "banque"],
+        # Q6 — motivation
+        ["raison", "particulière", "maintenant", "pourquoi", "information"],
+        # Q7 — conclusion
+        ["accompagner", "échange", "rappelle", "recontacter", "disponible"],
+    ]
+
+    for i, keywords in enumerate(sequence_keywords):
+        response = agent._mock_qualification_response(i).lower()
+        # Au moins un mot-clé doit être présent
+        assert any(kw in response for kw in keywords), (
+            f"Réponse mock {i} ne correspond pas à la Q{i+1} attendue. "
+            f"Mots-clés attendus: {keywords}. Réponse: {response}"
+        )
+
+
+def test_no_rdv_before_qualification_complete():
+    """Léa ne doit pas proposer de RDV avant que la qualification soit terminée."""
+    agent = LeadQualifierAgent(client_id="test_client", tier="Starter")
+
+    # Simuler une conversation courte (2 échanges seulement)
+    new_result = agent.handle_new_lead(
+        telephone="+33600000010",
+        message_initial="Je cherche un appartement",
+        prenom="Jérôme",
+    )
+    lead_id = new_result["lead_id"]
+
+    # Répondre à Q4 (timeline) comme dans le bug réel
+    result = agent.handle_incoming_message(
+        lead_id=lead_id,
+        message="Le plus rapidement possible",
+    )
+
+    # La qualification ne doit pas être terminée (< 7 échanges)
+    assert result["next_action"] == "continue", (
+        f"Léa a terminé la qualification prématurément : next_action={result['next_action']}"
+    )
+    assert result["score"] is None, "Un score ne doit pas être attribué avant les 7 questions"
+
+
+@pytest.mark.no_db
+def test_llm_receives_anti_hallucination_system_prompt():
+    """Vérifie que le client Anthropic reçoit le system prompt avec les règles anti-dérive."""
+    from unittest.mock import MagicMock, patch
+    from config.prompts import get_lead_qualifier_system
+
+    system = get_lead_qualifier_system("Test Agence")
+
+    assert len(system) == 1
+    prompt_text = system[0]["text"]
+
+    # Règles critiques doivent être présentes
+    assert "ZÉRO BIEN SPÉCIFIQUE" in prompt_text or "catalogue" in prompt_text.lower()
+    assert "UN SEUL SMS" in prompt_text or "un seul message" in prompt_text.lower() or "un seul sms" in prompt_text.lower()
+    assert "ZÉRO HALLUCINATION" in prompt_text or "n'invente" in prompt_text.lower() or "hallucination" in prompt_text.lower()
+    assert "7 questions" in prompt_text or "SÉQUENCE STRICTE" in prompt_text
+    assert system[0]["cache_control"] == {"type": "ephemeral"}
