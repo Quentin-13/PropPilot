@@ -404,16 +404,13 @@ def render_sidebar_logout() -> None:
 </style>
 """, unsafe_allow_html=True)
 
-        plan_line = "" if is_demo else f'<div style="font-size: 12px; color: #94a3b8;">Forfait {plan}</div>'
-        st.markdown(f"""
-        <div style="padding: 8px 0 20px 0; display: flex; align-items: center; gap: 10px;">
-            {_logo(36, "sb")}
-            <div>
-              <div style="font-size: 16px; font-weight: 700; color: white;">{agency_name}</div>
-              {plan_line}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(_logo(36, "sb"), unsafe_allow_html=True)
+        plan_suffix = "" if is_demo else f" · {plan}"
+        st.markdown(
+            f"<div style='font-size:15px;font-weight:700;color:white;margin-top:4px;'>{agency_name}</div>"
+            f"<div style='font-size:12px;color:#94a3b8;margin-bottom:16px;'>PropPilot{plan_suffix}</div>",
+            unsafe_allow_html=True,
+        )
 
         st.markdown("---")
 

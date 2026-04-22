@@ -70,7 +70,7 @@ class Settings(BaseSettings):
     jwt_expire_hours: int = Field(default=24, alias="JWT_EXPIRE_HOURS")
 
     # Configuration Agence
-    agency_name: str = Field(default="Mon Agence PropPilot", alias="AGENCY_NAME")
+    agency_name: str = Field(default="", alias="AGENCY_NAME")
     agency_tier: Literal["Indépendant", "Starter", "Pro", "Elite"] = Field(default="Starter", alias="AGENCY_TIER")
     agency_client_id: str = Field(default="client_demo", alias="AGENCY_CLIENT_ID")
     agency_commission_rate: float = Field(default=0.05, alias="AGENCY_COMMISSION_RATE")

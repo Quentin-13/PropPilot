@@ -106,18 +106,17 @@ _INJECTION_PATTERNS = [
     "ignore previous instructions",
     "ignore les instructions",
     "oublie tes instructions",
-    "act as",
+    "act as ",
     "tu es maintenant",
     "nouveau rôle",
     "system prompt",
     "jailbreak",
-    "DAN",
     "<script",
     "javascript:",
-    "DROP TABLE",
-    "SELECT *",
-    "--",
-    "';",
+    "drop table",
+    "select * from",
+    "'; drop",
+    "' or '1'='1",
 ]
 
 
@@ -127,8 +126,8 @@ def sanitize_sms_input(text: str) -> str:
     text = text[:500]
     text_lower = text.lower()
     for pattern in _INJECTION_PATTERNS:
-        if pattern.lower() in text_lower:
-            logger.warning(f"[Security] Injection détectée : '{pattern}'")
+        if pattern in text_lower:
+            logger.warning(f"[Security] Injection détectée — pattern='{pattern}' message='{text[:80]}'")
             return "[Message filtré]"
     text = re.sub(r'[<>{}|\\\[\]^`]', '', text)
     return text.strip()

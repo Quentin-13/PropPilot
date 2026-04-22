@@ -383,19 +383,19 @@ row2 = st.columns(3)
 
 for col, agent in zip(row1, agents[:3]):
     with col:
-        st.markdown(_agent_card_html(
-            agent["emoji"], agent["name"], agent["active"],
-            agent["status"], agent["desc"]
-        ), unsafe_allow_html=True)
+        st.markdown(
+            _agent_card_html(agent["emoji"], agent["name"], agent["active"], agent["status"], agent["desc"]),
+            unsafe_allow_html=True,
+        )
 
 st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
 for col, agent in zip(row2, agents[3:]):
     with col:
-        st.markdown(_agent_card_html(
-            agent["emoji"], agent["name"], agent["active"],
-            agent["status"], agent["desc"]
-        ), unsafe_allow_html=True)
+        st.markdown(
+            _agent_card_html(agent["emoji"], agent["name"], agent["active"], agent["status"], agent["desc"]),
+            unsafe_allow_html=True,
+        )
 
 st.markdown("<div style='margin-bottom:32px;'></div>", unsafe_allow_html=True)
 

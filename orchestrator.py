@@ -275,15 +275,13 @@ def node_propose_rdv(state: AgencyState) -> AgencyState:
 
     # Message de proposition RDV
     prenom = lead.prenom or "vous"
-    agence_nom = state.get("agency_name") or get_settings().agency_name
     rdv_msg = (
         f"Excellent {prenom} ! Votre projet est clairement défini et j'ai exactement ce qu'il vous faut. "
         f"Je vous propose qu'on en parle de vive voix. "
-        f"Seriez-vous disponible mardi ou jeudi cette semaine, en matinée ou après-midi ? "
-        f"— {agence_nom}"
+        f"Seriez-vous disponible mardi ou jeudi cette semaine, en matinée ou après-midi ?"
     )
 
-    lead.statut = LeadStatus.QUALIFIE
+    lead.statut = LeadStatus.RDV_PROPOSE
     update_lead(lead)
 
     canal = Canal(state.get("canal", "sms"))
@@ -318,38 +316,54 @@ def node_propose_rdv(state: AgencyState) -> AgencyState:
     }
 
 
-_RDV_CONFIRMATION_KEYWORDS = (
+_SPECIFIC_SLOT_KEYWORDS = (
     "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche",
     "matin", "après-midi", "aprem", "soir", "midi",
+    "h", "heures", "9h", "10h", "11h", "14h", "15h", "16h", "17h",
+)
+
+_VAGUE_ACCEPTANCE_KEYWORDS = (
+    "quand vous", "quand tu", "quand vous voulez", "quand tu veux",
+    "peu importe", "n'importe quand", "nimporte quand",
+    "libre", "disponible", "dispo",
+    "ça m'arrange", "ca m'arrange",
+    "ok pour", "oui pour",
+)
+
+_GENERAL_ACCEPTANCE_KEYWORDS = (
     "ok", "oui", "d'accord", "parfait", "ça me va", "ca me va",
-    "je suis dispo", "disponible", "ça convient", "ca convient",
-    "confirmed", "confirme", "c'est bon", "c'est noté", "noté",
+    "ça convient", "ca convient", "confirmed", "confirme", "c'est bon",
+    "c'est noté", "noté",
 )
 
 
 def node_handle_rdv_confirmation(state: AgencyState) -> AgencyState:
     """
-    Gère la réponse du lead après qu'un RDV a déjà été proposé.
-    Détecte si c'est une confirmation de créneau et clôt la conversation.
+    Gère la réponse du lead après qu'un RDV a été proposé.
+    - Acceptation vague → propose 2-3 créneaux précis
+    - Créneau spécifique confirmé → confirme et marque RDV_BOOKÉ
+    - Autre → message neutre
     """
     from memory.lead_repository import get_lead, update_lead
     from memory.models import LeadStatus
+    from datetime import date, timedelta
 
     lead = get_lead(state["lead_id"])
     if not lead:
         return {**state, "status": "error", "error": "Lead introuvable"}
 
     message_lower = state["message_entrant"].lower()
-    is_confirmation = any(kw in message_lower for kw in _RDV_CONFIRMATION_KEYWORDS)
-
-    agence_nom = state.get("agency_name") or get_settings().agency_name
     prenom = lead.prenom or "vous"
 
-    if is_confirmation:
-        # Confirmation de créneau — clos la boucle
+    has_specific_slot = any(kw in message_lower for kw in _SPECIFIC_SLOT_KEYWORDS)
+    is_vague_acceptance = any(kw in message_lower for kw in _VAGUE_ACCEPTANCE_KEYWORDS)
+    is_general_acceptance = any(kw in message_lower for kw in _GENERAL_ACCEPTANCE_KEYWORDS)
+
+    # Créneau spécifique confirmé → RDV booké
+    if has_specific_slot and (is_general_acceptance or is_vague_acceptance or has_specific_slot):
         confirmation_msg = (
             f"Parfait {prenom} ! J'ai bien noté votre confirmation. "
-            f"Un(e) conseiller(ère) de {agence_nom} vous contactera pour finaliser les détails du rendez-vous. "
+            f"Un(e) conseiller(ère) vous contactera pour finaliser les détails. "
             f"À très bientôt !"
         )
         lead.statut = LeadStatus.RDV_BOOKÉ
@@ -371,30 +385,66 @@ def node_handle_rdv_confirmation(state: AgencyState) -> AgencyState:
             "status": "rdv_confirmed",
             "messages_log": state["messages_log"] + [f"RDV confirmé par {prenom}"],
         }
-    else:
-        # Message hors-séquence après qualification — réponse neutre
-        neutral_msg = (
-            f"Bonjour {prenom}, je suis Léa de {agence_nom}. "
-            f"Pour toute question sur votre projet ou pour confirmer votre rendez-vous, "
-            f"n'hésitez pas à me répondre directement."
+
+    # Acceptation vague → proposer des créneaux précis
+    if is_vague_acceptance or is_general_acceptance:
+        today = date.today()
+        # Calcul des 3 prochains créneaux (mardi, jeudi, vendredi de la semaine courante/suivante)
+        jours_cibles = []
+        for delta in range(1, 14):
+            d = today + timedelta(days=delta)
+            if d.weekday() in (1, 3, 4) and len(jours_cibles) < 3:  # mardi=1, jeudi=3, vendredi=4
+                jours_noms = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
+                jours_cibles.append(f"{jours_noms[d.weekday()]} {d.day} {['jan', 'fév', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sep', 'oct', 'nov', 'déc'][d.month - 1]}")
+
+        slots_text = ", ".join(jours_cibles) if jours_cibles else "mardi ou jeudi"
+        slots_msg = (
+            f"Voici quelques créneaux disponibles pour {prenom} : "
+            f"{jours_cibles[0] if jours_cibles else 'mardi'} à 10h, "
+            f"{jours_cibles[1] if len(jours_cibles) > 1 else 'jeudi'} à 14h, "
+            f"ou {jours_cibles[2] if len(jours_cibles) > 2 else 'vendredi'} à 11h. "
+            f"Lequel vous convient le mieux ?"
         )
 
         log_action(
             lead_id=state["lead_id"],
             client_id=state["client_id"],
             stage="rdv_confirmation",
-            action_done="post_rdv_message",
-            action_result=neutral_msg[:200],
-            next_action="end",
+            action_done="slots_proposed",
+            action_result=slots_msg[:200],
+            next_action="awaiting_slot_choice",
             agent_name="lea",
         )
 
         return {
             **state,
-            "message_sortant": neutral_msg,
+            "message_sortant": slots_msg,
             "status": "rdv_proposed",
-            "messages_log": state["messages_log"] + [f"Message post-RDV de {prenom}"],
+            "messages_log": state["messages_log"] + [f"Créneaux proposés à {prenom}"],
         }
+
+    # Message hors-séquence après qualification — réponse neutre
+    neutral_msg = (
+        f"Bonjour {prenom} ! Pour confirmer votre rendez-vous ou toute question, "
+        f"répondez-moi directement."
+    )
+
+    log_action(
+        lead_id=state["lead_id"],
+        client_id=state["client_id"],
+        stage="rdv_confirmation",
+        action_done="post_rdv_message",
+        action_result=neutral_msg[:200],
+        next_action="end",
+        agent_name="lea",
+    )
+
+    return {
+        **state,
+        "message_sortant": neutral_msg,
+        "status": "rdv_proposed",
+        "messages_log": state["messages_log"] + [f"Message post-RDV de {prenom}"],
+    }
 
 
 # ─────────────────────────────────────────────────────────────
@@ -405,8 +455,8 @@ def route_after_lead_check(state: AgencyState) -> Literal["qualify_new", "contin
     """Décide si c'est un nouveau lead, la suite d'une qualification, ou une confirmation de RDV."""
     if state["status"] != "existing_lead":
         return "qualify_new"
-    # Lead déjà qualifié ou RDV déjà booké → ne pas rejouer la qualification
-    if state.get("lead_status") in ("qualifie", "rdv_booke"):
+    # Lead qualifié, RDV proposé ou déjà booké → ne pas rejouer la qualification
+    if state.get("lead_status") in ("qualifie", "rdv_propose", "rdv_booke"):
         return "handle_rdv_confirmation"
     return "continue_qualification"
 

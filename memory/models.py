@@ -14,6 +14,7 @@ class LeadStatus(str, Enum):
     ENTRANT = "entrant"
     EN_QUALIFICATION = "en_qualification"
     QUALIFIE = "qualifie"
+    RDV_PROPOSE = "rdv_propose"
     RDV_BOOKÉ = "rdv_booke"
     MANDAT = "mandat"
     VENDU = "vendu"

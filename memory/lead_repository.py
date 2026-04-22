@@ -267,8 +267,16 @@ def get_pipeline_stats(client_id: str, month: Optional[str] = None) -> dict:
             (client_id, month),
         ).fetchone()[0]
 
+        # Score moyen (tous leads avec score > 0)
+        avg_row = conn.execute(
+            "SELECT AVG(score) FROM leads WHERE client_id = ? AND score > 0",
+            (client_id,),
+        ).fetchone()
+        avg_score = round(float(avg_row[0]), 1) if avg_row and avg_row[0] else 0
+
     stats["rdv_count"] = rdv_count
     stats["mandat_count"] = mandat_count
+    stats["avg_score"] = avg_score
     stats["total"] = sum(stats.get(s.value, 0) for s in LeadStatus)
     return stats
 

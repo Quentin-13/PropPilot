@@ -423,22 +423,22 @@ def test_bug2_no_extra_instruction_in_qualification():
 @pytest.mark.no_db
 def test_bug3_rdv_confirmation_keywords_detected():
     """Bug 3 — Les mots-clés de confirmation de RDV doivent être reconnus."""
-    from orchestrator import _RDV_CONFIRMATION_KEYWORDS
+    from orchestrator import _SPECIFIC_SLOT_KEYWORDS, _GENERAL_ACCEPTANCE_KEYWORDS
+
+    all_keywords = _SPECIFIC_SLOT_KEYWORDS + _GENERAL_ACCEPTANCE_KEYWORDS
 
     confirmation_phrases = [
         "jeudi ça me va",
-        "ok pour jeudi",
-        "oui je suis disponible",
         "mardi matin",
+        "vendredi après-midi",
         "d'accord",
         "parfait",
         "ça convient",
-        "vendredi après-midi",
     ]
 
     for phrase in confirmation_phrases:
         phrase_lower = phrase.lower()
-        assert any(kw in phrase_lower for kw in _RDV_CONFIRMATION_KEYWORDS), (
+        assert any(kw in phrase_lower for kw in all_keywords), (
             f"La phrase '{phrase}' devrait être reconnue comme confirmation de RDV"
         )
 
