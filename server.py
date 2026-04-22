@@ -13,6 +13,7 @@ from __future__ import annotations
 import hmac
 import logging
 import os
+import threading
 from contextlib import asynccontextmanager
 from typing import Optional
 
@@ -35,6 +36,18 @@ from tools.security import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Lock par numéro de téléphone entrant — empêche le traitement concurrent de deux SMS
+# du même expéditeur (retry Twilio ou double envoi rapide)
+_sms_process_locks: dict[str, threading.Lock] = {}
+_sms_locks_registry = threading.Lock()
+
+
+def _get_sms_lock(key: str) -> threading.Lock:
+    with _sms_locks_registry:
+        if key not in _sms_process_locks:
+            _sms_process_locks[key] = threading.Lock()
+        return _sms_process_locks[key]
 logging.basicConfig(level=logging.INFO, format="%(levelname)s — %(message)s")
 
 
@@ -750,18 +763,20 @@ async def twilio_sms_incoming(request: Request, background_tasks: BackgroundTask
 
     client_id: str | None = None
     tier = "Starter"
+    agency_name = ""
 
     try:
         from memory.database import get_connection
         with get_connection() as conn:
             row = conn.execute(
-                "SELECT id, plan FROM users "
+                "SELECT id, plan, agency_name FROM users "
                 "WHERE twilio_sms_number = %s AND plan_active = TRUE LIMIT 1",
                 (to_number,),
             ).fetchone()
             if row:
                 client_id = row["id"]
                 tier = row["plan"]
+                agency_name = row["agency_name"] or ""
             else:
                 logger.warning(
                     "[Twilio SMS] Numéro 'To' inconnu : %s — message rejeté (numéro non attribué)",
@@ -780,39 +795,43 @@ async def twilio_sms_incoming(request: Request, background_tasks: BackgroundTask
         from orchestrator import process_incoming_message
         from tools.twilio_tool import TwilioTool
 
-        final_state = process_incoming_message(
-            telephone=from_number,
-            message=body,
-            client_id=client_id,
-            tier=tier,
-            canal="sms",
-        )
-
-        message_sortant = final_state.get("message_sortant", "")
-        if not message_sortant:
-            logger.warning("[Twilio SMS] Orchestrateur n'a produit aucun message pour %s", from_number)
-            return
-
-        twilio = TwilioTool()
-        result = twilio.send_sms(
-            to=from_number,
-            body=message_sortant,
-            from_number=to_number,
-        )
-
-        if result.get("success"):
-            logger.info(
-                "[Twilio SMS] Réponse envoyée à %s : SID %s%s",
-                from_number,
-                result.get("sid", "—"),
-                " (mock)" if result.get("mock") else "",
+        # Lock par expéditeur — garantit un seul traitement simultané par numéro
+        lock = _get_sms_lock(f"{client_id}:{from_number}")
+        with lock:
+            final_state = process_incoming_message(
+                telephone=from_number,
+                message=body,
+                client_id=client_id,
+                tier=tier,
+                canal="sms",
+                agency_name=agency_name,
             )
-        else:
-            logger.error(
-                "[Twilio SMS] Échec envoi réponse à %s : %s",
-                from_number,
-                result.get("error", "erreur inconnue"),
+
+            message_sortant = final_state.get("message_sortant", "")
+            if not message_sortant:
+                logger.warning("[Twilio SMS] Orchestrateur n'a produit aucun message pour %s", from_number)
+                return
+
+            twilio = TwilioTool()
+            result = twilio.send_sms(
+                to=from_number,
+                body=message_sortant,
+                from_number=to_number,
             )
+
+            if result.get("success"):
+                logger.info(
+                    "[Twilio SMS] Réponse envoyée à %s : SID %s%s",
+                    from_number,
+                    result.get("sid", "—"),
+                    " (mock)" if result.get("mock") else "",
+                )
+            else:
+                logger.error(
+                    "[Twilio SMS] Échec envoi réponse à %s : %s",
+                    from_number,
+                    result.get("error", "erreur inconnue"),
+                )
 
     background_tasks.add_task(_process)
 

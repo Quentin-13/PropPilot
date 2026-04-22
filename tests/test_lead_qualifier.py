@@ -346,3 +346,165 @@ def test_llm_receives_anti_hallucination_system_prompt():
     assert "ZÉRO HALLUCINATION" in prompt_text or "n'invente" in prompt_text.lower() or "hallucination" in prompt_text.lower()
     assert "7 questions" in prompt_text or "SÉQUENCE STRICTE" in prompt_text
     assert system[0]["cache_control"] == {"type": "ephemeral"}
+
+
+# ─────────────────────────────────────────────
+# Tests non-régression bugs 3 critiques (démo jeudi)
+# ─────────────────────────────────────────────
+
+@pytest.mark.no_db
+def test_bug1_agency_name_propagated_to_welcome_message():
+    """Bug 1 — Le nom d'agence réel doit apparaître dans le message de bienvenue."""
+    agent = LeadQualifierAgent(
+        client_id="test_client",
+        tier="Starter",
+        agency_name="Guy Hoquet Saint-Étienne Nord",
+    )
+    msg = agent._generate_welcome_message(prenom="Jérôme")
+    assert "Guy Hoquet Saint-Étienne Nord" in msg, (
+        f"Le nom d'agence correct n'apparaît pas dans le message de bienvenue : {msg}"
+    )
+    assert "Mon Agence PropPilot" not in msg, (
+        "Le nom d'agence par défaut ne doit PAS apparaître quand un nom réel est fourni"
+    )
+
+
+@pytest.mark.no_db
+def test_bug1_agency_name_in_qualification_system_prompt():
+    """Bug 1 — Le system prompt doit contenir le nom d'agence réel."""
+    from config.prompts import get_lead_qualifier_system
+    system = get_lead_qualifier_system("Guy Hoquet Saint-Étienne Nord")
+    prompt_text = system[0]["text"]
+    assert "Guy Hoquet Saint-Étienne Nord" in prompt_text
+    assert "Mon Agence PropPilot" not in prompt_text
+
+
+@pytest.mark.no_db
+def test_bug2_no_extra_instruction_in_qualification():
+    """Bug 2 — L'extra_instruction ne doit plus être injectée dans le LLM à Q6."""
+    from unittest.mock import MagicMock, patch
+
+    captured_calls = []
+
+    def mock_create(**kwargs):
+        captured_calls.append(kwargs)
+        mock_resp = MagicMock()
+        mock_resp.content = [MagicMock(text="Question suivante ?")]
+        mock_resp.usage.input_tokens = 100
+        mock_resp.usage.output_tokens = 10
+        return mock_resp
+
+    agent = LeadQualifierAgent(client_id="test_client", tier="Starter", agency_name="Test Agence")
+    mock_client = MagicMock()
+    mock_client.messages.create.side_effect = mock_create
+    agent._anthropic_client = mock_client
+
+    # Simuler 6 messages utilisateur (proche de la fin — c'est là que l'extra_instruction était injectée)
+    history_6_user = []
+    for i in range(6):
+        history_6_user.append({"role": "user", "content": f"Réponse {i+1}"})
+        history_6_user.append({"role": "assistant", "content": f"Question {i+2} ?"})
+
+    with patch("memory.cost_logger.log_api_action"):
+        agent._generate_qualification_response(
+            history=history_6_user,
+            agence_nom="Test Agence",
+            lead=MagicMock(projet=MagicMock(value="achat")),
+        )
+
+    assert len(captured_calls) == 1
+    messages_sent = captured_calls[0]["messages"]
+    # Aucun message supplémentaire ne doit avoir été injecté
+    assert messages_sent == history_6_user, (
+        "L'extra_instruction ne doit plus être ajoutée en tant que message utilisateur"
+    )
+
+
+@pytest.mark.no_db
+def test_bug3_rdv_confirmation_keywords_detected():
+    """Bug 3 — Les mots-clés de confirmation de RDV doivent être reconnus."""
+    from orchestrator import _RDV_CONFIRMATION_KEYWORDS
+
+    confirmation_phrases = [
+        "jeudi ça me va",
+        "ok pour jeudi",
+        "oui je suis disponible",
+        "mardi matin",
+        "d'accord",
+        "parfait",
+        "ça convient",
+        "vendredi après-midi",
+    ]
+
+    for phrase in confirmation_phrases:
+        phrase_lower = phrase.lower()
+        assert any(kw in phrase_lower for kw in _RDV_CONFIRMATION_KEYWORDS), (
+            f"La phrase '{phrase}' devrait être reconnue comme confirmation de RDV"
+        )
+
+
+@pytest.mark.no_db
+def test_bug3_rdv_loop_routing():
+    """Bug 3 — Un lead QUALIFIÉ doit router vers handle_rdv_confirmation, pas continue_qualification."""
+    from orchestrator import route_after_lead_check, AgencyState
+
+    # Simuler l'état après qu'un lead QUALIFIÉ envoie un nouveau message
+    state_qualifie = AgencyState(
+        client_id="test",
+        tier="Starter",
+        agency_name="Test Agence",
+        lead_id="lead-123",
+        lead_status="qualifie",
+        telephone="+33600000001",
+        prenom="Jérôme",
+        nom="",
+        email="",
+        canal="sms",
+        source_data={},
+        message_entrant="Jeudi ça me va",
+        score=8,
+        next_action="rdv",
+        qualification_complete=True,
+        message_sortant="",
+        messages_log=[],
+        status="existing_lead",
+        error=None,
+    )
+
+    route = route_after_lead_check(state_qualifie)
+    assert route == "handle_rdv_confirmation", (
+        f"Un lead QUALIFIÉ doit router vers 'handle_rdv_confirmation', pas '{route}'"
+    )
+
+
+@pytest.mark.no_db
+def test_bug3_rdv_booke_routing():
+    """Bug 3 — Un lead RDV_BOOKÉ doit aussi router vers handle_rdv_confirmation."""
+    from orchestrator import route_after_lead_check, AgencyState
+
+    state_rdv_booke = AgencyState(
+        client_id="test",
+        tier="Starter",
+        agency_name="Test Agence",
+        lead_id="lead-456",
+        lead_status="rdv_booke",
+        telephone="+33600000002",
+        prenom="Marie",
+        nom="",
+        email="",
+        canal="sms",
+        source_data={},
+        message_entrant="À jeudi !",
+        score=9,
+        next_action="rdv",
+        qualification_complete=True,
+        message_sortant="",
+        messages_log=[],
+        status="existing_lead",
+        error=None,
+    )
+
+    route = route_after_lead_check(state_rdv_booke)
+    assert route == "handle_rdv_confirmation", (
+        f"Un lead RDV_BOOKÉ doit router vers 'handle_rdv_confirmation', pas '{route}'"
+    )

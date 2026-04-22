@@ -29,9 +29,11 @@ class AgencyState(TypedDict):
     # Contexte client
     client_id: str
     tier: str
+    agency_name: str        # Nom réel de l'agence (depuis DB users)
 
     # Infos lead
     lead_id: Optional[str]
+    lead_status: str        # Statut DB du lead au moment du check (ex: "qualifie", "rdv_booke")
     telephone: str
     prenom: str
     nom: str
@@ -52,7 +54,7 @@ class AgencyState(TypedDict):
     messages_log: list[str]
 
     # Statut pipeline
-    status: str             # "new" | "qualifying" | "scored" | "routed" | "error"
+    status: str             # "new" | "qualifying" | "scored" | "routed" | "rdv_proposed" | "error"
     error: Optional[str]
 
 
@@ -65,6 +67,7 @@ def make_initial_state(
     nom: str = "",
     email: str = "",
     tier: str = "Starter",
+    agency_name: str = "",
     lead_id: Optional[str] = None,
     source_data: Optional[dict] = None,
 ) -> AgencyState:
@@ -72,7 +75,9 @@ def make_initial_state(
     return AgencyState(
         client_id=client_id,
         tier=tier,
+        agency_name=agency_name or get_settings().agency_name,
         lead_id=lead_id,
+        lead_status="",
         telephone=telephone,
         prenom=prenom,
         nom=nom,
@@ -95,12 +100,18 @@ def make_initial_state(
 # ─────────────────────────────────────────────────────────────
 
 def node_check_existing_lead(state: AgencyState) -> AgencyState:
-    """Vérifie si le lead existe déjà (même numéro de téléphone)."""
+    """Vérifie si le lead existe déjà (même numéro de téléphone) et lit son statut."""
     from memory.database import get_connection
 
     if state["lead_id"]:
-        # Lead ID fourni explicitement
-        return {**state, "status": "existing_lead"}
+        # Lead ID fourni explicitement — lire son statut
+        with get_connection() as conn:
+            row = conn.execute(
+                "SELECT statut FROM leads WHERE id = ? LIMIT 1",
+                (state["lead_id"],),
+            ).fetchone()
+        lead_status = row["statut"] if row else ""
+        return {**state, "lead_status": lead_status, "status": "existing_lead"}
 
     # Recherche par téléphone
     telephone = state["telephone"]
@@ -108,20 +119,20 @@ def node_check_existing_lead(state: AgencyState) -> AgencyState:
 
     with get_connection() as conn:
         row = conn.execute(
-            "SELECT id FROM leads WHERE client_id = ? AND telephone = ? ORDER BY created_at DESC LIMIT 1",
+            "SELECT id, statut FROM leads WHERE client_id = ? AND telephone = ? ORDER BY created_at DESC LIMIT 1",
             (client_id, telephone),
         ).fetchone()
 
     if row:
-        logger.info(f"Lead existant trouvé : {row['id']}")
-        return {**state, "lead_id": row["id"], "status": "existing_lead"}
+        logger.info(f"Lead existant trouvé : {row['id']} (statut: {row['statut']})")
+        return {**state, "lead_id": row["id"], "lead_status": row["statut"], "status": "existing_lead"}
 
-    return {**state, "status": "new_lead"}
+    return {**state, "lead_status": "", "status": "new_lead"}
 
 
 def node_qualify_new_lead(state: AgencyState) -> AgencyState:
     """Crée et envoie le premier message de bienvenue pour un nouveau lead."""
-    agent = LeadQualifierAgent(client_id=state["client_id"], tier=state["tier"])
+    agent = LeadQualifierAgent(client_id=state["client_id"], tier=state["tier"], agency_name=state["agency_name"])
     canal = Canal(state.get("canal", "sms"))
 
     result = agent.handle_new_lead(
@@ -164,7 +175,7 @@ def node_qualify_new_lead(state: AgencyState) -> AgencyState:
 
 def node_continue_qualification(state: AgencyState) -> AgencyState:
     """Continue la qualification d'un lead existant."""
-    agent = LeadQualifierAgent(client_id=state["client_id"], tier=state["tier"])
+    agent = LeadQualifierAgent(client_id=state["client_id"], tier=state["tier"], agency_name=state["agency_name"])
     canal = Canal(state.get("canal", "sms"))
 
     result = agent.handle_incoming_message(
@@ -264,7 +275,7 @@ def node_propose_rdv(state: AgencyState) -> AgencyState:
 
     # Message de proposition RDV
     prenom = lead.prenom or "vous"
-    agence_nom = get_settings().agency_name
+    agence_nom = state.get("agency_name") or get_settings().agency_name
     rdv_msg = (
         f"Excellent {prenom} ! Votre projet est clairement défini et j'ai exactement ce qu'il vous faut. "
         f"Je vous propose qu'on en parle de vive voix. "
@@ -307,15 +318,97 @@ def node_propose_rdv(state: AgencyState) -> AgencyState:
     }
 
 
+_RDV_CONFIRMATION_KEYWORDS = (
+    "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche",
+    "matin", "après-midi", "aprem", "soir", "midi",
+    "ok", "oui", "d'accord", "parfait", "ça me va", "ca me va",
+    "je suis dispo", "disponible", "ça convient", "ca convient",
+    "confirmed", "confirme", "c'est bon", "c'est noté", "noté",
+)
+
+
+def node_handle_rdv_confirmation(state: AgencyState) -> AgencyState:
+    """
+    Gère la réponse du lead après qu'un RDV a déjà été proposé.
+    Détecte si c'est une confirmation de créneau et clôt la conversation.
+    """
+    from memory.lead_repository import get_lead, update_lead
+    from memory.models import LeadStatus
+
+    lead = get_lead(state["lead_id"])
+    if not lead:
+        return {**state, "status": "error", "error": "Lead introuvable"}
+
+    message_lower = state["message_entrant"].lower()
+    is_confirmation = any(kw in message_lower for kw in _RDV_CONFIRMATION_KEYWORDS)
+
+    agence_nom = state.get("agency_name") or get_settings().agency_name
+    prenom = lead.prenom or "vous"
+
+    if is_confirmation:
+        # Confirmation de créneau — clos la boucle
+        confirmation_msg = (
+            f"Parfait {prenom} ! J'ai bien noté votre confirmation. "
+            f"Un(e) conseiller(ère) de {agence_nom} vous contactera pour finaliser les détails du rendez-vous. "
+            f"À très bientôt !"
+        )
+        lead.statut = LeadStatus.RDV_BOOKÉ
+        update_lead(lead)
+
+        log_action(
+            lead_id=state["lead_id"],
+            client_id=state["client_id"],
+            stage="rdv_confirmation",
+            action_done="rdv_confirmed",
+            action_result=confirmation_msg[:200],
+            next_action="end",
+            agent_name="lea",
+        )
+
+        return {
+            **state,
+            "message_sortant": confirmation_msg,
+            "status": "rdv_confirmed",
+            "messages_log": state["messages_log"] + [f"RDV confirmé par {prenom}"],
+        }
+    else:
+        # Message hors-séquence après qualification — réponse neutre
+        neutral_msg = (
+            f"Bonjour {prenom}, je suis Léa de {agence_nom}. "
+            f"Pour toute question sur votre projet ou pour confirmer votre rendez-vous, "
+            f"n'hésitez pas à me répondre directement."
+        )
+
+        log_action(
+            lead_id=state["lead_id"],
+            client_id=state["client_id"],
+            stage="rdv_confirmation",
+            action_done="post_rdv_message",
+            action_result=neutral_msg[:200],
+            next_action="end",
+            agent_name="lea",
+        )
+
+        return {
+            **state,
+            "message_sortant": neutral_msg,
+            "status": "rdv_proposed",
+            "messages_log": state["messages_log"] + [f"Message post-RDV de {prenom}"],
+        }
+
+
 # ─────────────────────────────────────────────────────────────
 # CONDITIONAL EDGES
 # ─────────────────────────────────────────────────────────────
 
-def route_after_lead_check(state: AgencyState) -> Literal["qualify_new", "continue_qualification"]:
-    """Décide si c'est un nouveau lead ou la suite d'une conversation."""
-    if state["status"] == "existing_lead":
-        return "continue_qualification"
-    return "qualify_new"
+def route_after_lead_check(state: AgencyState) -> Literal["qualify_new", "continue_qualification", "handle_rdv_confirmation"]:
+    """Décide si c'est un nouveau lead, la suite d'une qualification, ou une confirmation de RDV."""
+    if state["status"] != "existing_lead":
+        return "qualify_new"
+    # Lead déjà qualifié ou RDV déjà booké → ne pas rejouer la qualification
+    if state.get("lead_status") in ("qualifie", "rdv_booke"):
+        return "handle_rdv_confirmation"
+    return "continue_qualification"
 
 
 def route_after_qualification(
@@ -355,6 +448,7 @@ def build_graph() -> StateGraph:
     graph.add_node("check_existing_lead", node_check_existing_lead)
     graph.add_node("qualify_new", node_qualify_new_lead)
     graph.add_node("continue_qualification", node_continue_qualification)
+    graph.add_node("handle_rdv_confirmation", node_handle_rdv_confirmation)
     graph.add_node("route_lead", node_route_lead)
     graph.add_node("trigger_nurturing", node_trigger_nurturing)
     graph.add_node("propose_rdv", node_propose_rdv)
@@ -367,8 +461,10 @@ def build_graph() -> StateGraph:
         {
             "qualify_new": "qualify_new",
             "continue_qualification": "continue_qualification",
+            "handle_rdv_confirmation": "handle_rdv_confirmation",
         },
     )
+    graph.add_edge("handle_rdv_confirmation", END)
     graph.add_conditional_edges(
         "qualify_new",
         route_after_qualification,
@@ -421,6 +517,7 @@ def process_incoming_message(
     prenom: str = "",
     nom: str = "",
     email: str = "",
+    agency_name: str = "",
     lead_id: Optional[str] = None,
 ) -> AgencyState:
     """
@@ -448,6 +545,7 @@ def process_incoming_message(
         nom=nom,
         email=email,
         tier=tier,
+        agency_name=agency_name,
         lead_id=lead_id,
     )
 

@@ -38,11 +38,15 @@ class LeadQualifierAgent:
     CONSEILLER_PRENOM = "Léa"
     CONSEILLER_TITRE = "conseillère immobilier"
 
-    def __init__(self, client_id: str, tier: str = "Starter"):
+    def __init__(self, client_id: str, tier: str = "Starter", agency_name: str = ""):
         self.client_id = client_id
         self.tier = tier
         self.settings = get_settings()
+        self._agency_name = agency_name
         self._anthropic_client = None
+
+    def _get_agency_name(self) -> str:
+        return self._agency_name or self.settings.agency_name
 
     def _get_anthropic_client(self):
         """Lazy init client Anthropic."""
@@ -172,7 +176,7 @@ class LeadQualifierAgent:
         history = format_history_for_llm(lead_id, limit=20)
 
         # Génération réponse qualification
-        agence_nom = self.settings.agency_name
+        agence_nom = self._get_agency_name()
         response_text, qualification_complete = self._generate_qualification_response(
             history=history,
             agence_nom=agence_nom,
@@ -227,7 +231,7 @@ class LeadQualifierAgent:
 
     def _generate_welcome_message(self, prenom: str = "") -> str:
         """Génère le message de bienvenue initial."""
-        agence_nom = self.settings.agency_name
+        agence_nom = self._get_agency_name()
         if prenom:
             return LEAD_QUALIFIER_FIRST_MESSAGE.format(
                 prenom=prenom,
@@ -264,21 +268,11 @@ class LeadQualifierAgent:
                 from memory.cost_logger import log_api_action
                 system = get_lead_qualifier_system(agence_nom)
 
-                # Instruction supplémentaire si proche de la fin
-                extra_instruction = ""
-                if len(user_messages) >= 6:
-                    extra_instruction = (
-                        "\n\nIMPORTANT : Tu as maintenant suffisamment d'informations pour qualifier ce lead. "
-                        "Dis-lui que tu as tout ce qu'il te faut et propose-lui une suite (RDV ou suivi)."
-                    )
-
                 response = client.messages.create(
                     model=self.settings.claude_model,
                     max_tokens=300,
                     system=system,
-                    messages=history + (
-                        [{"role": "user", "content": extra_instruction}] if extra_instruction else []
-                    ),
+                    messages=history,
                 )
                 text = response.content[0].text
 
