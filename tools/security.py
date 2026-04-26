@@ -1,9 +1,7 @@
 """
 Sécurité PropPilot — validation des webhooks et protection contre les abus.
 """
-import base64
 import hmac
-import hashlib
 import logging
 import time
 import re
@@ -29,7 +27,10 @@ async def validate_twilio_signature(request: Request) -> bool:
 
     twilio_signature = request.headers.get("X-Twilio-Signature", "")
     if not twilio_signature:
-        logger.warning("[Security] Requête Twilio sans signature")
+        logger.warning(
+            "[Security] Requête Twilio sans X-Twilio-Signature — IP=%s rejetée",
+            request.client.host if request.client else "unknown",
+        )
         return False
 
     url = str(request.url)
@@ -39,18 +40,20 @@ async def validate_twilio_signature(request: Request) -> bool:
     except Exception:
         params = {}
 
-    sorted_params = "".join(f"{k}{v}" for k, v in sorted(params.items()))
-    signature_str = url + sorted_params
-    expected = hmac.new(
-        auth_token.encode("utf-8"),
-        signature_str.encode("utf-8"),
-        hashlib.sha1,
-    ).digest()
-    expected_b64 = base64.b64encode(expected).decode()
+    try:
+        from twilio.request_validator import RequestValidator
+        validator = RequestValidator(auth_token)
+        valid = validator.validate(url, params, twilio_signature)
+    except Exception as e:
+        logger.error("[Security] Erreur RequestValidator Twilio : %s", e)
+        return False
 
-    valid = hmac.compare_digest(twilio_signature, expected_b64)
     if not valid:
-        logger.warning("[Security] Signature Twilio invalide")
+        logger.warning(
+            "[Security] Signature Twilio invalide — URL=%s IP=%s",
+            url,
+            request.client.host if request.client else "unknown",
+        )
     return valid
 
 

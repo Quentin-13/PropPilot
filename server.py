@@ -336,6 +336,9 @@ async def sms_webhook(request: Request):
     Configurez dans Twilio Console > Phone Numbers > Messaging Webhook.
     Retourne du TwiML pour répondre automatiquement.
     """
+    if not await validate_twilio_signature(request):
+        raise HTTPException(status_code=403, detail="Signature Twilio invalide")
+
     form_data = dict(await request.form())
     client_id, tier = _get_client_settings()
 
@@ -354,6 +357,9 @@ async def sms_status_callback(request: Request):
     Callback statut SMS Twilio (delivered, failed, etc.).
     Configurez dans Twilio Console > Phone Numbers > Status Callback.
     """
+    if not await validate_twilio_signature(request):
+        raise HTTPException(status_code=403, detail="Signature Twilio invalide")
+
     form_data = dict(await request.form())
     from integrations.sms_webhook import handle_sms_status_callback
     result = handle_sms_status_callback(form_data)
@@ -369,6 +375,9 @@ async def whatsapp_webhook(request: Request):
     Configurez dans Twilio Console > Messaging > WhatsApp Sandbox.
     Retourne du TwiML pour répondre automatiquement.
     """
+    if not await validate_twilio_signature(request):
+        raise HTTPException(status_code=403, detail="Signature Twilio invalide")
+
     form_data = dict(await request.form())
     client_id, tier = _get_client_settings()
 
@@ -384,6 +393,9 @@ async def whatsapp_webhook(request: Request):
 @app.post("/webhooks/whatsapp/status", tags=["webhooks"])
 async def whatsapp_status_callback(request: Request):
     """Callback statut WhatsApp Twilio."""
+    if not await validate_twilio_signature(request):
+        raise HTTPException(status_code=403, detail="Signature Twilio invalide")
+
     form_data = dict(await request.form())
     from integrations.whatsapp_webhook import handle_whatsapp_status_callback
     result = handle_whatsapp_status_callback(form_data)
@@ -748,6 +760,9 @@ async def twilio_sms_incoming(request: Request, background_tasks: BackgroundTask
     Twilio envoie un POST quand un prospect répond sur le numéro virtuel du client.
     Lookup client par twilio_sms_number (To field).
     """
+    if not await validate_twilio_signature(request):
+        raise HTTPException(status_code=403, detail="Signature Twilio invalide")
+
     form_data = dict(await request.form())
     from_number = sanitize_phone_number(form_data.get("From", ""))
     body = sanitize_sms_input(form_data.get("Body", ""))
