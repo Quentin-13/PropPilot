@@ -57,7 +57,6 @@ class NurturingAgent:
         self.tier = tier
         self.settings = get_settings()
         self._anthropic_client = None
-        self._twilio = None
 
     def _get_anthropic_client(self):
         if self._anthropic_client is None and self.settings.anthropic_available:
@@ -65,18 +64,13 @@ class NurturingAgent:
             self._anthropic_client = anthropic.Anthropic(api_key=self.settings.anthropic_api_key)
         return self._anthropic_client
 
-    def _get_twilio(self):
-        if self._twilio is None:
-            from tools.twilio_tool import TwilioTool
-            self._twilio = TwilioTool()
-        return self._twilio
-
     def process_due_followups(self) -> list[dict]:
         """
-        Traite tous les follow-ups dus pour ce client.
+        Génère des rappels nurturing pour les leads en attente de follow-up.
         Appelé par le scheduler (toutes les heures en production).
+        Ne plus envoie de SMS — crée des entrées dans la table reminders.
 
-        Returns: liste des résultats d'envoi
+        Returns: liste des résultats de création de rappel
         """
         leads_due = get_leads_for_followup(self.client_id)
         results = []
@@ -85,24 +79,25 @@ class NurturingAgent:
             result = self.send_followup(lead)
             results.append({"lead_id": lead.id, **result})
 
-        logger.info(f"Nurturing : {len(leads_due)} follow-ups traités pour {self.client_id}")
+        logger.info("[Nurturing] %d rappels créés pour %s", len(leads_due), self.client_id)
         return results
 
     def send_followup(self, lead: Lead) -> dict:
         """
-        Envoie le prochain message de nurturing pour un lead.
+        Crée un rappel nurturing pour un lead (ne plus envoyer directement — pivot).
+        Le message est généré et stocké dans la table reminders pour validation agent.
 
         Returns:
-            {"sent": bool, "canal": str, "message": str, "next_followup": Optional[datetime]}
+            {"queued": bool, "reminder_id": str, "canal": str, "message": str}
         """
         if not lead.nurturing_sequence:
-            return {"sent": False, "reason": "Pas de séquence nurturing définie"}
+            return {"queued": False, "reason": "Pas de séquence nurturing définie"}
 
         # Vérification quota follow-up
         usage_check = check_and_consume(self.client_id, "followup", tier=self.tier)
         if not usage_check["allowed"]:
             return {
-                "sent": False,
+                "queued": False,
                 "reason": "limit_reached",
                 "usage_message": usage_check["message"],
             }
@@ -116,49 +111,39 @@ class NurturingAgent:
             lead.nurturing_sequence = None
             lead.prochain_followup = None
             update_lead(lead)
-            return {"sent": False, "reason": "sequence_terminee"}
+            return {"queued": False, "reason": "sequence_terminee"}
 
         step_config = sequence_steps[current_step]
         canal = step_config["canal"]
 
-        # Récupération de l'historique des messages envoyés
+        # Récupération de l'historique
         historique = format_history_for_llm(lead.id, limit=10)
         historique_msgs = "\n".join(
             f"- {m['role']}: {m['content'][:100]}..." if len(m['content']) > 100 else f"- {m['role']}: {m['content']}"
             for m in historique[-5:]
         )
 
-        # Génération message personnalisé
+        # Génération du message
         message_data = self._generate_message(lead, step_config, canal, historique_msgs)
 
-        # Envoi selon le canal
-        sent = self._send_message(lead, message_data, canal)
+        # Création du rappel en DB (plus d'envoi direct)
+        reminder_id = self._create_reminder(lead, message_data, canal, current_step, step_config)
 
-        if sent:
-            # Enregistrement en base
-            add_conversation_message(
-                lead_id=lead.id,
-                client_id=self.client_id,
-                role="assistant",
-                contenu=message_data.get("message", ""),
-                canal=canal,
-                metadata={"step": current_step, "sequence": lead.nurturing_sequence.value},
-            )
+        # Avancement dans la séquence
+        lead.nurturing_step = current_step + 1
+        next_step = current_step + 1
 
-            # Avancement dans la séquence
-            lead.nurturing_step = current_step + 1
-            next_step = current_step + 1
+        if next_step < len(sequence_steps):
+            next_delay = sequence_steps[next_step]["delai_jours"]
+            lead.prochain_followup = datetime.now() + timedelta(days=next_delay)
+        else:
+            lead.prochain_followup = None
 
-            if next_step < len(sequence_steps):
-                next_delay = sequence_steps[next_step]["delai_jours"]
-                lead.prochain_followup = datetime.now() + timedelta(days=next_delay)
-            else:
-                lead.prochain_followup = None
-
-            update_lead(lead)
+        update_lead(lead)
 
         return {
-            "sent": sent,
+            "queued": True,
+            "reminder_id": reminder_id,
             "canal": canal.value,
             "message": message_data.get("message", ""),
             "next_followup": lead.prochain_followup.isoformat() if lead.prochain_followup else None,
@@ -250,57 +235,44 @@ class NurturingAgent:
             "ton": "chaleureux",
         }
 
-    def _send_message(self, lead: Lead, message_data: dict, canal: Canal) -> bool:
-        """Envoie le message via le canal approprié."""
+    def _create_reminder(
+        self,
+        lead: Lead,
+        message_data: dict,
+        canal: Canal,
+        step: int,
+        step_config: dict,
+    ) -> str:
+        """Crée un rappel nurturing dans la table reminders."""
+        import uuid
+        import json as _json
+        from memory.database import get_connection
+
+        reminder_id = str(uuid.uuid4())
         message = message_data.get("message", "")
-        if not message:
-            return False
+        sujet = message_data.get("sujet") or ""
+        sequence_name = lead.nurturing_sequence.value if lead.nurturing_sequence else ""
+        meta = _json.dumps({
+            "step": step,
+            "sequence": sequence_name,
+            "contexte": step_config.get("contexte", ""),
+        })
 
-        if canal == Canal.SMS:
-            if not lead.telephone:
-                return False
-            twilio = self._get_twilio()
-            client_sms_number = None
-            try:
-                from memory.database import get_connection
-                with get_connection() as conn:
-                    row = conn.execute(
-                        "SELECT twilio_sms_number FROM users WHERE id = %s LIMIT 1",
-                        (self.client_id,),
-                    ).fetchone()
-                    if row:
-                        client_sms_number = row["twilio_sms_number"]
-            except Exception:
-                pass
-            result = twilio.send_sms(
-                to=twilio.format_french_number(lead.telephone),
-                body=message,
-                from_number=client_sms_number,
-            )
-            return result.get("success", False)
+        try:
+            with get_connection() as conn:
+                conn.execute(
+                    """
+                    INSERT INTO reminders
+                        (id, lead_id, client_id, type, canal, message, sujet, scheduled_at, status, metadata)
+                    VALUES (?, ?, ?, 'nurturing', ?, ?, ?, NOW(), 'pending', ?)
+                    """,
+                    (reminder_id, lead.id, self.client_id, canal.value, message, sujet, meta),
+                )
+            logger.info("[Nurturing] Rappel créé : %s (lead=%s, step=%d)", reminder_id[:8], lead.id[:8], step)
+        except Exception as e:
+            logger.error("[Nurturing] Erreur création rappel : %s", e)
 
-        elif canal == Canal.EMAIL:
-            if not lead.email:
-                # Fallback SMS via Twilio si pas d'email
-                if lead.telephone:
-                    twilio = self._get_twilio()
-                    result = twilio.send_sms(
-                        to=twilio.format_french_number(lead.telephone),
-                        body=message[:160],
-                    )
-                    return result.get("success", False)
-                return False
-            from tools.email_tool import EmailTool
-            email_tool = EmailTool()
-            result = email_tool.send(
-                to_email=lead.email,
-                to_name=lead.nom_complet,
-                subject=message_data.get("sujet", "Votre projet immobilier"),
-                body_text=message,
-            )
-            return result.get("success", False)
-
-        return False
+        return reminder_id
 
     def handle_response_requalification(self, lead_id: str, response_message: str) -> dict:
         """

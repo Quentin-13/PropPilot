@@ -284,7 +284,28 @@ CREATE TABLE IF NOT EXISTS lead_journey (
     FOREIGN KEY (lead_id) REFERENCES leads(id)
 );
 CREATE INDEX IF NOT EXISTS idx_journey_lead ON lead_journey(lead_id);
-CREATE INDEX IF NOT EXISTS idx_journey_next_action ON lead_journey(next_action_at)
+CREATE INDEX IF NOT EXISTS idx_journey_next_action ON lead_journey(next_action_at);
+
+CREATE TABLE IF NOT EXISTS reminders (
+    id TEXT PRIMARY KEY,
+    lead_id TEXT NOT NULL,
+    client_id TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'nurturing',
+    canal TEXT DEFAULT 'sms',
+    message TEXT NOT NULL,
+    sujet TEXT DEFAULT '',
+    scheduled_at TIMESTAMP NOT NULL,
+    sent_at TIMESTAMP,
+    status TEXT DEFAULT 'pending',
+    metadata TEXT DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (lead_id) REFERENCES leads(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_reminders_client ON reminders(client_id);
+CREATE INDEX IF NOT EXISTS idx_reminders_lead ON reminders(lead_id);
+CREATE INDEX IF NOT EXISTS idx_reminders_status ON reminders(status);
+CREATE INDEX IF NOT EXISTS idx_reminders_scheduled ON reminders(scheduled_at)
 """
 
 
@@ -371,8 +392,8 @@ def init_database() -> None:
 def reset_database() -> None:
     """Remet à zéro la base de données (usage dev/démo uniquement)."""
     tables = [
-        "api_actions", "conversations", "calls", "listings", "estimations",
-        "roi_metrics", "crm_connections", "usage_tracking", "leads", "users",
+        "reminders", "api_actions", "conversations", "calls", "listings", "estimations",
+        "roi_metrics", "crm_connections", "usage_tracking", "lead_journey", "leads", "users",
     ]
     with get_connection() as conn:
         for table in tables:
