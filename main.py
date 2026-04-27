@@ -57,7 +57,6 @@ def init():
     table.add_row("Tier", s.agency_tier)
     table.add_row("Claude disponible", "✅" if s.anthropic_available else "⚠️ Mode mock")
     table.add_row("Twilio disponible", "✅" if s.twilio_available else "⚠️ Mode mock")
-    table.add_row("ElevenLabs disponible", "✅" if s.elevenlabs_available else "⚠️ Mode mock")
     table.add_row("Base de données", s.database_path)
 
     console.print(table)

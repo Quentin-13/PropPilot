@@ -79,11 +79,6 @@ class Settings(BaseSettings):
     # URL de l'API FastAPI (pour le dashboard)
     api_url: str = Field(default="http://localhost:8000", alias="API_URL")
 
-    # ElevenLabs
-    elevenlabs_api_key: Optional[str] = Field(default=None, alias="ELEVENLABS_API_KEY")
-    elevenlabs_voice_id: Optional[str] = Field(default=None, alias="ELEVENLABS_VOICE_ID")
-    elevenlabs_model_id: str = Field(default="eleven_multilingual_v2", alias="ELEVENLABS_MODEL_ID")
-
     # Stripe
     stripe_secret_key: Optional[str] = Field(default=None, alias="STRIPE_SECRET_KEY")
     stripe_publishable_key: Optional[str] = Field(default=None, alias="STRIPE_PUBLISHABLE_KEY")
@@ -141,12 +136,6 @@ class Settings(BaseSettings):
         if self.testing or self.mock_mode == "always":
             return False
         return bool(self.sendgrid_api_key)
-
-    @property
-    def elevenlabs_available(self) -> bool:
-        if self.testing or self.mock_mode == "always":
-            return False
-        return bool(self.elevenlabs_api_key)
 
     @property
     def stripe_available(self) -> bool:

@@ -13,6 +13,8 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 os.environ.setdefault("TESTING", "true")
 
+pytestmark = pytest.mark.skip(reason="ElevenLabsTool supprimé — sprint cleanup-pivot step 7")
+
 
 # ─── Fixture ──────────────────────────────────────────────────────────────────
 

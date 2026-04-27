@@ -27,7 +27,8 @@
       "Bash(TESTING=true python:*)",
       "Bash(TESTING=true python3:*)",
       "Bash(pg_isready)",
-      "Bash(brew services *)"
+      "Bash(brew services *)",
+      "Bash(pip show *)"
     ]
   }
 }
