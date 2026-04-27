@@ -1,6 +1,6 @@
 """
 Serveur FastAPI — PropPilot.
-Expose les webhooks Twilio (SMS, WhatsApp), SeLoger, LeBonCoin, Retell et Apimo.
+Expose les webhooks Twilio (SMS, WhatsApp), SeLoger, LeBonCoin, portails et Apimo.
 
 Démarrage :
     uvicorn server:app --host 0.0.0.0 --port 8000 --reload
@@ -96,11 +96,7 @@ async def lifespan(app: FastAPI):
         logger.info(f"Claude: {'✅' if settings.anthropic_available else '⚠️ mock'} | "
                     f"Twilio: {'✅' if settings.twilio_available else '⚠️ mock'} | "
                     f"Stripe: {'✅' if settings.stripe_available else '⚠️ mock'}")
-        logger.info(
-            "PropPilot sécurisé — full SMS. "
-            "Variables Railway à ajouter : SMSPARTNER_WEBHOOK_SECRET, HEALTH_SECRET. "
-            "Variables à supprimer si présentes : ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID, BASE_URL"
-        )
+        logger.info("PropPilot démarré — capture leads, reminders nurturing, no auto-SMS")
     except Exception as e:
         if settings.testing:
             logger.warning(f"DB non disponible (mode test) : {e}")
