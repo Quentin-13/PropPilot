@@ -327,45 +327,6 @@ async def auth_login(body: _LoginRequest):
         raise HTTPException(status_code=401, detail=str(e))
 
 
-# ─── Webhooks SMS (Twilio) ─────────────────────────────────────────────────────
-
-@app.post("/webhooks/sms", tags=["webhooks"], response_class=Response)
-async def sms_webhook(request: Request):
-    """
-    Webhook SMS entrant Twilio.
-    Configurez dans Twilio Console > Phone Numbers > Messaging Webhook.
-    Retourne du TwiML pour répondre automatiquement.
-    """
-    if not await validate_twilio_signature(request):
-        raise HTTPException(status_code=403, detail="Signature Twilio invalide")
-
-    form_data = dict(await request.form())
-    client_id, tier = _get_client_settings()
-
-    from integrations.sms_webhook import handle_sms_webhook
-    result = handle_sms_webhook(form_data, client_id=client_id, tier=tier)
-
-    return Response(
-        content=result.get("twiml", "<?xml version='1.0'?><Response></Response>"),
-        media_type="text/xml",
-    )
-
-
-@app.post("/webhooks/sms/status", tags=["webhooks"])
-async def sms_status_callback(request: Request):
-    """
-    Callback statut SMS Twilio (delivered, failed, etc.).
-    Configurez dans Twilio Console > Phone Numbers > Status Callback.
-    """
-    if not await validate_twilio_signature(request):
-        raise HTTPException(status_code=403, detail="Signature Twilio invalide")
-
-    form_data = dict(await request.form())
-    from integrations.sms_webhook import handle_sms_status_callback
-    result = handle_sms_status_callback(form_data)
-    return JSONResponse(result)
-
-
 # ─── Webhooks WhatsApp (Twilio) ────────────────────────────────────────────────
 
 @app.post("/webhooks/whatsapp", tags=["webhooks"], response_class=Response)

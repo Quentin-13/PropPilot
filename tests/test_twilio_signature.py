@@ -20,8 +20,6 @@ import pytest
 
 TWILIO_ROUTES = [
     "/webhooks/twilio/sms",
-    "/webhooks/sms",
-    "/webhooks/sms/status",
     "/webhooks/whatsapp",
     "/webhooks/whatsapp/status",
     "/webhooks/twilio/voice",
