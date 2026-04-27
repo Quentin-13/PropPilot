@@ -1,7 +1,6 @@
 """
 Sécurité PropPilot — validation des webhooks et protection contre les abus.
 """
-import hmac
 import logging
 import time
 import re
@@ -54,24 +53,6 @@ async def validate_twilio_signature(request: Request) -> bool:
             url,
             request.client.host if request.client else "unknown",
         )
-    return valid
-
-
-# ── SMS PARTNER VALIDATION ────────────────────────────────────────────────────
-
-async def validate_smspartner_request(request: Request) -> bool:
-    settings = get_settings()
-    secret = getattr(settings, "smspartner_webhook_secret", None)
-
-    if not secret:
-        client_ip = request.client.host if request.client else "unknown"
-        logger.info(f"[Security] SMS Partner sans secret configuré — IP: {client_ip}")
-        return True
-
-    provided_secret = request.headers.get("X-SMSPartner-Secret", "")
-    valid = hmac.compare_digest(provided_secret, secret)
-    if not valid:
-        logger.warning("[Security] Secret SMS Partner invalide")
     return valid
 
 
