@@ -193,6 +193,7 @@ class TestGetAvailableVoices:
 
 # ─── VoiceInboundAgent — appels entrants ──────────────────────────────────────
 
+@pytest.mark.skip(reason="VoiceInboundAgent supprimé — sprint cleanup-pivot step 5")
 class TestVoiceInboundAgent:
     @pytest.fixture(autouse=True)
     def _setup(self, monkeypatch):

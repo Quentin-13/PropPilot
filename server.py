@@ -461,57 +461,6 @@ async def leboncoin_webhook(request: Request):
     return JSONResponse(result)
 
 
-# ─── Webhook Retell AI (post-appel) ───────────────────────────────────────────
-
-@app.post("/webhooks/retell", tags=["webhooks"])
-async def retell_webhook(request: Request):
-    """
-    Webhook Retell AI — events call_started, call_ended, call_analyzed.
-    Configurez dans Retell Dashboard > Webhooks.
-    Déclenche le traitement post-appel (transcription, scoring, booking RDV).
-    """
-    try:
-        payload = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON payload")
-
-    event = payload.get("event", "")
-    call_data = payload.get("call", {})
-    call_id = call_data.get("call_id", "")
-
-    logger.info(f"Retell webhook : event={event} call_id={call_id[:12] if call_id else 'N/A'}")
-
-    # Seul l'event call_analyzed nous intéresse (contient transcription + analyse)
-    if event not in ("call_ended", "call_analyzed"):
-        return JSONResponse({"status": "ignored", "event": event})
-
-    # Récupérer le lead_id depuis les métadonnées de l'appel
-    metadata = call_data.get("metadata", {})
-    lead_id = metadata.get("lead_id", "")
-    client_id = metadata.get("client_id", get_settings().agency_client_id)
-
-    if not lead_id or not call_id:
-        logger.warning(f"Retell webhook sans lead_id ou call_id — ignoré")
-        return JSONResponse({"status": "ignored", "reason": "missing_lead_id"})
-
-    # Traitement post-appel via VoiceInboundAgent
-    from agents.voice_inbound import VoiceInboundAgent
-    settings = get_settings()
-    agent = VoiceInboundAgent(client_id=client_id, tier=settings.agency_tier)
-
-    try:
-        result = agent.process_call_ended(call_id=call_id, lead_id=lead_id)
-        return JSONResponse({
-            "status": "processed",
-            "lead_updated": result.get("lead_updated"),
-            "rdv_booked": result.get("rdv_booked"),
-            "post_score": result.get("post_score"),
-        })
-    except Exception as e:
-        logger.error(f"Erreur traitement post-appel {call_id} : {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 # ─── Webhook Apimo CRM ────────────────────────────────────────────────────────
 
 @app.post("/webhooks/apimo", tags=["webhooks"])

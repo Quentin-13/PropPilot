@@ -26,10 +26,7 @@ COST_PER_UNIT = {
         "voice_minute": 0.013,         # €/minute appel France
     },
     "elevenlabs": {
-        "per_1k_chars": 0.003,         # €/1000 caractères TTS
-    },
-    "retell": {
-        "per_minute": 0.05,            # €/minute appel IA
+        "per_1k_chars": 0.003,         # €/1000 caractères TTS (ElevenLabs supprimé — conservé pour historique)
     },
 }
 

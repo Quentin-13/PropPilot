@@ -288,6 +288,7 @@ class TestSendConfirmation:
 
 # ─── Tâche 5 — VoiceCallAgent : 3 créneaux + confirmation ─────────────────────
 
+@pytest.mark.skip(reason="VoiceInboundAgent supprimé — sprint cleanup-pivot step 5")
 class TestVoiceInboundCalendarIntegration:
     """Tests de l'intégration calendrier avec les appels entrants."""
 
