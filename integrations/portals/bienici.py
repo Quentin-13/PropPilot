@@ -86,26 +86,20 @@ def handle_bienici_lead(payload: dict, client_id: str, tier: str) -> dict:
     )
     saved = create_lead(lead)
 
-    # Déclencher la qualification
-    message = parsed.get("message", "") or f"Bonjour, je suis intéressé(e) par un bien à {parsed['localisation']}."
+    # Stocker le message initial si présent
+    message = parsed.get("message", "")
     try:
-        from orchestrator import process_incoming_message
-        result = process_incoming_message(
-            telephone=parsed["telephone"],
-            message=message,
-            client_id=client_id,
-            tier=tier,
-            canal="web",
-            prenom=parsed["prenom"],
-            nom=parsed["nom"],
-            email=parsed["email"],
-        )
-        return {
-            "success": True,
-            "lead_id": saved.id,
-            "score": result.get("score", 0),
-            "source": "bienici",
-        }
+        if message:
+            from memory.lead_repository import add_conversation_message
+            add_conversation_message(
+                lead_id=saved.id,
+                client_id=client_id,
+                role="user",
+                contenu=message,
+                canal=Canal.WEB,
+                metadata={"source": "bienici"},
+            )
+        return {"success": True, "lead_id": saved.id, "source": "bienici"}
     except Exception as e:
         logger.error(f"[BienIci] Erreur orchestrateur : {e}")
         return {"success": True, "lead_id": saved.id, "source": "bienici"}

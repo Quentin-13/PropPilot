@@ -1,16 +1,11 @@
 """
 Tests unitaires — LeadQualifierAgent.
+DÉSACTIVÉ dans le sprint cleanup-pivot : LeadQualifierAgent supprimé (Léa).
+La logique de scoring est migrée dans lib/lead_extraction/.
 """
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 import pytest
-from unittest.mock import patch, MagicMock
-from memory.database import init_database
-from memory.models import LeadStatus, NurturingSequence, ProjetType
-from agents.lead_qualifier import LeadQualifierAgent
+
+pytestmark = pytest.mark.skip(reason="LeadQualifierAgent supprimé — sprint cleanup-pivot")
 
 
 @pytest.fixture(autouse=True)

@@ -1,15 +1,16 @@
 """
-Simulation flux lead complet — bout en bout.
-Simule le parcours d'un lead depuis réception SMS jusqu'à la signature du mandat.
+Simulation flux lead complet — OBSOLÈTE (sprint cleanup-pivot).
 
-Usage :
-    python scripts/simulate_lead_flow.py
-    python scripts/simulate_lead_flow.py --scenario hot     # lead chaud direct RDV
-    python scripts/simulate_lead_flow.py --scenario warm    # lead tiède nurturing
-    python scripts/simulate_lead_flow.py --scenario cold    # lead froid long nurturing
-    python scripts/simulate_lead_flow.py --full             # simulation complète tous scénarios
+Ce script utilisait le LeadQualifierAgent / orchestrator supprimés.
+Il n'a plus de rôle dans la nouvelle architecture (capture + CRM).
+Conservé pour référence historique uniquement.
 """
 from __future__ import annotations
+
+import sys
+print("⚠️  simulate_lead_flow.py est obsolète — LeadQualifierAgent supprimé (sprint cleanup-pivot).")
+print("   Utilisez `python main.py simulate-lead` pour simuler une capture de lead.")
+sys.exit(0)
 
 import argparse
 import sys

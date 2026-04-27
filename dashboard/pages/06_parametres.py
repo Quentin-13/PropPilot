@@ -311,33 +311,24 @@ elif st.session_state.wizard_step == 5:
             run_test = st.form_submit_button("🚀 Lancer le test", type="primary")
 
     if run_test:
-        with st.spinner("Traitement du lead en cours..."):
-            from orchestrator import process_incoming_message
+        with st.spinner("Stockage du lead test en cours..."):
+            from lib.sms_storage import store_incoming_sms
             try:
-                result = process_incoming_message(
-                    telephone=test_phone,
-                    message=test_message,
+                result = store_incoming_sms(
+                    from_number=test_phone,
+                    to_number="",
+                    body=test_message,
                     client_id=client_id,
-                    tier=tier,
-                    canal="sms",
-                    prenom=test_prenom,
                 )
                 st.markdown("### Résultat du test")
                 col_r1, col_r2 = st.columns(2)
                 with col_r1:
                     st.metric("Lead ID", result.get("lead_id", "—")[:8] if result.get("lead_id") else "—")
-                    st.metric("Statut", result.get("status", "—"))
+                    st.metric("Nouveau lead", "Oui" if result.get("is_new_lead") else "Non")
                 with col_r2:
-                    st.metric("Score", f"{result.get('score', 0)}/10")
-                    st.metric("Action suivante", result.get("next_action", "—"))
+                    st.metric("Stocké", "✅" if result.get("stored") else "❌")
 
-                st.markdown("**Message envoyé au prospect :**")
-                st.info(result.get("message_sortant", "—"))
-                st.markdown("**Log :**")
-                for log in result.get("messages_log", []):
-                    st.text(f"• {log}")
-
-                st.success("✅ **Votre agence IA est prête !** Les leads entrants seront traités automatiquement.")
+                st.success("✅ **Votre agence IA est prête !** Les leads entrants sont capturés automatiquement.")
 
                 if st.button("🏠 Aller au dashboard"):
                     st.switch_page("app.py")

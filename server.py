@@ -530,23 +530,30 @@ async def apimo_webhook(request: Request):
 
     logger.info(f"Apimo webhook : event={parsed.get('event_type')}")
 
-    # Si nouveau contact créé dans Apimo, le qualifier via l'orchestrateur
+    # Nouveau contact Apimo → créer le lead en DB (qualification via dashboard agent)
     if parsed.get("event_type") == "new_contact":
         data = parsed.get("data", {})
         telephone = data.get("telephone", "")
         if telephone:
-            from orchestrator import process_incoming_message
-            settings = get_settings()
-            process_incoming_message(
-                telephone=telephone,
-                message=f"Nouveau contact Apimo : {data.get('prenom', '')} {data.get('nom', '')}",
-                client_id=settings.agency_client_id,
-                tier=settings.agency_tier,
-                canal="email",
-                prenom=data.get("prenom", ""),
-                nom=data.get("nom", ""),
-                email=data.get("email", ""),
-            )
+            try:
+                from memory.lead_repository import create_lead, get_lead_by_phone
+                from memory.models import Lead, Canal, LeadStatus
+                settings = get_settings()
+                existing = get_lead_by_phone(telephone, settings.agency_client_id)
+                if not existing:
+                    lead = Lead(
+                        client_id=settings.agency_client_id,
+                        prenom=data.get("prenom", ""),
+                        nom=data.get("nom", ""),
+                        telephone=telephone,
+                        email=data.get("email", ""),
+                        source=Canal.WEB,
+                        statut=LeadStatus.ENTRANT,
+                    )
+                    create_lead(lead)
+                    logger.info("[Apimo] Nouveau lead créé : %s", telephone)
+            except Exception as e:
+                logger.warning("[Apimo] Erreur création lead : %s", e)
 
     return JSONResponse({"status": "ok", "event": parsed.get("event_type")})
 
@@ -610,22 +617,8 @@ async def crm_webhook(
         lead.client_id = client_id
         final_lead, is_dup = resolve(lead)
         if not is_dup:
-            saved = create_lead(final_lead)
-            # Déclencher qualification
-            try:
-                from orchestrator import process_incoming_message
-                process_incoming_message(
-                    telephone=final_lead.telephone or "",
-                    message=f"Nouveau lead {crm_name} : {final_lead.prenom} {final_lead.nom}",
-                    client_id=client_id,
-                    tier=tier,
-                    canal="web",
-                    prenom=final_lead.prenom or "",
-                    nom=final_lead.nom or "",
-                    email=final_lead.email or "",
-                )
-            except Exception as e:
-                logger.warning(f"[CRM Webhook] Orchestrateur ignoré : {e}")
+            create_lead(final_lead)
+            logger.info("[CRM Webhook] Lead %s créé depuis %s", final_lead.telephone, crm_name)
         return is_dup
 
     background_tasks.add_task(_process_lead, lead, client_id, tier)
@@ -673,9 +666,9 @@ async def portal_webhook(portal_name: str, request: Request):
 @rate_limit(max_calls=30, window_seconds=60)
 async def twilio_voice_inbound(request: Request, background_tasks: BackgroundTasks):
     """
-    Appel entrant sur le 07 :
-    1. Joue le message vocal de l'agence (personnalisé avec nom + agence)
-    2. Envoie un SMS de qualification en background
+    Appel entrant sur le 07.
+    Joue le message vocal de l'agence (personnalisé avec nom + agence).
+    L'appel sera enregistré et transcrit dans le sprint Capture Appels.
     """
     if not await validate_twilio_signature(request):
         raise HTTPException(status_code=403, detail="Signature invalide")
@@ -684,50 +677,30 @@ async def twilio_voice_inbound(request: Request, background_tasks: BackgroundTas
     from_number = sanitize_phone_number(form.get("From", ""))
     to_number = form.get("To", "")
 
-    logger.info(f"[Twilio voice] Appel entrant — {from_number} → {to_number}")
+    logger.info("[Twilio voice] Appel entrant — %s → %s", from_number, to_number)
 
     # Lookup client par numéro 06/07
     agent_name = "votre conseiller"
     agency_name = "l'agence"
-    client_id = None
-    tier = "Starter"
 
     try:
         from memory.database import get_connection
         with get_connection() as conn:
             row = conn.execute(
-                "SELECT id, plan, agency_name, first_name FROM users "
+                "SELECT agency_name, first_name FROM users "
                 "WHERE twilio_sms_number = %s AND plan_active = TRUE LIMIT 1",
                 (to_number,),
             ).fetchone()
             if row:
-                client_id = row["id"]
-                tier = row["plan"]
                 agency_name = row["agency_name"] or agency_name
                 agent_name = row["first_name"] or agent_name
             else:
                 logger.warning(
-                    "[Twilio voice] Numéro 'To' inconnu : %s — appel ignoré (numéro non attribué)",
+                    "[Twilio voice] Numéro 'To' inconnu : %s — appel ignoré",
                     to_number,
                 )
     except Exception as e:
-        logger.warning(f"[Twilio voice] DB lookup: {e}")
-
-    # SMS de qualification en background
-    if client_id and from_number:
-        _cid, _tier = client_id, tier
-
-        def _qualify():
-            from orchestrator import process_incoming_message
-            process_incoming_message(
-                telephone=from_number,
-                message="[APPEL ENTRANT — qualification automatique]",
-                client_id=_cid,
-                tier=_tier,
-                canal="sms",
-            )
-
-        background_tasks.add_task(_qualify)
+        logger.warning("[Twilio voice] DB lookup: %s", e)
 
     # TwiML — message vocal entrant
     from tools.twilio_tool import TwilioTool
@@ -757,8 +730,8 @@ async def twiml_sophie_inbound_compat(request: Request, background_tasks: Backgr
 async def twilio_sms_incoming(request: Request, background_tasks: BackgroundTasks):
     """
     SMS entrants Twilio 06/07.
-    Twilio envoie un POST quand un prospect répond sur le numéro virtuel du client.
-    Lookup client par twilio_sms_number (To field).
+    Capture le message et le stocke dans la table conversations.
+    Aucune réponse automatique — l'agent répond lui-même depuis le dashboard.
     """
     if not await validate_twilio_signature(request):
         raise HTTPException(status_code=403, detail="Signature Twilio invalide")
@@ -774,31 +747,27 @@ async def twilio_sms_incoming(request: Request, background_tasks: BackgroundTask
             media_type="application/xml",
         )
 
-    logger.info(f"[Twilio SMS entrant] {from_number} → {to_number}: {body[:80]}")
+    logger.info("[Twilio SMS entrant] %s → %s: %s", from_number, to_number, body[:80])
 
+    # Lookup client par numéro Twilio
     client_id: str | None = None
-    tier = "Starter"
-    agency_name = ""
-
     try:
         from memory.database import get_connection
         with get_connection() as conn:
             row = conn.execute(
-                "SELECT id, plan, agency_name FROM users "
+                "SELECT id FROM users "
                 "WHERE twilio_sms_number = %s AND plan_active = TRUE LIMIT 1",
                 (to_number,),
             ).fetchone()
             if row:
                 client_id = row["id"]
-                tier = row["plan"]
-                agency_name = row["agency_name"] or ""
             else:
                 logger.warning(
-                    "[Twilio SMS] Numéro 'To' inconnu : %s — message rejeté (numéro non attribué)",
+                    "[Twilio SMS] Numéro 'To' inconnu : %s — message rejeté",
                     to_number,
                 )
     except Exception as e:
-        logger.warning(f"[Twilio SMS] DB lookup: {e}")
+        logger.warning("[Twilio SMS] DB lookup: %s", e)
 
     if not client_id:
         return Response(
@@ -806,49 +775,21 @@ async def twilio_sms_incoming(request: Request, background_tasks: BackgroundTask
             media_type="application/xml",
         )
 
-    def _process():
-        from orchestrator import process_incoming_message
-        from tools.twilio_tool import TwilioTool
+    # Stockage en background (non bloquant)
+    _cid = client_id
 
-        # Lock par expéditeur — garantit un seul traitement simultané par numéro
-        lock = _get_sms_lock(f"{client_id}:{from_number}")
-        with lock:
-            final_state = process_incoming_message(
-                telephone=from_number,
-                message=body,
-                client_id=client_id,
-                tier=tier,
-                canal="sms",
-                agency_name=agency_name,
-            )
+    def _store():
+        from lib.sms_storage import store_incoming_sms
+        result = store_incoming_sms(
+            from_number=from_number,
+            to_number=to_number,
+            body=body,
+            client_id=_cid,
+        )
+        if not result["stored"]:
+            logger.error("[Twilio SMS] Échec stockage pour %s", from_number)
 
-            message_sortant = final_state.get("message_sortant", "")
-            if not message_sortant:
-                logger.warning("[Twilio SMS] Orchestrateur n'a produit aucun message pour %s", from_number)
-                return
-
-            twilio = TwilioTool()
-            result = twilio.send_sms(
-                to=from_number,
-                body=message_sortant,
-                from_number=to_number,
-            )
-
-            if result.get("success"):
-                logger.info(
-                    "[Twilio SMS] Réponse envoyée à %s : SID %s%s",
-                    from_number,
-                    result.get("sid", "—"),
-                    " (mock)" if result.get("mock") else "",
-                )
-            else:
-                logger.error(
-                    "[Twilio SMS] Échec envoi réponse à %s : %s",
-                    from_number,
-                    result.get("error", "erreur inconnue"),
-                )
-
-    background_tasks.add_task(_process)
+    background_tasks.add_task(_store)
 
     return Response(
         content="<?xml version='1.0' encoding='UTF-8'?><Response></Response>",
@@ -881,39 +822,36 @@ async def api_status(request: Request):
 @app.post("/api/simulate-lead", tags=["api"])
 async def api_simulate_lead(request: Request):
     """
-    Simule un lead entrant.
-    Body JSON : {"telephone": str, "message": str, "prenom": str, "canal": str}
+    Simule un lead entrant (désactivé — qualification automatique supprimée).
+    Crée uniquement le lead en DB pour les tests.
     """
     try:
         body = await request.json()
     except Exception:
         raise HTTPException(status_code=400, detail="JSON invalide")
 
+    from memory.lead_repository import create_lead
+    from memory.models import Lead, Canal, LeadStatus
+
     telephone = body.get("telephone", "+33699000099")
-    message = body.get("message", "Bonjour, je cherche un appartement")
     prenom = body.get("prenom", "")
-    canal = body.get("canal", "sms")
-
+    canal_str = body.get("canal", "sms")
     client_id = request.state.user_id
-    tier = request.state.tier
-    from orchestrator import process_incoming_message
 
-    result = process_incoming_message(
-        telephone=telephone,
-        message=message,
+    try:
+        canal = Canal(canal_str)
+    except ValueError:
+        canal = Canal.SMS
+
+    lead = Lead(
         client_id=client_id,
-        tier=tier,
-        canal=canal,
         prenom=prenom,
+        telephone=telephone,
+        source=canal,
+        statut=LeadStatus.ENTRANT,
     )
-
-    return JSONResponse({
-        "lead_id": result.get("lead_id"),
-        "score": result.get("score"),
-        "status": result.get("status"),
-        "message_sortant": result.get("message_sortant"),
-        "next_action": result.get("next_action"),
-    })
+    saved = create_lead(lead)
+    return JSONResponse({"lead_id": saved.id, "status": "entrant", "note": "qualification_manuelle_required"})
 
 
 @app.post("/api/nurturing/process", tags=["api"])
@@ -1207,32 +1145,13 @@ async def webhook_leads(
     log_action(
         lead_id=saved_lead.id,
         client_id=user_id,
-        stage="qualification",
+        stage="reception",
         action_done="webhook_lead_received",
         action_result=f"source={body.source}",
-        next_action="process_incoming_message",
-        agent_name="lea",
+        next_action="agent_review",
+        agent_name="system",
         metadata={"source": body.source, "bien_ref": body.bien_ref or ""},
     )
-
-    def _process():
-        from orchestrator import process_incoming_message
-        intro_msg = f"Nouveau lead {body.source}"
-        if body.bien_ref:
-            intro_msg += f" — réf. bien : {body.bien_ref}"
-        process_incoming_message(
-            telephone=body.telephone,
-            message=intro_msg,
-            client_id=user_id,
-            tier=tier,
-            canal="web",
-            prenom=body.prenom,
-            nom=body.nom,
-            email=body.email,
-            lead_id=saved_lead.id,
-        )
-
-    background_tasks.add_task(_process)
 
     return JSONResponse({"status": "ok", "lead_id": saved_lead.id})
 
@@ -1306,27 +1225,13 @@ async def api_leads_import(
             log_action(
                 lead_id=saved.id,
                 client_id=client_id,
-                stage="qualification",
+                stage="reception",
                 action_done="csv_import",
                 action_result=f"source={source}",
-                next_action="process_incoming_message",
-                agent_name="lea",
+                next_action="agent_review",
+                agent_name="system",
                 metadata={"source": source, "row": i + 2},
             )
-
-            def _process(lead_id=saved.id, tel=telephone, prenom=lead.prenom):
-                from orchestrator import process_incoming_message
-                process_incoming_message(
-                    telephone=tel,
-                    message=f"Lead importé depuis {source}",
-                    client_id=client_id,
-                    tier=tier,
-                    canal="web",
-                    prenom=prenom,
-                    lead_id=lead_id,
-                )
-
-            background_tasks.add_task(_process)
 
         except Exception as e:
             errors.append(f"Ligne {i + 2} : {str(e)[:60]}")

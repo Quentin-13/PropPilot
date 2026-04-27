@@ -19,6 +19,77 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
+def store_incoming_message(
+    from_number: str,
+    body: str,
+    client_id: str,
+    canal: str = "sms",
+    to_number: str = "",
+    prenom: str = "",
+    nom: str = "",
+    email: str = "",
+    source_metadata: Optional[dict] = None,
+) -> dict:
+    """
+    Stocke un message entrant (SMS, WhatsApp, portail) en base.
+    Version générique de store_incoming_sms().
+
+    Returns:
+        {"lead_id": str, "is_new_lead": bool, "stored": bool}
+    """
+    if not from_number:
+        logger.warning("[MessageStorage] Message ignoré — numéro manquant")
+        return {"lead_id": None, "is_new_lead": False, "stored": False}
+
+    try:
+        from memory.lead_repository import (
+            get_lead_by_phone,
+            create_lead,
+            add_conversation_message,
+        )
+        from memory.models import Canal as CanalEnum, Lead, LeadStatus
+
+        try:
+            canal_enum = CanalEnum(canal)
+        except ValueError:
+            canal_enum = CanalEnum.SMS
+
+        lead = get_lead_by_phone(from_number, client_id)
+        is_new = False
+
+        if not lead:
+            lead = Lead(
+                client_id=client_id,
+                prenom=prenom,
+                nom=nom,
+                telephone=from_number,
+                email=email,
+                source=canal_enum,
+                statut=LeadStatus.ENTRANT,
+            )
+            lead = create_lead(lead)
+            is_new = True
+            logger.info("[MessageStorage] Nouveau lead créé : %s (tel=%s)", lead.id, from_number)
+        else:
+            logger.info("[MessageStorage] Lead existant : %s (tel=%s)", lead.id, from_number)
+
+        meta = {"from": from_number, "to": to_number, "source": canal, **(source_metadata or {})}
+        add_conversation_message(
+            lead_id=lead.id,
+            client_id=client_id,
+            role="user",
+            contenu=body or "[Message sans texte]",
+            canal=canal_enum,
+            metadata=meta,
+        )
+
+        return {"lead_id": lead.id, "is_new_lead": is_new, "stored": True}
+
+    except Exception as e:
+        logger.error("[MessageStorage] Erreur stockage : %s", e)
+        return {"lead_id": None, "is_new_lead": False, "stored": False}
+
+
 def store_incoming_sms(
     from_number: str,
     to_number: str,

@@ -29,7 +29,7 @@ from typing import Optional
 from config.settings import get_settings
 from memory.lead_repository import get_lead_by_phone
 from memory.models import Canal
-from orchestrator import process_incoming_message
+from lib.sms_storage import store_incoming_sms
 
 logger = logging.getLogger(__name__)
 
@@ -149,36 +149,23 @@ def handle_sms_webhook(
         logger.info(f"SMS vide de {telephone} — ignoré")
         return {"success": True, "twiml": _empty_twiml(), "message_sortant": "", "is_stop": False}
 
-    # Vérifier si lead existant
-    existing_lead = get_lead_by_phone(telephone, client_id=client_id)
-    lead_id = existing_lead.id if existing_lead else None
-
     logger.info(
-        f"SMS de {telephone} — {len(message)} chars — "
-        f"Lead connu: {'oui' if lead_id else 'non'}"
+        f"SMS de {telephone} — {len(message)} chars"
         + (f" (ville: {parsed.get('from_city')})" if parsed.get("from_city") else "")
     )
 
-    # Traitement via orchestrateur
-    final_state = process_incoming_message(
-        telephone=telephone,
-        message=message,
+    result = store_incoming_sms(
+        from_number=telephone,
+        to_number=parsed.get("to", ""),
+        body=message,
         client_id=client_id,
-        tier=tier,
-        canal=Canal.SMS.value,
-        lead_id=lead_id,
     )
 
-    message_sortant = final_state.get("message_sortant", "")
-    twiml = _build_twiml_response(message_sortant)
-
     return {
-        "success": True,
-        "lead_id": final_state.get("lead_id", ""),
-        "score": final_state.get("score", 0),
-        "status": final_state.get("status", ""),
-        "message_sortant": message_sortant,
-        "twiml": twiml,
+        "success": result["stored"],
+        "lead_id": result.get("lead_id", ""),
+        "message_sortant": "",
+        "twiml": _empty_twiml(),
         "is_stop": False,
     }
 

@@ -18,8 +18,7 @@ from datetime import datetime
 from typing import Optional
 
 from config.settings import get_settings
-from memory.models import Canal
-from orchestrator import process_incoming_message
+from memory.models import Canal, LeadStatus
 
 logger = logging.getLogger(__name__)
 
@@ -131,25 +130,46 @@ def handle_seloger_lead(
         f"{lead_data['telephone'] or lead_data['email']}"
     )
 
-    # Lancement qualification via orchestrateur
-    final_state = process_incoming_message(
-        telephone=lead_data["telephone"],
-        message=lead_data["message"],
-        client_id=client_id,
-        tier=tier,
-        canal=lead_data["canal"],
-        prenom=lead_data["prenom"],
-        nom=lead_data["nom"],
-        email=lead_data["email"],
-        lead_id=None,
-    )
+    # Création du lead en DB — qualification par l'agent depuis le dashboard
+    try:
+        from memory.lead_repository import create_lead, get_lead_by_phone, add_conversation_message
+        from memory.models import Lead
+        telephone = lead_data["telephone"]
+        existing = get_lead_by_phone(telephone, client_id) if telephone else None
+        if not existing:
+            try:
+                canal_enum = Canal(lead_data.get("canal", "web"))
+            except ValueError:
+                canal_enum = Canal.WEB
+            lead = Lead(
+                client_id=client_id,
+                prenom=lead_data.get("prenom", ""),
+                nom=lead_data.get("nom", ""),
+                telephone=telephone,
+                email=lead_data.get("email", ""),
+                source=canal_enum,
+                statut=LeadStatus.ENTRANT,
+            )
+            saved = create_lead(lead)
+            if lead_data.get("message"):
+                add_conversation_message(
+                    lead_id=saved.id,
+                    client_id=client_id,
+                    role="user",
+                    contenu=lead_data["message"],
+                    canal=canal_enum,
+                    metadata={"source": "seloger"},
+                )
+            lead_id = saved.id
+        else:
+            lead_id = existing.id
+    except Exception as e:
+        logger.error("[SeLoger] Erreur création lead : %s", e)
+        return {"success": False, "error": str(e)}
 
     return {
         "success": True,
-        "lead_id": final_state.get("lead_id", ""),
-        "score": final_state.get("score", 0),
-        "status": final_state.get("status", ""),
-        "message_sortant": final_state.get("message_sortant", ""),
+        "lead_id": lead_id,
         "source": "seloger",
     }
 
@@ -228,25 +248,44 @@ def handle_leboncoin_lead(
         f"{lead_data.get('telephone', lead_data.get('email', ''))}"
     )
 
-    final_state = process_incoming_message(
-        telephone=lead_data["telephone"],
-        message=lead_data["message"],
-        client_id=client_id,
-        tier=tier,
-        canal=lead_data["canal"],
-        prenom=lead_data["prenom"],
-        nom=lead_data["nom"],
-        email=lead_data["email"],
-    )
+    # Création du lead en DB — qualification par l'agent depuis le dashboard
+    try:
+        from memory.lead_repository import create_lead, get_lead_by_phone, add_conversation_message
+        from memory.models import Lead
+        telephone = lead_data["telephone"]
+        existing = get_lead_by_phone(telephone, client_id) if telephone else None
+        if not existing:
+            try:
+                canal_enum = Canal(lead_data.get("canal", "web"))
+            except ValueError:
+                canal_enum = Canal.WEB
+            lead = Lead(
+                client_id=client_id,
+                prenom=lead_data.get("prenom", ""),
+                nom=lead_data.get("nom", ""),
+                telephone=telephone,
+                email=lead_data.get("email", ""),
+                source=canal_enum,
+                statut=LeadStatus.ENTRANT,
+            )
+            saved = create_lead(lead)
+            if lead_data.get("message"):
+                add_conversation_message(
+                    lead_id=saved.id,
+                    client_id=client_id,
+                    role="user",
+                    contenu=lead_data["message"],
+                    canal=canal_enum,
+                    metadata={"source": "leboncoin"},
+                )
+            lead_id = saved.id
+        else:
+            lead_id = existing.id
+    except Exception as e:
+        logger.error("[LeBonCoin] Erreur création lead : %s", e)
+        return {"success": False, "error": str(e)}
 
-    return {
-        "success": True,
-        "lead_id": final_state.get("lead_id", ""),
-        "score": final_state.get("score", 0),
-        "status": final_state.get("status", ""),
-        "message_sortant": final_state.get("message_sortant", ""),
-        "source": "leboncoin",
-    }
+    return {"success": True, "lead_id": lead_id, "source": "leboncoin"}
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────

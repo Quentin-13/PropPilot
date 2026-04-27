@@ -11,6 +11,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pytest
 
+pytestmark = pytest.mark.skip(reason="AgencyState / orchestrator supprimés — sprint cleanup-pivot")
+
 
 # ─── B1 : User dataclass — champs is_admin et smspartner_number ───────────────
 

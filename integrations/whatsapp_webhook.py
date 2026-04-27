@@ -26,9 +26,8 @@ import logging
 from typing import Optional
 
 from config.settings import get_settings
-from memory.lead_repository import get_lead_by_phone
 from memory.models import Canal
-from orchestrator import process_incoming_message
+from lib.sms_storage import store_incoming_message
 
 logger = logging.getLogger(__name__)
 
@@ -112,39 +111,25 @@ def handle_whatsapp_webhook(
         logger.info(f"WhatsApp message vide de {telephone} — ignoré")
         return {"success": True, "twiml": _empty_twiml(), "message_sortant": ""}
 
-    # Récupérer lead_id si connu
-    existing_lead = get_lead_by_phone(telephone, client_id=client_id)
-    lead_id = existing_lead.id if existing_lead else None
+    logger.info("WhatsApp message de %s — %d chars", telephone, len(message))
 
-    logger.info(
-        f"WhatsApp message de {telephone} — {len(message)} chars — "
-        f"Lead connu: {'oui' if lead_id else 'non'}"
-    )
-
-    # Traitement via orchestrateur
-    final_state = process_incoming_message(
-        telephone=telephone,
-        message=message or "[Message média reçu]",
+    # Stockage du message — aucune réponse automatique
+    result = store_incoming_message(
+        from_number=telephone,
+        body=message or "[Message média reçu]",
         client_id=client_id,
-        tier=tier,
         canal=Canal.WHATSAPP.value,
         prenom=parsed.get("prenom", ""),
         nom=parsed.get("nom", ""),
-        lead_id=lead_id,
+        source_metadata={"whatsapp": True},
     )
 
-    message_sortant = final_state.get("message_sortant", "")
-
-    # Générer TwiML de réponse
-    twiml = _build_twiml_response(message_sortant)
-
     return {
-        "success": True,
-        "lead_id": final_state.get("lead_id", ""),
-        "score": final_state.get("score", 0),
-        "status": final_state.get("status", ""),
-        "message_sortant": message_sortant,
-        "twiml": twiml,
+        "success": result["stored"],
+        "lead_id": result.get("lead_id", ""),
+        "is_new_lead": result.get("is_new_lead", False),
+        "message_sortant": "",
+        "twiml": _empty_twiml(),
     }
 
 

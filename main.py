@@ -135,13 +135,13 @@ def simulate_lead(lead_type: str, score: int, phone: str):
     """Simule un flux lead complet end-to-end."""
     from config.settings import get_settings
     from memory.database import init_database
-    from orchestrator import process_incoming_message
+    from lib.sms_storage import store_incoming_sms
 
     init_database()
     s = get_settings()
 
     print_banner()
-    console.print(f"[bold]Simulation lead {lead_type} (score cible {score}/10)...[/bold]")
+    console.print(f"[bold]Simulation lead {lead_type}...[/bold]")
 
     messages_by_type = {
         "acheteur": "Bonjour, je cherche à acheter un appartement 3 pièces à Lyon, budget 380 000€",
@@ -154,14 +154,12 @@ def simulate_lead(lead_type: str, score: int, phone: str):
     console.print(f"\n[cyan]Message entrant :[/cyan] {message}")
     console.print(f"[cyan]Téléphone :[/cyan] {phone}\n")
 
-    with console.status("Traitement en cours..."):
-        result = process_incoming_message(
-            telephone=phone,
-            message=message,
+    with console.status("Stockage en cours..."):
+        result = store_incoming_sms(
+            from_number=phone,
+            to_number="",
+            body=message,
             client_id=s.agency_client_id,
-            tier=s.agency_tier,
-            canal="sms",
-            prenom="Test",
         )
 
     # Résultats
@@ -170,18 +168,10 @@ def simulate_lead(lead_type: str, score: int, phone: str):
     results_table.add_column("Valeur")
 
     results_table.add_row("Lead ID", result.get("lead_id", "—")[:8] if result.get("lead_id") else "—")
-    results_table.add_row("Statut", result.get("status", "—"))
-    results_table.add_row("Score", f"{result.get('score', 0)}/10")
-    results_table.add_row("Action suivante", result.get("next_action", "—"))
+    results_table.add_row("Nouveau lead", "oui" if result.get("is_new_lead") else "non")
+    results_table.add_row("Stocké", "oui" if result.get("stored") else "non")
 
     console.print(results_table)
-
-    msg = result.get("message_sortant", "")
-    if msg:
-        console.print(Panel(msg, title="💬 Message envoyé au prospect", style="green"))
-
-    for log in result.get("messages_log", []):
-        console.print(f"  [dim]• {log}[/dim]")
 
     console.print(f"\n[green]✅ Simulation terminée[/green]")
 

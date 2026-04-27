@@ -204,37 +204,25 @@ def reset_jerome(conn, lead: dict | None, user_id: str) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def trigger_orchestrator(user: dict) -> dict:
-    step("🤖", "Déclenchement Léa via orchestrateur (payload SeLoger)")
+    step("📥", "Capture lead SeLoger (Léa supprimée — stockage seul)")
 
-    from integrations.seloger_webhook import parse_seloger_lead
-    from orchestrator import process_incoming_message
+    from integrations.seloger_webhook import handle_seloger_lead
 
-    lead_data = parse_seloger_lead(SELOGER_PAYLOAD)
-
-    print(f"   Payload : {JEROME_PRENOM} {JEROME_NOM} | {JEROME_TEL} | 350 000€ | maison 110m²")
-
-    final_state = process_incoming_message(
-        telephone=JEROME_TEL,
-        message=lead_data["message"],
+    result = handle_seloger_lead(
+        payload=SELOGER_PAYLOAD,
         client_id=user["id"],
         tier=user.get("plan", "Pro"),
-        canal="sms",
-        prenom=JEROME_PRENOM,
-        nom=JEROME_NOM,
-        email=lead_data.get("email", ""),
     )
 
-    lead_id    = final_state.get("lead_id", "")
-    msg_sortant = final_state.get("message_sortant", "")
-    status     = final_state.get("status", "")
+    lead_id = result.get("lead_id", "")
+    success = result.get("success", False)
 
-    if not msg_sortant:
-        fail(f"Orchestrateur n'a pas produit de message (status={status})")
-        return {"success": False, "lead_id": lead_id, "message": "", "status": status}
+    if not success:
+        fail(f"Échec capture lead : {result.get('error', 'inconnu')}")
+        return {"success": False, "lead_id": lead_id, "message": "", "status": "error"}
 
-    ok(f"Lead créé : {lead_id[:8] if lead_id else 'N/A'}… | statut={status}")
-    ok(f"Message Léa : « {msg_sortant[:80]}{'…' if len(msg_sortant) > 80 else ''} »")
-    return {"success": True, "lead_id": lead_id, "message": msg_sortant, "status": status}
+    ok(f"Lead capturé : {lead_id[:8] if lead_id else 'N/A'}…")
+    return {"success": True, "lead_id": lead_id, "message": "", "status": "entrant"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

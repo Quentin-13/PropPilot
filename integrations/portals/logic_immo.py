@@ -88,25 +88,19 @@ def handle_logic_immo_lead(payload: dict, client_id: str, tier: str) -> dict:
     )
     saved = create_lead(lead)
 
-    message = parsed.get("message", "") or f"Bonjour, je cherche un bien à {parsed['localisation']}."
+    message = parsed.get("message", "")
     try:
-        from orchestrator import process_incoming_message
-        result = process_incoming_message(
-            telephone=parsed["telephone"],
-            message=message,
-            client_id=client_id,
-            tier=tier,
-            canal="web",
-            prenom=parsed["prenom"],
-            nom=parsed["nom"],
-            email=parsed["email"],
-        )
-        return {
-            "success": True,
-            "lead_id": saved.id,
-            "score": result.get("score", 0),
-            "source": "logic_immo",
-        }
+        if message:
+            from memory.lead_repository import add_conversation_message
+            add_conversation_message(
+                lead_id=saved.id,
+                client_id=client_id,
+                role="user",
+                contenu=message,
+                canal=Canal.WEB,
+                metadata={"source": "logic_immo"},
+            )
+        return {"success": True, "lead_id": saved.id, "source": "logic_immo"}
     except Exception as e:
-        logger.error(f"[Logic-Immo] Erreur orchestrateur : {e}")
+        logger.error(f"[Logic-Immo] Erreur stockage message : {e}")
         return {"success": True, "lead_id": saved.id, "source": "logic_immo"}
