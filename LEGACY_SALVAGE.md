@@ -9,6 +9,10 @@ Ce document trace ce qui a été extrait, où ça vit maintenant, et ce qui est 
 
 ### Où ça vit maintenant
 `lib/lead_extraction/` — module dédié, réutilisable par le futur pipeline de transcription.
+- `lib/lead_extraction/schema.py` — `LeadExtractionResult`, constantes, `score_to_action()`
+- `lib/lead_extraction/prompts.py` — `EXTRACTION_PROMPT` (adapté pour texte libre)
+- `lib/lead_extraction/scoring.py` — `extract_lead_info()`, `apply_extraction_to_lead()`
+- `lib/sms_storage.py` — `store_incoming_sms()` utilisé par le webhook `/webhooks/twilio/sms`
 
 ### Pourquoi c'est précieux
 Le système de scoring 1-10 (urgence/budget/motivation) et le schéma de données structurées
