@@ -1,5 +1,6 @@
 """
 ListingGeneratorAgent — Descriptions SEO + prompts image + pré-remplissage compromis.
+DORMANT : désactivé via ENABLE_LEGACY_AGENTS=false (sprint cleanup-pivot).
 """
 from __future__ import annotations
 

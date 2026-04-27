@@ -99,6 +99,7 @@ class Settings(BaseSettings):
     debug: bool = Field(default=False, alias="DEBUG")
     mock_mode: Literal["auto", "always", "never"] = Field(default="auto", alias="MOCK_MODE")
     testing: bool = Field(default=False, alias="TESTING")
+    enable_legacy_agents: bool = Field(default=False, alias="ENABLE_LEGACY_AGENTS")
 
     @field_validator("agency_tier", mode="before")
     @classmethod

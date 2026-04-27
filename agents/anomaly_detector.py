@@ -1,5 +1,6 @@
 """
 AnomalyDetectorAgent — Détection anomalies dossier notaire, financement, prix marché.
+DORMANT : désactivé via ENABLE_LEGACY_AGENTS=false (sprint cleanup-pivot).
 """
 from __future__ import annotations
 

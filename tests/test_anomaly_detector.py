@@ -7,6 +7,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pytest
+
+pytestmark = pytest.mark.skip(reason="AnomalyDetectorAgent dormant — ENABLE_LEGACY_AGENTS=false")
+
 from memory.database import init_database
 from memory.models import Lead, ProjetType
 from agents.anomaly_detector import AnomalyDetectorAgent

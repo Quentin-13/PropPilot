@@ -11,6 +11,8 @@ import pytest
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
+pytestmark = pytest.mark.skip(reason="EstimationAgent dormant — ENABLE_LEGACY_AGENTS=false")
+
 from agents.estimation import EstimationAgent, DVF_REFERENCE_PRICES, DPE_ADJUSTMENTS
 
 CLIENT_ID = "test_estimation_client"

@@ -1,5 +1,6 @@
 """
 EstimationAgent — Estimation prix/loyer + comparables DVF + rapport PDF.
+DORMANT : désactivé via ENABLE_LEGACY_AGENTS=false (sprint cleanup-pivot).
 """
 from __future__ import annotations
 

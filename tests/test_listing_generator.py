@@ -12,6 +12,8 @@ import pytest
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
+pytestmark = pytest.mark.skip(reason="ListingGeneratorAgent dormant — ENABLE_LEGACY_AGENTS=false")
+
 from agents.listing_generator import ListingGeneratorAgent
 
 CLIENT_ID = "test_listing_client"
