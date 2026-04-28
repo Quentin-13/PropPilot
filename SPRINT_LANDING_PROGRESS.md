@@ -10,9 +10,9 @@ Démarré : 2026-04-28
 | # | Titre | Statut |
 |---|-------|--------|
 | 1 | Setup (branche + backup + ce fichier) | ✅ Terminé |
-| 2 | Backend waitlist (migration 003 + endpoint API + emails) | ⬜ À faire |
-| 3 | Frontend HTML/CSS structure | ⬜ À faire |
-| 4 | Frontend JavaScript + intégration formulaire | ⬜ À faire |
+| 2 | Backend waitlist (migration 003 + endpoint API + emails) | ✅ Terminé |
+| 3 | Frontend HTML/CSS structure | ✅ Terminé |
+| 4 | Frontend JavaScript + intégration formulaire | ✅ Terminé |
 | 5 | Documentation + vérifications finales | ⬜ À faire |
 
 ---
@@ -25,49 +25,49 @@ Démarré : 2026-04-28
 
 ---
 
-## Étape 2 — Backend waitlist ⬜
+## Étape 2 — Backend waitlist ✅
 
 ### Migration Alembic 003
-- [ ] Fichier `alembic/versions/003_add_waitlist_table.py`
-- [ ] Table `waitlist` avec colonnes : id, prenom, nom, email (unique), agence,
+- [x] Fichier `alembic/versions/003_add_waitlist_table.py`
+- [x] Table `waitlist` avec colonnes : id, prenom, nom, email (unique), agence,
       type_agence, taille_equipe, crm_utilise, source, ip_address, created_at, updated_at
 
 ### Endpoint API
-- [ ] `POST /api/waitlist` (validation Pydantic + insert + emails)
-- [ ] `GET /api/waitlist/count` (compteur public)
-- [ ] Rate limiting (max 5/IP/heure)
-- [ ] Honeypot field anti-spam
+- [x] `POST /api/waitlist` (validation Pydantic + insert + emails)
+- [x] `GET /api/waitlist/count` (compteur public)
+- [x] Rate limiting (max 5/IP/heure)
+- [x] Honeypot field anti-spam
 
 ### Emails SendGrid
-- [ ] Email confirmation prospect
-- [ ] Email notification admin
-- [ ] Variables env : `ADMIN_NOTIFICATION_EMAIL`, `WAITLIST_EMAIL_FROM`
+- [x] Email confirmation prospect (HTML responsive)
+- [x] Email notification admin (tableau détails inscription)
+- [x] Variables env : `ADMIN_NOTIFICATION_EMAIL`, `WAITLIST_EMAIL_FROM`
 
 ---
 
-## Étape 3 — Frontend HTML/CSS ⬜
+## Étape 3 — Frontend HTML/CSS ✅
 
-- [ ] Section 1 : Hero
-- [ ] Section 2 : Le problème
-- [ ] Section 3 : La solution (3 piliers)
-- [ ] Section 4 : Comment ça marche
-- [ ] Section 5 : Avant / Après
-- [ ] Section 6 : CRM compatibles
-- [ ] Section 7 : Roadmap publique
-- [ ] Section 8 : Formulaire waitlist
-- [ ] Footer
-- [ ] CSS mobile-first responsive
-- [ ] SEO meta tags
+- [x] Section 1 : Hero (mockup pipeline animé)
+- [x] Section 2 : Le problème (3 stats clés)
+- [x] Section 3 : La solution (3 piliers)
+- [x] Section 4 : Comment ça marche (3 étapes)
+- [x] Section 5 : Avant / Après (tableau comparatif)
+- [x] Section 6 : CRM compatibles (6 badges)
+- [x] Section 7 : Roadmap publique (4 phases V1-V4)
+- [x] Section 8 : Formulaire waitlist (7 champs)
+- [x] Footer avec liens légaux
+- [x] CSS mobile-first responsive (breakpoints 600/768/900px)
+- [x] SEO meta tags (og:, twitter:, description)
 
 ---
 
-## Étape 4 — JavaScript + intégration ⬜
+## Étape 4 — JavaScript + intégration ✅
 
-- [ ] Validation frontend formulaire
-- [ ] Fetch async vers `/api/waitlist`
-- [ ] Message de confirmation post-submit
-- [ ] Animations scroll
-- [ ] Compteur dynamique waitlist
+- [x] Validation frontend formulaire (blur + submit)
+- [x] Fetch async vers `/api/waitlist`
+- [x] Message de confirmation post-submit
+- [x] Animations scroll (IntersectionObserver)
+- [x] Compteur dynamique waitlist (`/api/waitlist/count`)
 
 ---
 
