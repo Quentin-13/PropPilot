@@ -161,8 +161,14 @@ class CallExtractionPipeline:
 
     def __init__(self) -> None:
         from config.settings import get_settings
-        self._settings = get_settings()
-        self._mock = not self._settings.anthropic_available
+        s = get_settings()
+        self._settings = s
+        # Mock si pas de clé, ou en mode test/mock pour éviter des appels réels
+        self._mock = (
+            not s.anthropic_available
+            or s.testing
+            or s.mock_mode == "always"
+        )
 
     def extract(self, call_id: str, transcript: str) -> CallExtractionData:
         """
