@@ -29,4 +29,4 @@ RUN python3 -c "from memory.database import init_database; init_database()" || t
 EXPOSE 8000
 
 # Serveur FastAPI par défaut
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2"]
