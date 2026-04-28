@@ -3,14 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PropPilot — Pilotez votre agence avec l'IA</title>
-  <meta name="description" content="PropPilot — Chaque lead contacté en moins de 5 minutes, qualifié automatiquement, RDV posé dans votre agenda. 24h/24, 7j/7." />
-  <meta property="og:title" content="PropPilot — Pilotez votre agence avec l'IA" />
+  <title>PropPilot — La mémoire commerciale automatique de votre agence</title>
+  <meta name="description" content="PropPilot capture vos appels, les transcrit et enrichit votre CRM automatiquement. Zéro saisie manuelle. Compatible Hektor, Apimo, Netty et plus." />
+  <meta property="og:title" content="PropPilot — La mémoire commerciale automatique de votre agence" />
+  <meta property="og:description" content="Chaque appel capturé, transcrit, structuré et synchronisé dans votre CRM. 100% automatique." />
+  <meta property="og:type" content="website" />
   <meta property="og:url" content="https://proppilot.fr" />
+  <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -20,710 +24,353 @@
       --surface-2: #18181b;
       --border:    #27272a;
       --text:      #fafafa;
-      --muted:     #71717a;
+      --muted:     #a1a1aa;
       --accent:    #a3e635;
-      --accent-2:  #1a2e05;
+      --accent-dim:#1a2e05;
       --red:       #ef4444;
       --font:      'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --radius:    12px;
+      --radius-lg: 20px;
     }
 
-    html { scroll-behavior: smooth; }
+    html { scroll-behavior: smooth; font-size: 16px; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
 
-    body {
-      font-family: var(--font);
-      background: var(--bg);
-      color: var(--text);
-      font-size: 16px;
-      line-height: 1.6;
-      overflow-x: hidden;
-      -webkit-font-smoothing: antialiased;
-    }
+    h1, h2, h3 { line-height: 1.2; letter-spacing: -0.02em; }
+    h1 { font-size: clamp(2.2rem, 5vw, 3.8rem); font-weight: 900; }
+    h2 { font-size: clamp(1.8rem, 3.5vw, 2.8rem); font-weight: 800; }
+    h3 { font-size: clamp(1.1rem, 2vw, 1.4rem); font-weight: 700; }
+    p  { color: var(--muted); }
 
-    .container { max-width: 1120px; margin: 0 auto; padding: 0 40px; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+    section { padding: 96px 0; }
+    @media (max-width: 768px) { section { padding: 64px 0; } }
 
-    /* ─── ANIMATIONS ─────────────────────────────────── */
-    .fade-up {
-      opacity: 0;
-      transform: translateY(20px);
-      transition: opacity 0.5s ease, transform 0.5s ease;
-    }
-    .fade-up.visible { opacity: 1; transform: translateY(0); }
-    .fade-up-d1 { transition-delay: 0.1s; }
-    .fade-up-d2 { transition-delay: 0.2s; }
-    .fade-up-d3 { transition-delay: 0.3s; }
-    .fade-up-d4 { transition-delay: 0.4s; }
-    .fade-up-d5 { transition-delay: 0.5s; }
-
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(16px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    @keyframes slideInLeft {
-      from { opacity: 0; transform: translateX(-18px); }
-      to   { opacity: 1; transform: translateX(0); }
-    }
-    @keyframes slideInRight {
-      from { opacity: 0; transform: translateX(18px); }
-      to   { opacity: 1; transform: translateX(0); }
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to   { opacity: 1; }
-    }
-
-    /* ─── NAVBAR ─────────────────────────────────────── */
+    /* ── Nav ── */
     nav {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      height: 56px;
+      position: sticky; top: 0; z-index: 100;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      background: rgba(9,9,11,0.85);
+    }
+    .nav-inner {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 0 40px;
-      background: rgba(9,9,11,0.88);
-      backdrop-filter: blur(14px);
-      border-bottom: 1px solid var(--border);
+      padding: 16px 24px; max-width: 1100px; margin: 0 auto;
     }
-    .nav-logo {
-      font-size: 17px; font-weight: 600; color: #fff;
-      text-decoration: none; letter-spacing: -0.01em;
-    }
-    .nav-right { display: flex; align-items: center; gap: 8px; }
-    .nav-login {
-      padding: 7px 16px; border-radius: 7px;
-      border: 1px solid var(--border); background: transparent;
-      color: var(--text); font-size: 14px; text-decoration: none;
-      transition: border-color 0.15s;
-      white-space: nowrap;
-    }
-    .nav-login:hover { border-color: #52525b; }
+    .logo { font-size: 1.25rem; font-weight: 900; letter-spacing: -0.03em; text-decoration: none; color: var(--text); }
+    .logo span { color: var(--accent); }
     .nav-cta {
-      padding: 7px 16px; border-radius: 7px;
-      background: var(--accent); color: #09090b;
-      font-size: 14px; font-weight: 700; text-decoration: none;
-      transition: filter 0.15s; white-space: nowrap;
+      background: var(--accent); color: #09090b; font-weight: 700;
+      padding: 10px 20px; border-radius: 8px; text-decoration: none;
+      font-size: 0.9rem; transition: opacity 0.2s;
     }
-    .nav-cta:hover { filter: brightness(1.08); }
+    .nav-cta:hover { opacity: 0.85; }
 
-    /* ─── HERO ───────────────────────────────────────── */
-    .hero {
-      padding: 140px 40px 100px;
-      display: grid;
-      grid-template-columns: 55fr 45fr;
-      gap: 64px;
-      align-items: center;
-      max-width: 1120px;
-      margin: 0 auto;
-    }
-
-    .hero-badge {
-      display: inline-flex; align-items: center; gap: 7px;
-      background: var(--accent-2);
-      border: 1px solid rgba(163,230,53,0.3);
-      border-radius: 20px; padding: 5px 14px;
-      font-size: 12px; color: var(--accent);
-      font-weight: 500; margin-bottom: 28px;
-    }
-
-    .hero h1 {
-      font-size: clamp(42px, 5.5vw, 72px);
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      line-height: 1.06;
-      color: #fff;
-      margin-bottom: 24px;
-    }
-
-    .hero-sub {
-      color: var(--muted); font-size: 17px; line-height: 1.7;
-      margin-bottom: 36px; max-width: 420px;
-    }
-
-    .hero-cta-wrap { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
-    .btn-hero {
+    /* ── Buttons ── */
+    .btn-primary {
       display: inline-flex; align-items: center; gap: 8px;
-      background: var(--accent); color: #09090b;
-      padding: 14px 28px; border-radius: 8px;
-      font-size: 15px; font-weight: 700; text-decoration: none;
-      transition: filter 0.15s;
+      background: var(--accent); color: #09090b; font-weight: 700;
+      padding: 16px 32px; border-radius: var(--radius); text-decoration: none;
+      font-size: 1rem; transition: transform 0.15s, box-shadow 0.15s;
+      border: none; cursor: pointer; font-family: var(--font);
     }
-    .btn-hero:hover { filter: brightness(1.08); }
-    .hero-footnote { font-size: 12px; color: var(--muted); }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(163,230,53,0.25); }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: transparent; color: var(--text); font-weight: 600;
+      padding: 16px 32px; border-radius: var(--radius); text-decoration: none;
+      font-size: 1rem; border: 1px solid var(--border); transition: border-color 0.2s, background 0.2s;
+      cursor: pointer; font-family: var(--font);
+    }
+    .btn-secondary:hover { border-color: var(--muted); background: var(--surface); }
 
-    /* ─── SMS MOCKUP ─────────────────────────────────── */
-    .sms-mockup {
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: 24px;
-      padding: 20px;
-      width: 100%;
-      max-width: 320px;
-      box-shadow: 0 0 80px rgba(163,230,53,0.07);
-      justify-self: end;
+    /* ── Badge ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--accent-dim); color: var(--accent);
+      padding: 6px 14px; border-radius: 100px; font-size: 0.8rem; font-weight: 600;
+      border: 1px solid rgba(163,230,53,0.2);
+    }
+    .badge-dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px; }
+
+    .section-label {
+      font-size: 0.8rem; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--accent); margin-bottom: 16px;
     }
 
-    .sms-header {
+    /* ── Section 1 — Hero ── */
+    #hero {
+      padding: 100px 0 80px;
+      background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(163,230,53,0.08) 0%, transparent 60%);
+    }
+    .hero-content { text-align: center; max-width: 820px; margin: 0 auto; }
+    .hero-content h1 { margin-bottom: 24px; }
+    .hero-content h1 em { font-style: normal; color: var(--accent); }
+    .hero-subtitle { font-size: clamp(1rem, 2vw, 1.2rem); max-width: 600px; margin: 0 auto 40px; }
+    .hero-actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .hero-visual {
+      margin: 64px auto 0;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 24px; max-width: 780px; overflow: hidden;
+    }
+    .mockup-bar { display: flex; gap: 8px; margin-bottom: 20px; }
+    .mockup-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .mockup-dot:nth-child(1) { background: #ef4444; }
+    .mockup-dot:nth-child(2) { background: #f59e0b; }
+    .mockup-dot:nth-child(3) { background: #22c55e; }
+    .mockup-pipeline { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .pipeline-step { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+    .pipeline-step .step-icon { font-size: 1.5rem; margin-bottom: 8px; display: block; }
+    .pipeline-step .step-title { font-size: 0.8rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .pipeline-step .step-desc { font-size: 0.72rem; color: var(--muted); }
+    .pipeline-step .step-status {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 0.65rem; font-weight: 600; color: var(--accent);
+      background: var(--accent-dim); padding: 3px 8px; border-radius: 100px; margin-top: 10px;
+    }
+    @media (max-width: 600px) { .mockup-pipeline { grid-template-columns: 1fr; } }
+
+    /* ── Section 2 — Problème ── */
+    #probleme { background: var(--surface); }
+    .probleme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+    .probleme-stats { display: flex; flex-direction: column; gap: 24px; }
+    .stat-item { display: flex; align-items: flex-start; gap: 16px; }
+    .stat-number { font-size: 2.5rem; font-weight: 900; color: var(--red); line-height: 1; white-space: nowrap; }
+    .stat-label { font-size: 0.95rem; padding-top: 4px; }
+    .stat-label strong { color: var(--text); display: block; margin-bottom: 2px; }
+    @media (max-width: 768px) { .probleme-grid { grid-template-columns: 1fr; gap: 40px; } }
+
+    /* ── Section 3 — Solution ── */
+    #solution { text-align: center; }
+    #solution h2 { margin-bottom: 16px; }
+    #solution > .container > p { max-width: 560px; margin: 0 auto 64px; }
+    .piliers-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; text-align: left; }
+    .pilier-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px; transition: border-color 0.2s; }
+    .pilier-card:hover { border-color: rgba(163,230,53,0.4); }
+    .pilier-icon { font-size: 2rem; margin-bottom: 16px; display: block; }
+    .pilier-card h3 { margin-bottom: 12px; }
+    @media (max-width: 900px) { .piliers-grid { grid-template-columns: 1fr; } }
+
+    /* ── Section 4 — Comment ça marche ── */
+    #comment { background: var(--surface); }
+    .steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+    .step-card { position: relative; }
+    .step-number {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--accent-dim); border: 2px solid var(--accent);
+      color: var(--accent); font-weight: 900; font-size: 1.1rem;
+      display: flex; align-items: center; justify-content: center; margin-bottom: 20px;
+    }
+    .step-card h3 { margin-bottom: 12px; }
+    .step-card p { font-size: 0.95rem; }
+    @media (max-width: 768px) { .steps-grid { grid-template-columns: 1fr; } }
+
+    /* ── Section 5 — Comparaison ── */
+    #comparaison { text-align: center; }
+    #comparaison h2 { margin-bottom: 48px; }
+    .compare-table { width: 100%; border-collapse: collapse; border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border); }
+    .compare-table thead tr th { padding: 20px 24px; font-size: 1rem; font-weight: 700; text-align: center; }
+    .compare-table thead tr th:first-child { text-align: left; width: 38%; background: var(--surface); }
+    .compare-table thead tr th:nth-child(2) { background: var(--surface-2); color: var(--muted); }
+    .compare-table thead tr th:nth-child(3) { background: var(--accent-dim); color: var(--accent); }
+    .compare-table tbody tr td { padding: 16px 24px; font-size: 0.95rem; border-top: 1px solid var(--border); text-align: center; }
+    .compare-table tbody tr td:first-child { text-align: left; background: var(--surface); color: var(--text); font-weight: 500; }
+    .compare-table tbody tr td:nth-child(2) { background: var(--surface-2); color: var(--muted); }
+    .compare-table tbody tr td:nth-child(3) { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+    @media (max-width: 640px) { .compare-table { font-size: 0.85rem; } .compare-table thead tr th, .compare-table tbody tr td { padding: 12px 14px; } }
+
+    /* ── Section 6 — CRM ── */
+    #crm { background: var(--surface); text-align: center; }
+    #crm h2 { margin-bottom: 16px; }
+    #crm > .container > p { max-width: 540px; margin: 0 auto 48px; }
+    .crm-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; margin-bottom: 32px; }
+    .crm-badge {
       display: flex; align-items: center; gap: 10px;
-      padding-bottom: 14px; margin-bottom: 14px;
-      border-bottom: 1px solid var(--border);
-    }
-    .sms-avatar {
-      width: 34px; height: 34px; border-radius: 50%;
-      background: var(--accent-2);
-      border: 1px solid rgba(163,230,53,0.3);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 13px; font-weight: 700; color: var(--accent);
-      flex-shrink: 0;
-    }
-    .sms-agent-name { font-size: 13px; font-weight: 600; color: var(--text); }
-    .sms-status {
-      font-size: 11px; color: var(--accent); display: flex; align-items: center; gap: 4px;
-    }
-    .sms-status::before {
-      content: ''; width: 6px; height: 6px; border-radius: 50%;
-      background: var(--accent); display: inline-block;
-    }
-
-
-    .msg {
-      max-width: 82%; padding: 10px 14px; font-size: 13px;
-      line-height: 1.5;
-    }
-    .msg-in {
-      background: var(--surface);
-      border-radius: 12px 12px 12px 4px;
-      color: var(--text);
-    }
-    .msg-out {
-      background: var(--accent-2);
-      border: 1px solid rgba(163,230,53,0.2);
-      border-radius: 12px 12px 4px 12px;
-      color: var(--text);
-      align-self: flex-end;
-    }
-    .sms-msg { display: none; opacity: 0; }
-    .msg-ts { font-size: 11px; color: var(--muted); margin-top: 3px; }
-    .msg-in .msg-ts { text-align: left; }
-    .msg-out .msg-ts { text-align: right; }
-
-    .sms-chat {
-      height: 380px; overflow: hidden;
-      display: flex; flex-direction: column;
-      justify-content: flex-end;
-      gap: 10px; padding: 16px;
-      position: relative;
-    }
-
-    .sms-result {
-      margin-top: 12px; text-align: center;
-      display: none; opacity: 0;
-    }
-    .sms-result-pill {
-      display: inline-block;
-      background: var(--accent-2);
-      color: var(--accent);
-      font-size: 11px; font-weight: 600;
-      border-radius: 20px; padding: 4px 12px;
-      border: 1px solid rgba(163,230,53,0.2);
-    }
-
-    /* ─── STATS BAND ─────────────────────────────────── */
-    .stats-band {
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      padding: 28px 0;
-    }
-    .stats-inner {
-      max-width: 1120px; margin: 0 auto; padding: 0 40px;
-      display: flex; justify-content: center; align-items: center; gap: 80px;
-    }
-    .stat-item { text-align: center; }
-    .stat-val { font-size: 32px; font-weight: 700; color: var(--text); line-height: 1; }
-    .stat-lbl { font-size: 13px; color: var(--muted); margin-top: 4px; }
-
-    /* ─── SECTION BASE ───────────────────────────────── */
-    section {
-      padding: 100px 0;
-      border-top: 1px solid var(--border);
-    }
-    .section-title {
-      font-size: clamp(26px, 3.5vw, 42px);
-      font-weight: 700; letter-spacing: -0.025em; line-height: 1.15;
-      color: #fff; margin-bottom: 12px;
-    }
-    .section-sub {
-      font-size: 15px; color: var(--muted); line-height: 1.7; max-width: 460px;
-    }
-    .section-head { margin-bottom: 56px; }
-    .section-head.center { text-align: center; }
-    .section-head.center .section-sub { margin: 0 auto; }
-
-    /* ─── PROBLEM ────────────────────────────────────── */
-    .section-problem { background: var(--surface); }
-    .problem-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
-    }
-    .problem-card {
       background: var(--surface-2); border: 1px solid var(--border);
-      border-radius: 12px; padding: 28px 24px;
-      transition: border-color 0.2s, transform 0.2s;
+      border-radius: 10px; padding: 12px 20px; font-weight: 600; font-size: 0.95rem;
+      color: var(--text); transition: border-color 0.2s;
     }
-    .problem-card:hover { border-color: #3f3f46; transform: translateY(-2px); }
-    .problem-val {
-      font-size: 48px; font-weight: 800; letter-spacing: -0.03em;
-      line-height: 1; margin-bottom: 12px; color: var(--red);
-    }
-    .problem-title {
-      font-size: 15px; font-weight: 600; color: var(--text);
-      margin-bottom: 8px;
-    }
-    .problem-desc { font-size: 14px; color: var(--muted); line-height: 1.65; }
+    .crm-badge:hover { border-color: rgba(163,230,53,0.4); }
+    .crm-badge.crm-live { border-color: rgba(163,230,53,0.5); color: var(--accent); }
+    .crm-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .crm-dot-live { background: var(--accent); }
+    .crm-dot-soon { background: var(--muted); }
+    .crm-note { font-size: 0.85rem; color: var(--muted); }
 
-    /* ─── AGENTS ─────────────────────────────────────── */
-    .section-agents { background: var(--bg); }
-    .agents-grid {
-      display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
-    }
-    .agents-grid .agent-card:last-child:nth-child(odd) {
-      grid-column: 1 / -1; max-width: 560px; margin: 0 auto; width: 100%;
-    }
-    .agent-card {
-      background: var(--surface-2); border: 1px solid var(--border);
-      border-radius: 12px; padding: 24px;
-      transition: border-color 0.2s, transform 0.2s;
-    }
-    .agent-card:hover { border-color: rgba(163,230,53,0.4); transform: translateY(-2px); }
-    .agent-top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-    .agent-init {
-      width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
-      background: var(--accent-2);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px; font-weight: 700; color: var(--accent);
-    }
-    .agent-meta {}
-    .agent-name { font-size: 15px; font-weight: 600; color: var(--text); }
-    .agent-role { font-size: 11px; color: var(--muted); font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; }
-    .agent-stat {
-      font-size: 13px; color: var(--accent); margin-bottom: 8px;
-      display: flex; align-items: center; gap: 4px;
-    }
-    .agent-desc { font-size: 14px; color: var(--muted); line-height: 1.65; }
+    /* ── Section 7 — Roadmap ── */
+    #roadmap { text-align: center; }
+    #roadmap h2 { margin-bottom: 16px; }
+    #roadmap > .container > p { max-width: 540px; margin: 0 auto 64px; }
+    .roadmap-timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; text-align: left; }
+    .roadmap-phase { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; }
+    .roadmap-phase.active { border-color: var(--accent); }
+    .phase-tag { display: inline-block; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 10px; border-radius: 100px; margin-bottom: 16px; }
+    .tag-active { background: var(--accent-dim); color: var(--accent); }
+    .tag-soon   { background: rgba(255,255,255,0.05); color: var(--muted); }
+    .tag-plan   { background: rgba(255,255,255,0.03); color: #52525b; }
+    .phase-version { font-size: 0.75rem; font-weight: 800; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
+    .roadmap-phase h3 { font-size: 1rem; margin-bottom: 12px; }
+    .roadmap-phase ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+    .roadmap-phase ul li { font-size: 0.82rem; color: var(--muted); padding-left: 14px; position: relative; }
+    .roadmap-phase ul li::before { content: "·"; position: absolute; left: 0; color: var(--accent); font-size: 1.2rem; line-height: 1; }
+    @media (max-width: 900px) { .roadmap-timeline { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 600px) { .roadmap-timeline { grid-template-columns: 1fr; } }
 
-    /* ─── TIMELINE ───────────────────────────────────── */
-    .section-timeline { background: var(--surface); }
-    .timeline-wrap { max-width: 640px; margin: 0 auto; }
-    .timeline-steps { position: relative; }
-    .timeline-steps::before {
-      content: '';
-      position: absolute; left: 13px; top: 28px; bottom: 28px;
-      width: 1px; background: var(--border);
-    }
-    .tl-step {
-      display: flex; gap: 20px; padding-bottom: 36px; position: relative;
-    }
-    .tl-step:last-child { padding-bottom: 0; }
-    .tl-left { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; }
-    .tl-circle {
-      width: 28px; height: 28px; border-radius: 50%;
-      background: var(--accent-2);
-      border: 1px solid rgba(163,230,53,0.35);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 700; color: var(--accent);
-      z-index: 1; position: relative;
-    }
-    .tl-body { padding-top: 4px; flex: 1; }
-    .tl-time { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-    .tl-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
-    .tl-desc { font-size: 14px; color: var(--muted); line-height: 1.6; }
-
-    /* ─── METRICS ────────────────────────────────────── */
-    .section-metrics { background: var(--bg); }
-    .metrics-grid {
-      display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px;
-    }
-    .metric-card {
-      background: var(--surface-2); border: 1px solid var(--border);
-      border-radius: 12px; padding: 32px;
-      transition: border-color 0.2s;
-    }
-    .metric-card:hover { border-color: #3f3f46; }
-    .metric-val {
-      font-size: 56px; font-weight: 800; letter-spacing: -0.03em;
-      color: var(--accent); line-height: 1; margin-bottom: 8px;
-    }
-    .metric-lbl { font-size: 14px; color: var(--muted); line-height: 1.5; }
-    .metric-agent { font-size: 12px; color: var(--muted); font-style: italic; margin-top: 4px; }
-
-    /* ─── GUARANTEE ──────────────────────────────────── */
-    .section-guarantee {
-      background: var(--surface);
-      text-align: center;
-    }
-    .guarantee-badge {
+    /* ── Section 8 — Waitlist ── */
+    #waitlist { background: radial-gradient(ellipse 80% 60% at 50% 100%, rgba(163,230,53,0.06) 0%, transparent 60%); }
+    #waitlist .container { max-width: 680px; }
+    #waitlist h2 { text-align: center; margin-bottom: 12px; }
+    .waitlist-intro { text-align: center; max-width: 520px; margin: 0 auto 48px; }
+    .waitlist-count {
       display: inline-flex; align-items: center; gap: 8px;
-      background: var(--accent-2);
-      border: 1px solid rgba(163,230,53,0.3);
-      border-radius: 24px; padding: 8px 24px;
-      font-size: 14px; color: var(--accent); font-weight: 600;
-      margin-bottom: 24px;
+      font-size: 0.85rem; font-weight: 600; color: var(--accent);
+      background: var(--accent-dim); padding: 6px 14px; border-radius: 100px; margin-bottom: 16px;
     }
-    .guarantee-body {
-      font-size: 16px; color: var(--muted); max-width: 480px;
-      margin: 0 auto; line-height: 1.7;
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .form-field { display: flex; flex-direction: column; gap: 6px; }
+    .form-field.full-width { grid-column: 1 / -1; }
+    .form-field label { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+    .form-field label .req { color: var(--accent); }
+    .form-field input, .form-field select {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 16px; color: var(--text);
+      font-size: 0.95rem; font-family: var(--font); transition: border-color 0.2s; width: 100%;
+      -webkit-appearance: none; appearance: none;
     }
+    .form-field select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a1a1aa' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 14px center; padding-right: 40px; cursor: pointer;
+      background-color: var(--surface-2);
+    }
+    .form-field input:focus, .form-field select:focus { outline: none; border-color: var(--accent); }
+    .form-field input::placeholder { color: #52525b; }
+    .form-field .error-msg { font-size: 0.78rem; color: var(--red); display: none; }
+    .form-field.has-error .error-msg { display: block; }
+    .form-field.has-error input, .form-field.has-error select { border-color: var(--red); }
+    .hp-field { position: absolute; left: -9999px; opacity: 0; pointer-events: none; }
+    .form-submit { margin-top: 8px; }
+    .form-submit .btn-primary { width: 100%; justify-content: center; font-size: 1.05rem; padding: 18px; }
+    .form-submit .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+    .form-legal { font-size: 0.75rem; color: #52525b; text-align: center; margin-top: 12px; }
+    .form-success { display: none; text-align: center; padding: 48px 32px; background: var(--surface); border: 1px solid rgba(163,230,53,0.3); border-radius: var(--radius-lg); }
+    .form-success .success-icon { font-size: 3rem; margin-bottom: 16px; }
+    .form-success h3 { color: var(--accent); margin-bottom: 12px; font-size: 1.5rem; }
+    .form-success p { max-width: 400px; margin: 0 auto; }
+    @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
 
-    /* ─── FAQ ────────────────────────────────────────── */
-    .section-faq { background: var(--bg); }
-    .faq-wrap { max-width: 720px; margin: 0 auto; }
-    .faq-item { border-bottom: 1px solid var(--border); }
-    .faq-q {
-      width: 100%; text-align: left; background: none; border: none;
-      cursor: pointer; padding: 20px 0;
-      display: flex; align-items: center; justify-content: space-between; gap: 16px;
-      font-size: 15px; font-weight: 500; color: var(--text);
-      font-family: inherit; transition: color 0.15s;
-    }
-    .faq-q:hover { color: var(--accent); }
-    .faq-icon {
-      flex-shrink: 0; font-size: 20px; font-weight: 300;
-      color: var(--accent); transition: transform 0.25s; line-height: 1;
-    }
-    .faq-item.open .faq-icon { transform: rotate(45deg); }
-    .faq-a { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; }
-    .faq-item.open .faq-a { max-height: 220px; }
-    .faq-a-inner {
-      color: var(--muted); font-size: 14px; line-height: 1.75;
-      padding-bottom: 20px;
-    }
+    /* ── Footer ── */
+    footer { border-top: 1px solid var(--border); padding: 40px 0; background: var(--surface); }
+    .footer-inner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+    .footer-links { display: flex; gap: 24px; flex-wrap: wrap; }
+    .footer-links a { color: var(--muted); text-decoration: none; font-size: 0.85rem; transition: color 0.2s; }
+    .footer-links a:hover { color: var(--text); }
+    .footer-copy { font-size: 0.85rem; color: #52525b; }
 
-    /* ─── FINAL CTA ──────────────────────────────────── */
-    .section-cta {
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      text-align: center;
-      padding: 120px 0;
-    }
-    .cta-title {
-      font-size: clamp(32px, 5vw, 56px);
-      font-weight: 800; letter-spacing: -0.03em; line-height: 1.1;
-      color: #fff; margin-bottom: 20px;
-    }
-    .cta-sub {
-      font-size: 18px; color: var(--muted); max-width: 440px;
-      margin: 0 auto 40px; line-height: 1.6;
-    }
-    .btn-cta {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: var(--accent); color: #09090b;
-      padding: 16px 36px; border-radius: 8px;
-      font-size: 16px; font-weight: 700; text-decoration: none;
-      transition: filter 0.15s;
-    }
-    .btn-cta:hover { filter: brightness(1.08); }
-    .cta-footnote {
-      font-size: 13px; color: var(--muted); margin-top: 16px;
-    }
-
-    /* ─── FOOTER ─────────────────────────────────────── */
-    footer {
-      background: var(--bg); border-top: 1px solid var(--border);
-      padding: 40px 0;
-    }
-    .footer-inner {
-      max-width: 1120px; margin: 0 auto; padding: 0 40px;
-      display: flex; justify-content: space-between; align-items: flex-start;
-      gap: 32px; flex-wrap: wrap;
-    }
-    .footer-brand { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
-    .footer-tag { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
-    .footer-email { font-size: 13px; color: var(--muted); text-decoration: none; transition: color 0.15s; }
-    .footer-email:hover { color: #fff; }
-    .footer-flag { font-size: 13px; color: var(--muted); margin-top: 6px; }
-    .footer-links { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
-    .footer-links a { font-size: 13px; color: var(--muted); text-decoration: none; transition: color 0.15s; }
-    .footer-links a:hover { color: #fff; }
-    .sources-note {
-      max-width: 1120px; margin: 20px auto 0; padding: 16px 40px 0;
-      border-top: 1px solid var(--border);
-      font-size: 11px; color: var(--muted); line-height: 1.9; opacity: 0.7;
-    }
-
-    /* ─── RESPONSIVE ─────────────────────────────────── */
-    @media (max-width: 900px) {
-      .problem-grid { grid-template-columns: 1fr; }
-      .agents-grid { grid-template-columns: 1fr; }
-      .agents-grid .agent-card:last-child:nth-child(odd) { grid-column: auto; max-width: none; }
-    }
-
-    @media (max-width: 768px) {
-      nav { padding: 0 20px; }
-      .container { padding: 0 20px; }
-      .hero {
-        padding: 100px 20px 72px;
-        grid-template-columns: 1fr;
-        gap: 48px;
-      }
-      .hero h1 { font-size: clamp(36px, 8vw, 56px); }
-      .sms-mockup { justify-self: center; max-width: 100%; }
-      .stats-inner { flex-direction: column; gap: 28px; padding: 0 20px; }
-      section { padding: 72px 0; }
-      .metrics-grid { grid-template-columns: 1fr; }
-      .footer-inner { flex-direction: column; gap: 24px; padding: 0 20px; }
-      .sources-note { padding: 16px 20px 0; }
-    }
-
-    @media (max-width: 480px) {
-      .nav-login { display: none; }
-    }
+    /* ── Animations scroll ── */
+    .fade-in { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .fade-in.visible { opacity: 1; transform: translateY(0); }
   </style>
 </head>
 <body>
 
-  <!-- ─── NAV ──────────────────────────────────────────── -->
-  <nav>
-    <a href="#" class="nav-logo">PropPilot</a>
-    <div class="nav-right">
-      <a href="https://proppilot-dashboard-production.up.railway.app/?auth=login" class="nav-login">Espace client</a>
-      <a href="https://calendly.com/contact-proppilot/appel-proppilot-20min" target="_blank" class="nav-cta">Réserver un appel</a>
+  <!-- NAV -->
+  <nav aria-label="Navigation principale">
+    <div class="nav-inner">
+      <a href="/" class="logo" aria-label="PropPilot — accueil">Prop<span>Pilot</span></a>
+      <a href="#waitlist" class="nav-cta">Rejoindre la liste d'attente</a>
     </div>
   </nav>
 
-  <!-- ─── HERO ─────────────────────────────────────────── -->
-  <div class="hero">
-    <!-- Colonne gauche -->
-    <div>
-      <div class="hero-badge fade-up">● Immobilier · Réponse en 5 min</div>
-      <h1 class="fade-up fade-up-d1">
-        Vos leads dorment.<br />
-        Votre équipe, non.
-      </h1>
-      <p class="hero-sub fade-up fade-up-d2">
-        Chaque lead qualifié en 90 secondes.<br />
-        Chaque RDV posé automatiquement.<br />
-        Même à 23h un dimanche.
-      </p>
-      <div class="hero-cta-wrap fade-up fade-up-d3">
-        <a href="https://calendly.com/contact-proppilot/appel-proppilot-20min" target="_blank" class="btn-hero">
-          Réserver un appel gratuit →
-        </a>
-        <span class="hero-footnote">Sans engagement · 60 jours satisfait ou remboursé</span>
-      </div>
-    </div>
-
-    <!-- Colonne droite — mockup SMS -->
-    <div class="sms-mockup fade-up fade-up-d2">
-      <div class="sms-header">
-        <div class="sms-avatar">L</div>
-        <div>
-          <div class="sms-agent-name">Léa · PropPilot</div>
-          <div class="sms-status">En ligne</div>
-        </div>
-      </div>
-      <div class="sms-animate-wrap">
-        <div class="sms-chat">
-          <div class="msg msg-in sms-msg sms-left">
-            Bonjour, annonce LBC-2847391, la maison à Tournefeuille, encore disponible ?
-            <div class="msg-ts">22:47</div>
-          </div>
-          <div class="msg msg-out sms-msg sms-right">
-            Bonsoir ! Oui toujours dispo. C'est pour habiter ou investir ?
-            <div class="msg-ts">22:47</div>
-          </div>
-          <div class="msg msg-in sms-msg sms-left">
-            Pour habiter, famille avec 2 enfants.
-            <div class="msg-ts">22:48</div>
-          </div>
-          <div class="msg msg-out sms-msg sms-right">
-            Votre projet c'est pour quand ? Plutôt 3 mois, 6 mois ou plus ?
-            <div class="msg-ts">22:48</div>
-          </div>
-          <div class="msg msg-in sms-msg sms-left">
-            Avant la rentrée, donc 3 mois.
-            <div class="msg-ts">22:49</div>
-          </div>
-          <div class="msg msg-out sms-msg sms-right">
-            Vous avez un financement en cours ou vous démarrez les démarches ?
-            <div class="msg-ts">22:49</div>
-          </div>
-          <div class="msg msg-in sms-msg sms-left">
-            Accord de principe pour 380 000€.
-            <div class="msg-ts">22:50</div>
-          </div>
-          <div class="msg msg-out sms-msg sms-right">
-            Parfait, dossier solide ! Visite mardi 10h ou jeudi 17h ?
-            <div class="msg-ts">22:50</div>
-          </div>
-          <div class="msg msg-in sms-msg sms-left">
-            Mardi 10h c'est parfait !
-            <div class="msg-ts">22:51</div>
-          </div>
-        </div>
-        <div class="sms-result sms-badge-final">
-          <span class="sms-result-pill">✓ Visite confirmée · 4 min après le message</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ─── STATS BAND ────────────────────────────────────── -->
-  <div class="stats-band">
-    <div class="stats-inner">
-      <div class="stat-item">
-        <div class="stat-val">21×</div>
-        <div class="stat-lbl">Contacter en 5 min vs 30 min <sup>¹</sup></div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-val">74%</div>
-        <div class="stat-lbl">Signent avec le 1er à répondre <sup>³</sup></div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-val">7→13</div>
-        <div class="stat-lbl">Points de contact pour convertir <sup>²</sup></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ─── PROBLÈME ──────────────────────────────────────── -->
-  <section class="section-problem">
+  <!-- SECTION 1 — HERO -->
+  <section id="hero" aria-labelledby="hero-title">
     <div class="container">
-      <div class="section-head fade-up">
-        <h2 class="section-title">Chaque jour sans PropPilot, vous perdez.</h2>
-        <p class="section-sub">Les chiffres ne mentent pas.</p>
+      <div class="hero-content">
+        <div class="badge" style="margin-bottom:32px">
+          <span class="badge-dot" aria-hidden="true"></span>
+          Sprint A déployé en production — inscriptions ouvertes
+        </div>
+        <h1 id="hero-title">
+          La <em>mémoire commerciale</em><br>automatique de votre agence
+        </h1>
+        <p class="hero-subtitle">
+          PropPilot capture vos appels, les transcrit en temps réel et enrichit votre CRM automatiquement.
+          Zéro saisie manuelle. Vos agents gardent le focus sur ce qui compte.
+        </p>
+        <div class="hero-actions">
+          <a href="#waitlist" class="btn-primary">
+            Rejoindre la liste d'attente
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M8 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+          <a href="#comment" class="btn-secondary">Découvrir comment ça marche</a>
+        </div>
       </div>
-      <div class="problem-grid">
-        <div class="problem-card fade-up fade-up-d1">
-          <div class="problem-val">5 min</div>
-          <div class="problem-title">La fenêtre pour répondre</div>
-          <p class="problem-desc">Contacter un lead 30 minutes après sa demande est 21× moins efficace. Léa répond automatiquement, même à 23h le dimanche. <sup>¹</sup></p>
+
+      <div class="hero-visual" aria-hidden="true">
+        <div class="mockup-bar">
+          <div class="mockup-dot"></div>
+          <div class="mockup-dot"></div>
+          <div class="mockup-dot"></div>
         </div>
-        <div class="problem-card fade-up fade-up-d2">
-          <div class="problem-val">1 sur 3</div>
-          <div class="problem-title">Leads jamais rappelés</div>
-          <p class="problem-desc">Sur 100 leads, 33 partent sans jamais avoir eu de réponse. Marc relance chacun sur 90 jours avec des séquences personnalisées. <sup>²</sup></p>
-        </div>
-        <div class="problem-card fade-up fade-up-d3">
-          <div class="problem-val">0€</div>
-          <div class="problem-title">Commission perdue ce soir</div>
-          <p class="problem-desc">Chaque lead non traité après 18h est une commission donnée au concurrent. 74% signent avec la première agence qui les contacte. <sup>³</sup></p>
+        <div class="mockup-pipeline">
+          <div class="pipeline-step">
+            <span class="step-icon">📞</span>
+            <div class="step-title">Appel entrant</div>
+            <div class="step-desc">Marie Dupont — 06 12 34 56 78<br>Durée : 4 min 32 s</div>
+            <span class="step-status">● Capturé</span>
+          </div>
+          <div class="pipeline-step">
+            <span class="step-icon">🎙️</span>
+            <div class="step-title">Transcription Whisper</div>
+            <div class="step-desc">"Je cherche un T3 sur Lyon 6, budget 350k, idéalement avant l'été…"</div>
+            <span class="step-status">● Transcrit</span>
+          </div>
+          <div class="pipeline-step">
+            <span class="step-icon">✅</span>
+            <div class="step-title">Sync Hektor</div>
+            <div class="step-desc">Contact mis à jour · Fiche lead créée · Rappel planifié</div>
+            <span class="step-status">● Synchronisé</span>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ─── ÉQUIPE ────────────────────────────────────────── -->
-  <section id="equipe" class="section-agents">
+  <!-- SECTION 2 — LE PROBLÈME -->
+  <section id="probleme" aria-labelledby="probleme-title">
     <div class="container">
-      <div class="section-head center fade-up">
-        <h2 class="section-title">Votre équipe. Toujours disponible.</h2>
-        <p class="section-sub">5 spécialistes immobilier. Tous inclus dès votre premier abonnement.</p>
-      </div>
-      <div class="agents-grid">
-        <div class="agent-card fade-up fade-up-d1">
-          <div class="agent-top">
-            <div class="agent-init">L</div>
-            <div class="agent-meta">
-              <div class="agent-name">Léa</div>
-              <div class="agent-role">Qualification des leads</div>
-            </div>
-          </div>
-          <div class="agent-stat">⚡ Réponse en 90 secondes</div>
-          <p class="agent-desc">Léa répond à chaque nouveau lead en moins de 90 secondes, pose les 7 bonnes questions et détecte les acheteurs sérieux. Elle ne dort jamais.</p>
+      <div class="probleme-grid">
+        <div class="fade-in">
+          <div class="section-label" aria-hidden="true">Le problème</div>
+          <h2 id="probleme-title">Les agences perdent chaque jour des opportunités par manque de traçabilité</h2>
+          <p style="margin-top:16px">
+            Vos agents passent des dizaines d'appels par jour. La majorité de l'information échangée
+            disparaît faute de temps pour saisir dans le CRM. Résultat : des leads oubliés,
+            des relances ratées, des mandats perdus.
+          </p>
         </div>
-        <div class="agent-card fade-up fade-up-d2">
-          <div class="agent-top">
-            <div class="agent-init">M</div>
-            <div class="agent-meta">
-              <div class="agent-name">Marc</div>
-              <div class="agent-role">Nurturing &amp; relances</div>
+        <div class="probleme-stats fade-in">
+          <div class="stat-item">
+            <div class="stat-number" aria-label="70 pourcent">70%</div>
+            <div class="stat-label">
+              <strong>des infos collectées en appel ne sont jamais saisies dans le CRM</strong>
+              Saisie manuelle chronophage, oubli, priorités concurrentes.
             </div>
           </div>
-          <div class="agent-stat">⚡ Relance sur 30 jours</div>
-          <p class="agent-desc">Marc ne laisse jamais un prospect dans l'oubli. Il relance, personnalise et insiste avec tact. Vos leads froids deviennent chauds.</p>
-        </div>
-        <div class="agent-card fade-up fade-up-d3">
-          <div class="agent-top">
-            <div class="agent-init">H</div>
-            <div class="agent-meta">
-              <div class="agent-name">Hugo</div>
-              <div class="agent-role">Rédaction d'annonces</div>
+          <div class="stat-item">
+            <div class="stat-number" aria-label="2 heures">2h</div>
+            <div class="stat-label">
+              <strong>perdues chaque jour par agent en tâches administratives</strong>
+              Saisie CRM, comptes-rendus, recherche d'informations passées.
             </div>
           </div>
-          <div class="agent-stat">⚡ Annonce rédigée en 30 secondes</div>
-          <p class="agent-desc">Hugo rédige une annonce SEO de 400 mots en 30 secondes. Conforme DPE, loi Carrez, loi Hoguet. Version réseaux sociaux incluse automatiquement.</p>
-        </div>
-        <div class="agent-card fade-up fade-up-d4">
-          <div class="agent-top">
-            <div class="agent-init">T</div>
-            <div class="agent-meta">
-              <div class="agent-name">Thomas</div>
-              <div class="agent-role">Estimation &amp; marché</div>
-            </div>
-          </div>
-          <div class="agent-stat">⚡ Estimation argumentée en 60 secondes</div>
-          <p class="agent-desc">Thomas analyse les données DVF réelles de votre secteur et produit une estimation argumentée avec rapport PDF exportable pour vos rendez-vous vendeurs.</p>
-        </div>
-        <div class="agent-card fade-up fade-up-d5">
-          <div class="agent-top">
-            <div class="agent-init">J</div>
-            <div class="agent-meta">
-              <div class="agent-name">Julie</div>
-              <div class="agent-role">Détection d'anomalies</div>
-            </div>
-          </div>
-          <div class="agent-stat">⚡ 0 anomalie manquée</div>
-          <p class="agent-desc">Julie lit chaque dossier et repère ce que l'œil humain fatigué peut manquer : financement flou, délai irréaliste, titre de propriété manquant.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ─── TIMELINE ──────────────────────────────────────── -->
-  <section id="comment-ca-marche" class="section-timeline">
-    <div class="container">
-      <div class="section-head center fade-up">
-        <h2 class="section-title">De l'arrivée du lead au RDV. Automatiquement.</h2>
-        <p class="section-sub">4 étapes. Aucune action de votre part. PropPilot s'en charge.</p>
-      </div>
-      <div class="timeline-wrap">
-        <div class="timeline-steps">
-          <div class="tl-step fade-up fade-up-d1">
-            <div class="tl-left">
-              <div class="tl-circle">1</div>
-            </div>
-            <div class="tl-body">
-              <div class="tl-time">22:47</div>
-              <div class="tl-title">Lead reçu</div>
-              <p class="tl-desc">SeLoger, LeBonCoin, votre site. PropPilot capte instantanément.</p>
-            </div>
-          </div>
-          <div class="tl-step fade-up fade-up-d2">
-            <div class="tl-left">
-              <div class="tl-circle">2</div>
-            </div>
-            <div class="tl-body">
-              <div class="tl-time">22:47</div>
-              <div class="tl-title">Léa qualifie</div>
-              <p class="tl-desc">Projet, budget, délai. Score automatique en 2 min.</p>
-            </div>
-          </div>
-          <div class="tl-step fade-up fade-up-d3">
-            <div class="tl-left">
-              <div class="tl-circle">3</div>
-            </div>
-            <div class="tl-body">
-              <div class="tl-time">22:49</div>
-              <div class="tl-title">Marc relance</div>
-              <p class="tl-desc">Séquence SMS sur 90 jours si pas de réponse.</p>
-            </div>
-          </div>
-          <div class="tl-step fade-up fade-up-d4">
-            <div class="tl-left">
-              <div class="tl-circle">4</div>
-            </div>
-            <div class="tl-body">
-              <div class="tl-time">22:51</div>
-              <div class="tl-title">RDV proposé par SMS</div>
-              <p class="tl-desc">Lien de réservation. Le prospect choisit son créneau.</p>
+          <div class="stat-item">
+            <div class="stat-number" aria-label="30 pourcent">30%</div>
+            <div class="stat-label">
+              <strong>des leads chauds ne sont jamais requalifiés après un premier contact</strong>
+              Faute d'historique accessible et de relances automatisées.
             </div>
           </div>
         </div>
@@ -731,229 +378,426 @@
     </div>
   </section>
 
-  <!-- ─── MÉTRIQUES ─────────────────────────────────────── -->
-  <section class="section-metrics">
+  <!-- SECTION 3 — LA SOLUTION -->
+  <section id="solution" aria-labelledby="solution-title">
     <div class="container">
-      <div class="section-head center fade-up">
-        <h2 class="section-title">Ce que ça change en 60 jours.</h2>
-      </div>
-      <div class="metrics-grid">
-        <div class="metric-card fade-up fade-up-d1">
-          <div class="metric-val">+21×</div>
-          <div class="metric-lbl">Efficacité de réponse aux leads</div>
-          <div class="metric-agent">Léa</div>
+      <div class="section-label" aria-hidden="true">La solution</div>
+      <h2 id="solution-title">Trois piliers pour une mémoire commerciale parfaite</h2>
+      <p>PropPilot s'intègre silencieusement à votre flux de travail existant. Aucune formation requise.</p>
+      <div class="piliers-grid" style="margin-top:0">
+        <div class="pilier-card fade-in">
+          <span class="pilier-icon" aria-hidden="true">🎙️</span>
+          <h3>Capture intelligente</h3>
+          <p>Chaque appel — entrant ou sortant — est enregistré et transcrit automatiquement via Whisper.
+          La qualité de transcription dépasse 95% en français, accents inclus.</p>
         </div>
-        <div class="metric-card fade-up fade-up-d2">
-          <div class="metric-val">−87%</div>
-          <div class="metric-lbl">Temps sur tâches administratives</div>
-          <div class="metric-agent">Hugo</div>
+        <div class="pilier-card fade-in">
+          <span class="pilier-icon" aria-hidden="true">🧠</span>
+          <h3>Structuration par IA</h3>
+          <p>Claude extrait les informations clés de chaque conversation : projet, budget, timeline,
+          contacts, prochaines étapes. Tout structuré, priorisé, prêt à l'emploi.</p>
         </div>
-        <div class="metric-card fade-up fade-up-d3">
-          <div class="metric-val">74%</div>
-          <div class="metric-lbl">Signent avec le 1er à répondre</div>
-          <div class="metric-agent">Marc</div>
-        </div>
-        <div class="metric-card fade-up fade-up-d4">
-          <div class="metric-val">60s</div>
-          <div class="metric-lbl">Estimation complète avec PDF</div>
-          <div class="metric-agent">Thomas</div>
+        <div class="pilier-card fade-in">
+          <span class="pilier-icon" aria-hidden="true">🔄</span>
+          <h3>Synchronisation CRM</h3>
+          <p>Les données extraites sont poussées directement dans votre CRM.
+          Fiches contacts mises à jour, rappels planifiés, historique enrichi. Sans intervention manuelle.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ─── GARANTIE ──────────────────────────────────────── -->
-  <section class="section-guarantee">
-    <div class="container fade-up">
-      <div class="guarantee-badge">🛡️ 60 Jours Satisfait ou Remboursé</div>
-      <h2 class="section-title" style="margin-bottom:16px;">Vous ne prenez aucun risque.</h2>
-      <p class="guarantee-body">
-        Si vous n'êtes pas satisfait dans les 60 jours suivant votre inscription,
-        nous vous remboursons intégralement. Sans questions. Sans formulaire.
+  <!-- SECTION 4 — COMMENT ÇA MARCHE -->
+  <section id="comment" aria-labelledby="comment-title">
+    <div class="container">
+      <div class="section-label" aria-hidden="true">Comment ça marche</div>
+      <h2 id="comment-title" style="margin-bottom:56px">Opérationnel en 24h, invisible au quotidien</h2>
+      <div class="steps-grid">
+        <div class="step-card fade-in">
+          <div class="step-number" aria-label="Étape 1">1</div>
+          <h3>Setup en 24h</h3>
+          <p>Nous configurons PropPilot sur vos numéros de téléphone et connectons votre CRM.
+          Pas de matériel. Pas d'application à installer. L'équipe reste inchangée.</p>
+        </div>
+        <div class="step-card fade-in">
+          <div class="step-number" aria-label="Étape 2">2</div>
+          <h3>Vos agents font leur métier</h3>
+          <p>Rien ne change dans le quotidien de vos équipes. Les appels sont capturés
+          en arrière-plan. Aucune manipulation supplémentaire demandée.</p>
+        </div>
+        <div class="step-card fade-in">
+          <div class="step-number" aria-label="Étape 3">3</div>
+          <h3>Votre CRM s'enrichit automatiquement</h3>
+          <p>Après chaque appel, PropPilot met à jour les fiches contacts, crée les rappels
+          et ajoute l'historique. Votre CRM devient enfin une source de vérité fiable.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 5 — AVANT / APRÈS -->
+  <section id="comparaison" aria-labelledby="comparaison-title">
+    <div class="container">
+      <div class="section-label" aria-hidden="true">Avant / Après</div>
+      <h2 id="comparaison-title" style="margin-bottom:48px">Ce qui change concrètement</h2>
+      <div class="fade-in" style="overflow-x:auto">
+        <table class="compare-table" role="table" aria-label="Comparaison avant et après PropPilot">
+          <thead>
+            <tr>
+              <th scope="col"></th>
+              <th scope="col">Sans PropPilot</th>
+              <th scope="col">Avec PropPilot</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Saisie CRM après chaque appel</td>
+              <td>Manuelle — 5 à 15 min/appel</td>
+              <td>Automatique — 0 min</td>
+            </tr>
+            <tr>
+              <td>Historique client</td>
+              <td>Incomplet, éparpillé, peu fiable</td>
+              <td>Complet, structuré, enrichi en continu</td>
+            </tr>
+            <tr>
+              <td>Relances manquées</td>
+              <td>Fréquentes — pas de rappels auto</td>
+              <td>Éliminées — rappels planifiés automatiquement</td>
+            </tr>
+            <tr>
+              <td>Temps admin / agent / jour</td>
+              <td>~2 heures</td>
+              <td>&lt; 20 minutes</td>
+            </tr>
+            <tr>
+              <td>Qualité des données CRM</td>
+              <td>Dépend de la rigueur de chaque agent</td>
+              <td>Standardisée et homogène pour toute l'équipe</td>
+            </tr>
+            <tr>
+              <td>Onboarding d'un nouveau agent</td>
+              <td>Accès à un historique lacunaire</td>
+              <td>Contexte complet de chaque client disponible</td>
+            </tr>
+            <tr>
+              <td>Leads perdus par manque de suivi</td>
+              <td>~30% des leads chauds</td>
+              <td>Proche de 0 grâce aux relances automatiques</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 6 — CRM COMPATIBLES -->
+  <section id="crm" aria-labelledby="crm-title">
+    <div class="container">
+      <div class="section-label" aria-hidden="true">Compatibilité</div>
+      <h2 id="crm-title">Compatible avec votre CRM</h2>
+      <p>PropPilot s'intègre aux principaux logiciels utilisés par les agences et réseaux immobiliers français.</p>
+      <div class="crm-grid fade-in" role="list" aria-label="CRM compatibles">
+        <div class="crm-badge crm-live" role="listitem">
+          <span class="crm-dot crm-dot-live" aria-hidden="true"></span>
+          Hektor <span style="font-size:0.75rem;font-weight:400;margin-left:4px">En prod</span>
+        </div>
+        <div class="crm-badge" role="listitem">
+          <span class="crm-dot crm-dot-soon" aria-hidden="true"></span>
+          Apimo
+        </div>
+        <div class="crm-badge" role="listitem">
+          <span class="crm-dot crm-dot-soon" aria-hidden="true"></span>
+          Netty
+        </div>
+        <div class="crm-badge" role="listitem">
+          <span class="crm-dot crm-dot-soon" aria-hidden="true"></span>
+          Prospeneo
+        </div>
+        <div class="crm-badge" role="listitem">
+          <span class="crm-dot crm-dot-soon" aria-hidden="true"></span>
+          Whise
+        </div>
+        <div class="crm-badge" role="listitem">
+          <span class="crm-dot crm-dot-soon" aria-hidden="true"></span>
+          Adaptimmo
+        </div>
+      </div>
+      <p class="crm-note">
+        Nouveaux connecteurs en cours de développement —
+        <a href="#waitlist" style="color:var(--accent);text-decoration:none">rejoignez la liste d'attente</a>
+        pour être notifié.
       </p>
     </div>
   </section>
 
-  <!-- ─── FAQ ───────────────────────────────────────────── -->
-  <section id="faq" class="section-faq">
+  <!-- SECTION 7 — ROADMAP -->
+  <section id="roadmap" aria-labelledby="roadmap-title">
     <div class="container">
-      <div class="section-head center fade-up">
-        <h2 class="section-title">Questions fréquentes.</h2>
-      </div>
-      <div class="faq-wrap fade-up">
-        <div class="faq-item">
-          <button class="faq-q" onclick="toggleFaq(this)">
-            Est-ce que Léa et Marc remplacent mes négociateurs ?
-            <span class="faq-icon">+</span>
-          </button>
-          <div class="faq-a">
-            <div class="faq-a-inner">Non. Ils remplacent les 3h de tâches répétitives qui leur volent chaque jour. Vos agents se concentrent sur les visites et les signatures. L'équipe IA gère tout le reste.</div>
-          </div>
+      <div class="section-label" aria-hidden="true">Roadmap publique</div>
+      <h2 id="roadmap-title">Ce qui arrive ensuite</h2>
+      <p>Une vision transparente de ce que nous construisons, dans l'ordre.</p>
+      <div class="roadmap-timeline" role="list" aria-label="Phases de développement PropPilot">
+        <div class="roadmap-phase active fade-in" role="listitem">
+          <span class="phase-tag tag-active">En cours</span>
+          <div class="phase-version">V1 — MVP</div>
+          <h3>Capture &amp; sync Hektor</h3>
+          <ul>
+            <li>Capture appels entrants et sortants</li>
+            <li>Transcription Whisper temps réel</li>
+            <li>Extraction structurée par Claude</li>
+            <li>Synchronisation Hektor CRM</li>
+            <li>Dashboard insights</li>
+          </ul>
         </div>
-        <div class="faq-item">
-          <button class="faq-q" onclick="toggleFaq(this)">
-            Combien de temps pour que l'équipe soit opérationnelle ?
-            <span class="faq-icon">+</span>
-          </button>
-          <div class="faq-a">
-            <div class="faq-a-inner">5 minutes. Vous entrez votre numéro et votre agenda, et Léa est prête à répondre à votre premier lead. Aucune formation, aucune configuration technique.</div>
-          </div>
+        <div class="roadmap-phase fade-in" role="listitem">
+          <span class="phase-tag tag-soon">Q3 2026</span>
+          <div class="phase-version">V2</div>
+          <h3>Connecteurs &amp; emails</h3>
+          <ul>
+            <li>Connecteurs Apimo &amp; Netty</li>
+            <li>Capture et analyse des emails</li>
+            <li>Dashboard avancé avec analytics</li>
+            <li>API publique partenaires</li>
+          </ul>
         </div>
-        <div class="faq-item">
-          <button class="faq-q" onclick="toggleFaq(this)">
-            Est-ce conforme au RGPD ?
-            <span class="faq-icon">+</span>
-          </button>
-          <div class="faq-a">
-            <div class="faq-a-inner">Oui. Toutes les données traitées par Léa, Marc et leurs collègues sont hébergées en France, chiffrées, et vous restez propriétaire de vos contacts.</div>
-          </div>
+        <div class="roadmap-phase fade-in" role="listitem">
+          <span class="phase-tag tag-plan">Q4 2026</span>
+          <div class="phase-version">V3</div>
+          <h3>Mobile &amp; capture totale</h3>
+          <ul>
+            <li>App mobile iOS &amp; Android</li>
+            <li>Capture appels mobiles</li>
+            <li>WhatsApp Business intégré</li>
+            <li>Alertes intelligentes</li>
+          </ul>
         </div>
-        <div class="faq-item">
-          <button class="faq-q" onclick="toggleFaq(this)">
-            Que se passe-t-il quand Marc atteint sa limite ?
-            <span class="faq-icon">+</span>
-          </button>
-          <div class="faq-a">
-            <div class="faq-a-inner">Il vous prévient à 80% du quota avec un message clair. Vous pouvez upgrader en 1 clic pour qu'il continue sans aucune interruption.</div>
-          </div>
-        </div>
-        <div class="faq-item">
-          <button class="faq-q" onclick="toggleFaq(this)">
-            Puis-je voir l'équipe en action avant de m'engager ?
-            <span class="faq-icon">+</span>
-          </button>
-          <div class="faq-a">
-            <div class="faq-a-inner">Oui. Demandez une démo live de 30 minutes. Vous verrez Léa qualifier un vrai lead en direct, Hugo rédiger une annonce, et Thomas produire une estimation complète.</div>
-          </div>
+        <div class="roadmap-phase fade-in" role="listitem">
+          <span class="phase-tag tag-plan">2027</span>
+          <div class="phase-version">V4</div>
+          <h3>Collaboratif &amp; opérateurs</h3>
+          <ul>
+            <li>Module collaboratif multi-agences</li>
+            <li>Partenariats opérateurs télécom</li>
+            <li>Intégrations PBX cloud</li>
+            <li>IA prédictive mandats</li>
+          </ul>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ─── CTA FINAL ─────────────────────────────────────── -->
-  <section class="section-cta">
-    <div class="container fade-up">
-      <h2 class="cta-title">
-        Votre prochaine vente arrive<br />
-        peut-être ce soir à 23h.
-      </h2>
-      <p class="cta-sub">
-        Chaque minute compte. Parlons-en avant
-        qu'il parte chez un concurrent.
-      </p>
-      <a href="https://calendly.com/contact-proppilot/appel-proppilot-20min" target="_blank" class="btn-cta">
-        Réserver un appel gratuit →
-      </a>
-      <p class="cta-footnote">Sans engagement · Réponse sous 2h · 60j satisfait ou remboursé</p>
+  <!-- SECTION 8 — FORMULAIRE WAITLIST -->
+  <section id="waitlist" aria-labelledby="waitlist-title">
+    <div class="container">
+      <div class="section-label" style="text-align:center" aria-hidden="true">Liste d'attente</div>
+      <h2 id="waitlist-title">Accédez à PropPilot en priorité</h2>
+      <div class="waitlist-intro">
+        <div class="waitlist-count" id="waitlist-count" style="margin:0 auto 12px" aria-live="polite">
+          <span class="badge-dot" aria-hidden="true"></span>
+          <span id="count-text">Chargement…</span>
+        </div>
+        <p>Inscrivez-vous maintenant pour être parmi les premières agences à bénéficier de PropPilot lors de l'ouverture.</p>
+      </div>
+
+      <div id="form-container">
+        <form id="waitlist-form" class="card" novalidate aria-label="Formulaire d'inscription liste d'attente">
+
+          <!-- Honeypot anti-spam -->
+          <div class="hp-field" aria-hidden="true">
+            <label for="website">Ne pas remplir</label>
+            <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" />
+          </div>
+
+          <div class="form-grid">
+            <div class="form-field" id="field-prenom">
+              <label for="prenom">Prénom <span class="req" aria-hidden="true">*</span></label>
+              <input type="text" id="prenom" name="prenom" placeholder="Marie" autocomplete="given-name" required aria-required="true" />
+              <span class="error-msg" role="alert">Veuillez saisir votre prénom.</span>
+            </div>
+            <div class="form-field" id="field-nom">
+              <label for="nom">Nom <span class="req" aria-hidden="true">*</span></label>
+              <input type="text" id="nom" name="nom" placeholder="Dupont" autocomplete="family-name" required aria-required="true" />
+              <span class="error-msg" role="alert">Veuillez saisir votre nom.</span>
+            </div>
+            <div class="form-field full-width" id="field-email">
+              <label for="email">Email professionnel <span class="req" aria-hidden="true">*</span></label>
+              <input type="email" id="email" name="email" placeholder="marie.dupont@agence.fr" autocomplete="email" required aria-required="true" />
+              <span class="error-msg" role="alert">Veuillez saisir une adresse email valide.</span>
+            </div>
+            <div class="form-field full-width" id="field-agence">
+              <label for="agence">Nom de l'agence <span class="req" aria-hidden="true">*</span></label>
+              <input type="text" id="agence" name="agence" placeholder="Agence Martin Immobilier" autocomplete="organization" required aria-required="true" />
+              <span class="error-msg" role="alert">Veuillez saisir le nom de votre agence.</span>
+            </div>
+            <div class="form-field" id="field-type_agence">
+              <label for="type_agence">Type d'agence <span class="req" aria-hidden="true">*</span></label>
+              <select id="type_agence" name="type_agence" required aria-required="true">
+                <option value="" disabled selected>Choisir…</option>
+                <option value="Indépendante">Indépendante</option>
+                <option value="Réseau">Réseau</option>
+                <option value="Franchise">Franchise</option>
+                <option value="Mandataire">Mandataire</option>
+              </select>
+              <span class="error-msg" role="alert">Veuillez sélectionner un type d'agence.</span>
+            </div>
+            <div class="form-field" id="field-taille_equipe">
+              <label for="taille_equipe">Taille de l'équipe <span class="req" aria-hidden="true">*</span></label>
+              <select id="taille_equipe" name="taille_equipe" required aria-required="true">
+                <option value="" disabled selected>Choisir…</option>
+                <option value="Solo">Solo</option>
+                <option value="2-5 agents">2–5 agents</option>
+                <option value="6-15 agents">6–15 agents</option>
+                <option value="16+ agents">16+ agents</option>
+              </select>
+              <span class="error-msg" role="alert">Veuillez sélectionner la taille de votre équipe.</span>
+            </div>
+            <div class="form-field full-width" id="field-crm_utilise">
+              <label for="crm_utilise">CRM utilisé <span class="req" aria-hidden="true">*</span></label>
+              <select id="crm_utilise" name="crm_utilise" required aria-required="true">
+                <option value="" disabled selected>Choisir…</option>
+                <option value="Hektor">Hektor</option>
+                <option value="Apimo">Apimo</option>
+                <option value="Netty">Netty</option>
+                <option value="Autre">Autre</option>
+                <option value="Aucun">Aucun</option>
+              </select>
+              <span class="error-msg" role="alert">Veuillez sélectionner votre CRM.</span>
+            </div>
+          </div>
+
+          <div class="form-submit" style="margin-top:28px">
+            <button type="submit" class="btn-primary" id="submit-btn">
+              Rejoindre la liste d'attente
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M8 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+          <p class="form-legal">
+            Vos données sont utilisées uniquement pour vous contacter au sujet de PropPilot.
+            Pas de spam, désabonnement en un clic.
+            <a href="/legal/confidentialite" style="color:var(--muted)">Politique de confidentialité</a>.
+          </p>
+        </form>
+      </div>
+
+      <div class="form-success" id="form-success" role="status" aria-live="polite" aria-atomic="true">
+        <div class="success-icon" aria-hidden="true">🎉</div>
+        <h3>Vous êtes sur la liste !</h3>
+        <p id="success-message">Consultez votre boîte mail — un email de confirmation vient de partir. Nous vous contacterons en priorité lors du lancement.</p>
+      </div>
     </div>
   </section>
 
-  <!-- ─── FOOTER ─────────────────────────────────────────── -->
-  <footer>
-    <div class="footer-inner">
-      <div>
-        <div class="footer-brand">PropPilot</div>
-        <div class="footer-tag">Léa, Marc, Hugo, Thomas et Julie travaillent pour vous.</div>
-        <a href="mailto:contact@proppilot.fr" class="footer-email">contact@proppilot.fr</a>
-        <div class="footer-flag">Fait en France 🇫🇷</div>
+  <!-- FOOTER -->
+  <footer role="contentinfo">
+    <div class="container">
+      <div class="footer-inner">
+        <span class="footer-copy">© 2026 PropPilot. Tous droits réservés.</span>
+        <nav class="footer-links" aria-label="Liens légaux">
+          <a href="/legal/mentions-legales">Mentions légales</a>
+          <a href="/legal/confidentialite">Confidentialité</a>
+          <a href="/legal/cgu">RGPD / CGU</a>
+          <a href="mailto:pro.quentingouaze@gmail.com">Contact</a>
+        </nav>
       </div>
-      <div class="footer-links">
-        <a href="/legal/mentions-legales">Mentions légales</a>
-        <a href="/legal/cgu">CGU</a>
-        <a href="/legal/confidentialite">Confidentialité</a>
-        <a href="mailto:contact@proppilot.fr">Contact</a>
-        <a href="https://proppilot-dashboard-production.up.railway.app/?auth=login" style="opacity:0.4;font-size:12px;">Espace client</a>
-      </div>
-    </div>
-    <div class="sources-note">
-      ¹ Journal de l'Agence / LeadResponseManagement.org — Répondre dans les 5 premières minutes est 21× plus efficace qu'après 30 minutes.<br />
-      ² MIT / InsideSales.com — Il faut en moyenne 7 à 13 points de contact pour convertir un prospect immobilier.<br />
-      ³ Immobilier 2.0 / NAR — 74% des propriétaires signent avec la première agence qui les contacte.
     </div>
   </footer>
 
   <script>
-    /* ─── Fade-up au scroll ──────────────────────────────── */
-    const obs = new IntersectionObserver((entries) => {
-      entries.forEach(e => {
-        if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); }
+    // Animations scroll
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
       });
-    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
-    document.querySelectorAll('.fade-up').forEach(el => obs.observe(el));
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
 
-    /* ─── SMS mockup — affichage séquentiel sans scroll ─── */
-    (function() {
-      var MAX_VISIBLE = 4;
-      var DELAYS = [800, 3200, 5800, 8400, 11000, 13600, 16200, 18800, 21400];
-      var LOOP_INTERVAL = 26000;
-
-      function runSmsAnimation() {
-        var msgs = Array.from(document.querySelectorAll('.sms-msg'));
-        var badge = document.querySelector('.sms-badge-final');
-
-        // Reset — tout cacher
-        msgs.forEach(function(m) {
-          m.style.display = 'none';
-          m.style.opacity = '0';
-          m.style.animation = 'none';
-          m.style.transition = '';
-        });
-        if (badge) {
-          badge.style.display = 'none';
-          badge.style.opacity = '0';
-        }
-
-        // Afficher chaque message avec delay
-        msgs.forEach(function(msg, i) {
-          setTimeout(function() {
-            // Cacher les messages trop anciens
-            var visible = msgs.filter(function(m) {
-              return m.style.display !== 'none';
-            });
-            if (visible.length >= MAX_VISIBLE) {
-              var oldest = visible[0];
-              oldest.style.transition = 'opacity 0.3s';
-              oldest.style.opacity = '0';
-              setTimeout(function() {
-                oldest.style.display = 'none';
-              }, 300);
-            }
-
-            // Afficher le nouveau message
-            msg.style.display = 'block';
-            msg.style.animation = 'none';
-            msg.offsetHeight; // reflow
-            var isLeft = msg.classList.contains('sms-left');
-            msg.style.animation = isLeft
-              ? 'slideInLeft 0.35s ease-out forwards'
-              : 'slideInRight 0.35s ease-out forwards';
-          }, DELAYS[i]);
-        });
-
-        // Badge final
-        var lastDelay = DELAYS[msgs.length - 1];
-        if (badge) {
-          setTimeout(function() {
-            badge.style.display = 'flex';
-            badge.style.animation = 'fadeIn 0.4s ease-out forwards';
-          }, lastDelay + 600);
-        }
+    // Compteur waitlist
+    (async function loadCount() {
+      try {
+        const res = await fetch('/api/waitlist/count');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        const el = document.getElementById('count-text');
+        if (el) el.textContent = data.count > 0
+          ? `${data.count} agence${data.count > 1 ? 's' : ''} déjà inscrite${data.count > 1 ? 's' : ''}`
+          : 'Soyez parmi les premiers inscrits';
+      } catch {
+        const el = document.getElementById('count-text');
+        if (el) el.textContent = 'Soyez parmi les premiers inscrits';
       }
-
-      document.addEventListener('DOMContentLoaded', function() {
-        setTimeout(runSmsAnimation, 500);
-        setInterval(runSmsAnimation, LOOP_INTERVAL);
-      });
     })();
 
-    /* ─── FAQ ────────────────────────────────────────────── */
-    function toggleFaq(btn) {
-      const item = btn.closest('.faq-item');
-      const isOpen = item.classList.contains('open');
-      document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'));
-      if (!isOpen) item.classList.add('open');
+    // Validation champ
+    const FIELDS = ['prenom', 'nom', 'email', 'agence', 'type_agence', 'taille_equipe', 'crm_utilise'];
+    function validateField(name) {
+      const el = document.getElementById(name);
+      const container = document.getElementById('field-' + name);
+      if (!el || !container) return true;
+      const val = el.value.trim();
+      let valid = val.length > 0;
+      if (name === 'email') valid = valid && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+      container.classList.toggle('has-error', !valid);
+      return valid;
     }
-  </script>
+    FIELDS.forEach(name => {
+      const el = document.getElementById(name);
+      if (el) el.addEventListener('blur', () => validateField(name));
+    });
 
+    // Soumission
+    document.getElementById('waitlist-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      let allValid = true;
+      FIELDS.forEach(name => { if (!validateField(name)) allValid = false; });
+      if (!allValid) return;
+
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Inscription en cours…';
+
+      const payload = {
+        prenom:        document.getElementById('prenom').value.trim(),
+        nom:           document.getElementById('nom').value.trim(),
+        email:         document.getElementById('email').value.trim(),
+        agence:        document.getElementById('agence').value.trim(),
+        type_agence:   document.getElementById('type_agence').value,
+        taille_equipe: document.getElementById('taille_equipe').value,
+        crm_utilise:   document.getElementById('crm_utilise').value,
+        website:       document.getElementById('website').value,
+      };
+
+      try {
+        const res = await fetch('/api/waitlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+
+        if (res.status === 201 || data.success) {
+          document.getElementById('form-container').style.display = 'none';
+          const successDiv = document.getElementById('form-success');
+          const msgEl = document.getElementById('success-message');
+          if (msgEl && data.message) msgEl.textContent = data.message;
+          successDiv.style.display = 'block';
+          successDiv.focus();
+        } else if (res.status === 429) {
+          btn.disabled = false;
+          btn.innerHTML = 'Rejoindre la liste d\'attente <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M8 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+          alert(data.detail || 'Trop de tentatives. Veuillez réessayer dans une heure.');
+        } else {
+          throw new Error(data.detail || 'Erreur');
+        }
+      } catch {
+        btn.disabled = false;
+        btn.innerHTML = 'Rejoindre la liste d\'attente <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M8 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        alert('Une erreur est survenue. Veuillez réessayer ou nous contacter directement.');
+      }
+    });
+  </script>
 </body>
 </html>
