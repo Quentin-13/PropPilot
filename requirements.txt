@@ -12,6 +12,11 @@ langchain-anthropic>=0.1.0
 # Anthropic
 anthropic>=0.30.0
 
+# OpenAI (Whisper transcription appels)
+openai>=1.30.0
+
+# Backblaze B2 — stockage audio (API S3-compatible via boto3)
+boto3>=1.34.0
 
 # Twilio (voix + WhatsApp)
 twilio>=9.0.0

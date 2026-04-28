@@ -34,6 +34,8 @@ from tools.security import (
     sanitize_phone_number,
     rate_limit,
 )
+from webhooks.twilio_voice import router as voice_router
+from api.calls import router as calls_router
 
 logger = logging.getLogger(__name__)
 
@@ -175,6 +177,10 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(SecurityAuditMiddleware)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# ── Sprint A — capture d'appels ───────────────────────────────────────────────
+app.include_router(voice_router)
+app.include_router(calls_router)
 
 
 @app.middleware("http")

@@ -27,6 +27,34 @@ class Settings(BaseSettings):
     anthropic_api_key: Optional[str] = Field(default=None, alias="ANTHROPIC_API_KEY")
     claude_model: str = "claude-sonnet-4-5"
 
+    # OpenAI (Whisper transcription)
+    openai_api_key: Optional[str] = Field(default=None, alias="OPENAI_API_KEY")
+
+    # Backblaze B2 (stockage audio appels)
+    b2_account_id: Optional[str] = Field(default=None, alias="B2_ACCOUNT_ID")
+    b2_application_key: Optional[str] = Field(default=None, alias="B2_APPLICATION_KEY")
+    b2_bucket_name: str = Field(default="proppilot-calls", alias="B2_BUCKET_NAME")
+    b2_bucket_id: Optional[str] = Field(default=None, alias="B2_BUCKET_ID")
+    b2_endpoint: str = Field(
+        default="https://s3.eu-central-003.backblazeb2.com",
+        alias="B2_ENDPOINT",
+    )
+
+    # Mention légale RGPD (appels entrants)
+    legal_notice_audio_url: Optional[str] = Field(default=None, alias="LEGAL_NOTICE_AUDIO_URL")
+    fallback_use_tts: bool = Field(default=True, alias="FALLBACK_USE_TTS")
+    legal_notice_text: str = Field(
+        default=(
+            "Pour des raisons de qualité de service et de conformité, "
+            "cet appel est susceptible d'être enregistré. "
+            "En restant en ligne, vous acceptez ces conditions."
+        ),
+        alias="LEGAL_NOTICE_TEXT",
+    )
+    legal_notice_short_text: str = Field(
+        default="Appel enregistré via PropPilot.",
+        alias="LEGAL_NOTICE_SHORT_TEXT",
+    )
 
     # Twilio — pool de numéros 07 dédiés (1 par client)
     twilio_account_sid: Optional[str] = Field(default=None, alias="TWILIO_ACCOUNT_SID")
@@ -123,6 +151,18 @@ class Settings(BaseSettings):
     @property
     def anthropic_available(self) -> bool:
         return bool(self.anthropic_api_key)
+
+    @property
+    def openai_available(self) -> bool:
+        if self.testing or self.mock_mode == "always":
+            return False
+        return bool(self.openai_api_key)
+
+    @property
+    def b2_available(self) -> bool:
+        if self.testing or self.mock_mode == "always":
+            return False
+        return bool(self.b2_account_id and self.b2_application_key)
 
 
     @property
