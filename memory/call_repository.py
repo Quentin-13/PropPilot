@@ -188,6 +188,94 @@ def get_extraction_by_call(call_id: str) -> Optional[dict]:
 
 # ── agency_phone_numbers ──────────────────────────────────────────────────────
 
+def get_calls_by_client(
+    client_id: str,
+    since: Optional[datetime] = None,
+    limit: int = 20,
+    offset: int = 0,
+) -> list[dict]:
+    """
+    Retourne les appels d'un client avec extraction et infos lead,
+    triés par date décroissante.
+    """
+    conditions = ["c.client_id = %s"]
+    params: list = [client_id]
+
+    if since:
+        conditions.append("c.created_at >= %s")
+        params.append(since)
+
+    where = " AND ".join(conditions)
+    params.extend([limit, offset])
+
+    with get_connection() as conn:
+        rows = conn.execute(
+            f"""
+            SELECT
+                c.id, c.call_sid, c.direction, c.mode,
+                c.from_number, c.to_number, c.twilio_number,
+                c.lead_id, c.status, c.statut,
+                c.started_at, c.ended_at, c.duration_seconds,
+                c.recording_url, c.transcript_text,
+                c.transcript_segments, c.created_at,
+                ce.score_qualification, ce.resume_appel,
+                ce.points_attention, ce.type_projet,
+                ce.budget_min, ce.budget_max, ce.zone_geographique,
+                ce.type_bien, ce.surface_min, ce.surface_max,
+                ce.prochaine_action_suggeree, ce.motivation,
+                ce.criteres, ce.timing, ce.financement,
+                l.prenom, l.nom, l.telephone AS lead_telephone
+            FROM calls c
+            LEFT JOIN call_extractions ce ON ce.call_id = c.id
+            LEFT JOIN leads l ON l.id = c.lead_id
+            WHERE {where}
+            ORDER BY c.created_at DESC
+            LIMIT %s OFFSET %s
+            """,
+            params,
+        ).fetchall()
+
+    result = []
+    for row in rows:
+        d = dict(row)
+        for field in ("transcript_segments", "points_attention"):
+            val = d.get(field)
+            if isinstance(val, str):
+                try:
+                    d[field] = json.loads(val)
+                except Exception:
+                    d[field] = []
+            elif val is None:
+                d[field] = []
+        for field in ("criteres", "timing", "financement"):
+            val = d.get(field)
+            if isinstance(val, str):
+                try:
+                    d[field] = json.loads(val)
+                except Exception:
+                    d[field] = {}
+            elif val is None:
+                d[field] = {}
+        result.append(d)
+    return result
+
+
+def count_calls_by_client(client_id: str, since: Optional[datetime] = None) -> int:
+    """Compte le nombre d'appels d'un client."""
+    conditions = ["client_id = %s"]
+    params: list = [client_id]
+    if since:
+        conditions.append("created_at >= %s")
+        params.append(since)
+    where = " AND ".join(conditions)
+    with get_connection() as conn:
+        row = conn.execute(
+            f"SELECT COUNT(*) AS cnt FROM calls WHERE {where}",
+            params,
+        ).fetchone()
+    return int(row["cnt"]) if row else 0
+
+
 def get_phone_number_config(twilio_number: str) -> Optional[dict]:
     """Retourne la config agence/agent associée à un numéro Twilio."""
     with get_connection() as conn:
