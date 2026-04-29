@@ -59,12 +59,21 @@
     }
     .logo { font-size: 1.25rem; font-weight: 900; letter-spacing: -0.03em; text-decoration: none; color: var(--text); }
     .logo span { color: var(--accent); }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
     .nav-cta {
       background: var(--accent); color: #09090b; font-weight: 700;
       padding: 10px 20px; border-radius: 8px; text-decoration: none;
       font-size: 0.9rem; transition: opacity 0.2s;
     }
     .nav-cta:hover { opacity: 0.85; }
+    .nav-login {
+      color: var(--muted); font-weight: 500; font-size: 0.875rem;
+      padding: 8px 16px; border-radius: 8px; text-decoration: none;
+      border: 1px solid var(--border);
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+    }
+    .nav-login:hover { color: var(--text); border-color: #52525b; background: var(--surface-2); }
+    @media (max-width: 580px) { .nav-cta { display: none; } }
 
     /* ── Buttons ── */
     .btn-primary {
@@ -275,7 +284,10 @@
   <nav aria-label="Navigation principale">
     <div class="nav-inner">
       <a href="/" class="logo" aria-label="PropPilot — accueil">Prop<span>Pilot</span></a>
-      <a href="#waitlist" class="nav-cta">Rejoindre la liste d'attente</a>
+      <div class="nav-right">
+        <a href="https://proppilot-dashboard-production.up.railway.app" class="nav-login">Connexion</a>
+        <a href="#waitlist" class="nav-cta">Rejoindre la liste d'attente</a>
+      </div>
     </div>
   </nav>
 

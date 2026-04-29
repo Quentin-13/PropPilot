@@ -296,6 +296,14 @@ def show_auth_page() -> None:
         <div style="text-align: center; margin-top: 24px; color: #94a3b8; font-size: 12px;">
             60 Jours Satisfait ou Remboursé · Support email inclus
         </div>
+        <div style="text-align: center; margin-top: 16px; color: #71717a; font-size: 11px; line-height: 1.6; padding: 0 8px;">
+            Vous n'avez pas encore de compte ? PropPilot est en bêta privée.<br>
+            <a href="https://proppilot.fr#waitlist"
+               style="color: #a3e635; text-decoration: none;">
+                Inscrivez-vous à la liste d'attente
+            </a>
+            pour un accès prioritaire au lancement.
+        </div>
         """, unsafe_allow_html=True)
 
 
