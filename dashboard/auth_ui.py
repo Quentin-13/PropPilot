@@ -377,37 +377,18 @@ def render_sidebar_logout() -> None:
             # Admin : sidebar réduite à la seule page Propriétaire
             st.markdown("""
 <style>
-/* Admin : masquer tout sauf propriétaire */
 [data-testid="stSidebarNav"] li
   { display: none !important; }
 [data-testid="stSidebarNav"] li:nth-child(1)
   { display: block !important; }
 </style>
 """, unsafe_allow_html=True)
-        elif is_demo:
-            # Mode démo désactivé — ce bloc est inatteignable tant que _DEMO_ENABLED = False
-            # Conservé pour réactivation future avec un nouveau jeu de données
-            st.markdown("""
-<style>
-[data-testid="stSidebarNav"] a[href*="proprietaire"] { display: none !important; }
-[data-testid="stSidebarNav"] a[href*="admin"]        { display: none !important; }
-[data-testid="stSidebarNav"] a[href*="tasks"]        { display: none !important; }
-[data-testid="stSidebarNav"] a[href*="calls"]        { display: none !important; }
-[data-testid="stSidebarNav"] a[href*="mes_leads"]    { display: none !important; }
-</style>
-""", unsafe_allow_html=True)
         else:
-            # Client : masquer Propriétaire (admin only)
+            # Clients (y compris mode démo si réactivé) : masquer tout l'auto-nav Streamlit.
+            # La navigation est gérée exclusivement par les boutons explicites ci-dessous.
             st.markdown("""
 <style>
-/* Masquer propriétaire pour les clients */
-[data-testid="stSidebarNav"] li:nth-child(1) { display: none !important; }
-[data-testid="stSidebarNav"] a[href*="proprietaire"] { display: none !important; }
-[data-testid="stSidebarNav"] a[href*="admin"]        { display: none !important; }
-/* Masquer les pages gérées par les boutons explicites ci-dessous */
-[data-testid="stSidebarNav"] a[href*="tasks"]        { display: none !important; }
-[data-testid="stSidebarNav"] a[href*="calls"]        { display: none !important; }
-[data-testid="stSidebarNav"] a[href*="mes_leads"]    { display: none !important; }
+[data-testid="stSidebarNav"] { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -421,31 +402,29 @@ def render_sidebar_logout() -> None:
 
         st.markdown("---")
 
-        if st.button("🏠 Accueil", use_container_width=True, key="_home_btn"):
-            st.switch_page("app.py")
-
-        if st.button("🚪 Déconnexion", use_container_width=True, key="_logout_btn"):
-            _cookie_clear()
-            for key in ["authenticated", "token", "user_id", "agency_name", "plan", "plan_active", "is_admin"]:
-                st.session_state.pop(key, None)
-            st.rerun()
-
-        st.markdown("---")
-        st.markdown(
-            "<div style='color: #94a3b8; font-size: 12px; text-transform: uppercase; "
-            "letter-spacing: 1px; margin-bottom: 6px;'>Navigation</div>",
-            unsafe_allow_html=True,
-        )
-
         if not is_admin:
+            # Navigation principale
             if st.button("📋 Tâches du jour", use_container_width=True, key="_nav_tasks"):
                 st.switch_page("pages/tasks.py")
             if st.button("👥 Mes leads", use_container_width=True, key="_nav_leads"):
                 st.switch_page("pages/01_mes_leads.py")
             if st.button("📞 Appels capturés", use_container_width=True, key="_nav_calls"):
                 st.switch_page("pages/calls.py")
-            st.markdown(
-                "<div style='color: #94a3b8; font-size: 11px; margin: 8px 0 4px 0; "
-                "text-transform: uppercase; letter-spacing: 1px;'>Outils</div>",
-                unsafe_allow_html=True,
-            )
+
+            st.markdown("---")
+
+            # Compte & configuration
+            if st.button("⚙️ Mes paramètres", use_container_width=True, key="_nav_parametres"):
+                st.switch_page("pages/06_parametres.py")
+            if st.button("💳 Abonnement", use_container_width=True, key="_nav_facturation"):
+                st.switch_page("pages/09_facturation.py")
+            if st.button("🔗 Intégrations", use_container_width=True, key="_nav_integrations"):
+                st.switch_page("pages/11_integrations.py")
+
+            st.markdown("---")
+
+        if st.button("🚪 Déconnexion", use_container_width=True, key="_logout_btn"):
+            _cookie_clear()
+            for key in ["authenticated", "token", "user_id", "agency_name", "plan", "plan_active", "is_admin"]:
+                st.session_state.pop(key, None)
+            st.rerun()
