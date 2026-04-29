@@ -104,7 +104,7 @@ st.markdown(f"**{len(leads)} leads** correspondant aux filtres")
 # ─── Tableau leads ───────────────────────────────────────────────────────────
 
 if not leads:
-    st.info("Aucun lead trouvé. Lancez `python scripts/seed_demo_data.py` pour ajouter des données de démo.")
+    st.info("Aucun lead trouvé. Les leads apparaissent ici dès que vos premiers contacts seront reçus via votre numéro PropPilot.")
 else:
     # Conversion en DataFrame
     rows = []
@@ -195,10 +195,35 @@ else:
                         st.warning("Pas de numéro de téléphone")
 
             with action_col2:
-                if st.button("📞 Appeler", key=f"call_{lead_id}"):
-                    if not selected_lead.telephone:
-                        st.warning("Pas de numéro de téléphone")
-                    else:
+                # Vérifier si l'agent a renseigné son numéro de téléphone
+                _agent_phone = None
+                try:
+                    from memory.database import get_connection as _gc
+                    with _gc() as _conn:
+                        _row = _conn.execute(
+                            "SELECT phone FROM users WHERE id = %s LIMIT 1",
+                            (client_id,),
+                        ).fetchone()
+                        if _row:
+                            _agent_phone = _row.get("phone")
+                except Exception:
+                    pass
+
+                if not _agent_phone:
+                    if st.button(
+                        "📞 Appeler",
+                        key=f"call_{lead_id}",
+                        disabled=True,
+                        help="Renseignez votre numéro dans ⚙️ Mes paramètres pour activer le click-to-call",
+                    ):
+                        pass
+                    st.caption("📵 Numéro agent requis — [Mes paramètres](pages/06_parametres.py)")
+                elif not selected_lead.telephone:
+                    if st.button("📞 Appeler", key=f"call_{lead_id}", disabled=True):
+                        pass
+                    st.caption("Pas de numéro pour ce lead")
+                else:
+                    if st.button("📞 Appeler", key=f"call_{lead_id}"):
                         try:
                             import httpx
                             token = st.session_state.get("token", "")
