@@ -91,6 +91,9 @@ def _do_signup(email: str, password: str, agency_name: str) -> dict:
 
 
 _DEMO_EMAIL = "demo.dumortier@proppilot.fr"
+# Désactivé le temps de préparer un nouveau jeu de données démo post-pivot.
+# Pour réactiver : passer _DEMO_ENABLED = True et seeder les données dans scripts/seed_demo_data.py
+_DEMO_ENABLED = False
 
 
 def _set_session(
@@ -110,7 +113,7 @@ def _set_session(
     st.session_state["plan_active"] = plan_active
     st.session_state["is_admin"] = is_admin
     st.session_state["email"] = email
-    st.session_state["is_demo"] = (email == _DEMO_EMAIL)
+    st.session_state["is_demo"] = _DEMO_ENABLED and (email == _DEMO_EMAIL)
 
 
 # ─── Attente d'activation ─────────────────────────────────────────────────────
