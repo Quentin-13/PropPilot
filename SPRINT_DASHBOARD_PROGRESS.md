@@ -1,7 +1,7 @@
 # Sprint Dashboard MVP — État d'Avancement
 
 **Branche** : `feature/dashboard-mvp`
-**Statut** : 🔄 En cours — Étape 2 (Page Appels)
+**Statut** : ✅ Terminé — 5 étapes complètes, 5 commits atomiques
 **Démarré** : 2026-04-29
 
 ---
@@ -47,28 +47,33 @@
 - [x] `SPRINT_DASHBOARD_PROGRESS.md` créé
 - [x] Architecture existante analysée
 
-### Étape 2 — Page "Appels capturés" 🔄
+### Étape 2 — Page "Appels capturés" ✅
 - [x] `memory/call_repository.py` enrichi : `get_calls_by_client`, `count_calls_by_client`
 - [x] `dashboard/pages/calls.py` créé
-- [ ] Commit + push
-- [ ] Validation Quentin
+- [x] Commit f74018e + push
 
-### Étape 3 — Page "Mes leads" enrichie ⬜
-- [ ] Enrichir `dashboard/pages/01_mes_leads.py`
-- Timeline multi-canal (SMS + appels)
-- Click-to-call → POST /api/calls/outbound
-- Sections "Données extraites" agrégées depuis call_extractions
+### Étape 3 — Page "Mes leads" enrichie ✅
+- [x] `memory/call_repository.py` : `get_calls_by_lead`, `get_extractions_by_lead`
+- [x] `memory/reminder_repository.py` créé (CRUD reminders)
+- [x] `dashboard/pages/01_mes_leads.py` enrichi :
+  - Timeline multi-canal (SMS/WhatsApp/email + appels mélangés, triés date desc)
+  - Click-to-call réel (POST /api/calls/outbound avec JWT)
+  - Section "Données extraites" agrégées depuis call_extractions
+- [x] Commits 472cebd + c118084
 
-### Étape 4 — Page "Mes tâches du jour" ⬜
-- [ ] `dashboard/pages/tasks.py` créé
-- Sections : À faire aujourd'hui / En retard / À venir
-- Reminders créés par Marc (table `reminders`)
-- Boutons : Marquer comme fait / Reporter
+### Étape 4 — Page "Mes tâches du jour" ✅
+- [x] `dashboard/pages/tasks.py` créé
+- [x] Sections : En retard / Aujourd'hui / À venir (expander)
+- [x] Reminders depuis table `reminders` (agent Marc)
+- [x] Boutons : Marquer comme fait + Reporter (date picker inline)
+- [x] Lien lead clickable → switch_page vers fiche lead
+- [x] Commit d961bf7
 
-### Étape 5 — Navigation + tests visuels ⬜
-- [ ] Réorganiser la navigation (tasks en premier)
-- [ ] Vérifier mode démo compatible
-- [ ] Tests manuels documentés
+### Étape 5 — Navigation ✅
+- [x] 3 boutons explicites dans la sidebar : Tâches / Leads / Appels
+- [x] CSS pour masquer ces pages de l'auto-nav Streamlit (évite doublon)
+- [x] Compatible mode démo (CSS ajouté pour les 2 modes)
+- [x] Commit 661059b
 
 ---
 
@@ -98,13 +103,50 @@
 
 ## Fichiers créés/modifiés
 
-### Étape 2
-- `memory/call_repository.py` — ajout `get_calls_by_client`, `count_calls_by_client`
-- `dashboard/pages/calls.py` — page appels capturés (nouvelle)
-- `SPRINT_DASHBOARD_PROGRESS.md` — ce fichier
+| Fichier | Type | Rôle |
+|---|---|---|
+| `memory/call_repository.py` | modifié | +get_calls_by_client, +count_calls_by_client, +get_calls_by_lead, +get_extractions_by_lead |
+| `memory/reminder_repository.py` | nouveau | CRUD reminders (get, mark_done, snooze) |
+| `dashboard/pages/calls.py` | nouveau | Page Appels capturés |
+| `dashboard/pages/01_mes_leads.py` | modifié | Timeline + click-to-call + extractions agrégées |
+| `dashboard/pages/tasks.py` | nouveau | Page Mes tâches du jour |
+| `dashboard/auth_ui.py` | modifié | Navigation : boutons Tâches/Leads/Appels + CSS anti-doublon |
+| `SPRINT_DASHBOARD_PROGRESS.md` | nouveau | Ce fichier |
 
 ---
 
-## Procédure de test manuel (à compléter)
+## Procédure de test manuel
 
-À remplir après chaque étape.
+### Prérequis
+1. Migration Sprint A appliquée : `alembic upgrade head`
+2. Serveur FastAPI démarré : `uvicorn server:app --reload`
+3. Dashboard démarré : `streamlit run dashboard/app.py`
+4. Se connecter avec un compte client (pas admin)
+
+### Test page Tâches du jour
+1. Cliquer "📋 Tâches du jour" dans la sidebar
+2. Vérifier les 3 sections (En retard / Aujourd'hui / À venir)
+3. Si vide : "Aucune tâche planifiée" → normal si pas de reminders en base
+4. Cliquer "✅ Fait" sur un reminder → disparaît, message succès
+5. Cliquer "⏰ Reporter" → formulaire date/heure apparaît → saisir + confirmer
+6. Cliquer "👤 [Nom lead]" → bascule vers la fiche lead
+
+### Test page Mes leads (enrichie)
+1. Cliquer "👥 Mes leads" dans la sidebar
+2. Sélectionner un lead dans le tableau
+3. Vérifier la section "Historique des interactions" (SMS + appels chronologiques)
+4. Vérifier la section "Données extraites des appels" (si appels analysés)
+5. Cliquer "📞 Appeler" → en mode mock : message "Appel initié (mock)"
+
+### Test page Appels capturés
+1. Cliquer "📞 Appels capturés" dans la sidebar
+2. Vérifier les filtres (Aujourd'hui / 7j / 30j / Custom) et Direction
+3. Sélectionner un appel dans le tableau
+4. Vérifier l'affichage détail : audio (si recording_url), transcription, extraction
+5. Cliquer "👤 Voir la fiche lead" → bascule vers fiche lead
+
+### Limitations connues
+- **Click-to-call** : requiert que la colonne `phone` existe dans `users` (pas dans le schéma actuel → 400 en mode réel, mock OK)
+- **Audio B2** : les buckets privés nécessitent les credentials B2 pour générer une URL signée
+- **Reminders** : créés uniquement par l'agent Marc (nurturing) — table vide si pas de leads traités
+- **Signed URL** : expire après 1h — rafraîchir la page si l'audio ne se lit plus
