@@ -141,11 +141,12 @@ from dashboard.auth_ui import render_sidebar_logout, require_auth
 
 require_auth()
 
-# Redirect admin
+# Redirect admin → tableau de bord propriétaire
 if st.session_state.get("is_admin", False):
     st.switch_page("pages/00_proprietaire.py")
 
-render_sidebar_logout()
+# Redirect clients → page d'accueil par défaut (Mes tâches du jour)
+st.switch_page("pages/tasks.py")
 
 # ─── Données de session ────────────────────────────────────────────────────────
 client_id  = st.session_state.get("user_id", settings.agency_client_id)
