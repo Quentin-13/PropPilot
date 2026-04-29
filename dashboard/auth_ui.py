@@ -382,41 +382,29 @@ def render_sidebar_logout() -> None:
 </style>
 """, unsafe_allow_html=True)
         elif is_demo:
-            # Mode démo : Pipeline, Leads, Conversations, Calendrier, Stats uniquement
+            # Mode démo désactivé — ce bloc est inatteignable tant que _DEMO_ENABLED = False
+            # Conservé pour réactivation future avec un nouveau jeu de données
             st.markdown("""
 <style>
-[data-testid="stSidebarNav"] a[href*="proprietaire"]  { display: none !important; }
-[data-testid="stSidebarNav"] a[href*="admin"]          { display: none !important; }
-[data-testid="stSidebarNav"] a[href*="utilisation"]    { display: none !important; }
-[data-testid="stSidebarNav"] a[href*="annonce"]        { display: none !important; }
-[data-testid="stSidebarNav"] a[href*="estimation"]     { display: none !important; }
-[data-testid="stSidebarNav"] a[href*="parametres"]     { display: none !important; }
-[data-testid="stSidebarNav"] a[href*="facturation"]    { display: none !important; }
-[data-testid="stSidebarNav"] a[href*="integrations"]   { display: none !important; }
-/* Masquer les nouvelles pages de l'auto-nav — gérées par les boutons ci-dessous */
-[data-testid="stSidebarNav"] a[href*="tasks"]          { display: none !important; }
-[data-testid="stSidebarNav"] a[href*="calls"]          { display: none !important; }
-[data-testid="stSidebarNav"] a[href*="mes_leads"]      { display: none !important; }
+[data-testid="stSidebarNav"] a[href*="proprietaire"] { display: none !important; }
+[data-testid="stSidebarNav"] a[href*="admin"]        { display: none !important; }
+[data-testid="stSidebarNav"] a[href*="tasks"]        { display: none !important; }
+[data-testid="stSidebarNav"] a[href*="calls"]        { display: none !important; }
+[data-testid="stSidebarNav"] a[href*="mes_leads"]    { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
         else:
-            # Client : masquer Propriétaire (admin only) et 07_admin (obsolète)
+            # Client : masquer Propriétaire (admin only)
             st.markdown("""
 <style>
-/* Masquer propriétaire et admin pour les clients */
-[data-testid="stSidebarNav"] li:nth-child(1)
-  { display: none !important; }
-[data-testid="stSidebarNav"] li:nth-child(8)
-  { display: none !important; }
-/* Sécurité supplémentaire — masquer par nom */
-[data-testid="stSidebarNav"] a[href*="proprietaire"]
-  { display: none !important; }
-[data-testid="stSidebarNav"] a[href*="admin"]
-  { display: none !important; }
-/* Masquer les nouvelles pages de l'auto-nav — gérées par les boutons ci-dessous */
-[data-testid="stSidebarNav"] a[href*="tasks"]     { display: none !important; }
-[data-testid="stSidebarNav"] a[href*="calls"]     { display: none !important; }
-[data-testid="stSidebarNav"] a[href*="mes_leads"] { display: none !important; }
+/* Masquer propriétaire pour les clients */
+[data-testid="stSidebarNav"] li:nth-child(1) { display: none !important; }
+[data-testid="stSidebarNav"] a[href*="proprietaire"] { display: none !important; }
+[data-testid="stSidebarNav"] a[href*="admin"]        { display: none !important; }
+/* Masquer les pages gérées par les boutons explicites ci-dessous */
+[data-testid="stSidebarNav"] a[href*="tasks"]        { display: none !important; }
+[data-testid="stSidebarNav"] a[href*="calls"]        { display: none !important; }
+[data-testid="stSidebarNav"] a[href*="mes_leads"]    { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
