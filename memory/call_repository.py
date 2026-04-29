@@ -276,6 +276,54 @@ def count_calls_by_client(client_id: str, since: Optional[datetime] = None) -> i
     return int(row["cnt"]) if row else 0
 
 
+def get_calls_by_lead(lead_id: str) -> list[dict]:
+    """Retourne les appels d'un lead avec extraction, triés par date décroissante."""
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT c.id, c.direction, c.mode, c.status, c.statut,
+                   c.started_at, c.ended_at, c.duration_seconds,
+                   c.recording_url, c.transcript_text, c.created_at,
+                   ce.score_qualification, ce.resume_appel, ce.points_attention,
+                   ce.type_projet, ce.budget_min, ce.budget_max,
+                   ce.zone_geographique, ce.motivation, ce.prochaine_action_suggeree
+            FROM calls c
+            LEFT JOIN call_extractions ce ON ce.call_id = c.id
+            WHERE c.lead_id = %s
+            ORDER BY c.created_at DESC
+            """,
+            (lead_id,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_extractions_by_lead(lead_id: str) -> list[dict]:
+    """Retourne toutes les extractions pour les appels d'un lead."""
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT ce.*
+            FROM call_extractions ce
+            JOIN calls c ON c.id = ce.call_id
+            WHERE c.lead_id = %s
+            ORDER BY ce.extracted_at DESC
+            """,
+            (lead_id,),
+        ).fetchall()
+    result = []
+    for row in rows:
+        d = dict(row)
+        for field in ("criteres", "timing", "financement", "points_attention"):
+            val = d.get(field)
+            if isinstance(val, str):
+                try:
+                    d[field] = json.loads(val)
+                except Exception:
+                    d[field] = {} if field != "points_attention" else []
+        result.append(d)
+    return result
+
+
 def get_phone_number_config(twilio_number: str) -> Optional[dict]:
     """Retourne la config agence/agent associée à un numéro Twilio."""
     with get_connection() as conn:
