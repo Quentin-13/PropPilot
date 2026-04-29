@@ -167,3 +167,52 @@ ALTER TABLE calls
     ADD COLUMN IF NOT EXISTS whisper_model TEXT DEFAULT NULL;
 -- Plus tard : DROP COLUMN retell_call_id (après migration données)
 ```
+
+---
+
+## 4. Dashboard — Pages supprimées (Grand ménage 2026-04-29)
+
+### Pages supprimées
+
+| Page | Fichier | Raison |
+|---|---|---|
+| Utilisation | `dashboard/pages/02_utilisation.py` | Métriques liées aux agents morts (listings, estimations, staging, tokens Léa) |
+| Générer une annonce | `dashboard/pages/04_annonce.py` | Hugo désactivé (`ENABLE_LEGACY_AGENTS=false`) |
+| Estimer un bien | `dashboard/pages/05_estimation.py` | Thomas désactivé (DVF + Claude) |
+| Admin | `dashboard/pages/07_admin.py` | Doublon de `00_proprietaire.py`, déjà masqué en prod |
+| Calendrier | `dashboard/pages/08_agenda.py` | Google Calendar OAuth — à rebrancher sur le nouveau produit plus tard |
+| Conversations | `dashboard/pages/10_conversations.py` | Historique SMS brut absorbé par la timeline dans `01_mes_leads.py` |
+
+### Mode démo désactivé
+
+`dashboard/auth_ui.py` — `_DEMO_ENABLED = False`
+
+**Pourquoi :** le jeu de données démo (demo.dumortier@proppilot.fr) était
+constitué de données liées à l'ancien produit (leads SMS, qualification Léa,
+annonces Hugo). Il ne reflète plus le nouveau produit (capture appels, mémoire
+commerciale).
+
+**Pour réactiver :**
+1. Passer `_DEMO_ENABLED = True` dans `dashboard/auth_ui.py`
+2. Créer un nouveau seed dans `scripts/seed_demo_data.py` avec :
+   - Des appels avec transcriptions et extractions Claude
+   - Des reminders créés par Marc
+   - Des leads avec historique multi-canal
+3. Seeder la base : `python scripts/seed_demo_data.py`
+4. Reconfigurer la visibilité des pages en mode démo dans le bloc `elif is_demo:`
+
+### Pages conservées (navigation post-pivot)
+
+**Boutons explicites en sidebar (ordre prioritaire) :**
+- 📋 Mes tâches du jour → `tasks.py`
+- 👥 Mes leads → `01_mes_leads.py`
+- 📞 Appels capturés → `calls.py`
+
+**Auto-nav Streamlit (outils secondaires) :**
+- 💰 ROI & Performance → `03_roi.py`
+- ⚙️ Configuration → `06_parametres.py`
+- 💳 Abonnement → `09_facturation.py`
+- 🔗 Intégrations → `11_integrations.py`
+
+**Admin uniquement :**
+- 🔐 Propriétaire → `00_proprietaire.py`
