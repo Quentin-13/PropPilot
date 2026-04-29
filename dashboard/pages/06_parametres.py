@@ -555,6 +555,57 @@ try:
 except Exception:
     st.caption("Configurez et enregistrez une connexion CRM pour activer les options de sync.")
 
+# ─── Mon numéro de téléphone (click-to-call) ──────────────────────────────────
+
+st.markdown("---")
+st.markdown("## 📱 Mon numéro de téléphone")
+st.markdown(
+    "Utilisé par le click-to-call : quand vous appelez un lead depuis le dashboard, "
+    "PropPilot appelle d'abord ce numéro, puis vous met en relation avec le lead."
+)
+
+current_phone = ""
+try:
+    from memory.database import get_connection
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT phone FROM users WHERE id = %s LIMIT 1",
+            (client_id,),
+        ).fetchone()
+        if row and row.get("phone"):
+            current_phone = row["phone"]
+except Exception:
+    pass
+
+with st.form("phone_form"):
+    phone_input = st.text_input(
+        "Numéro (format E.164)",
+        value=current_phone,
+        placeholder="+33612345678",
+        help="Format international obligatoire : +33 suivi des 9 chiffres (ex: +33612345678)",
+    )
+    phone_submitted = st.form_submit_button("💾 Enregistrer mon numéro", type="primary")
+
+if phone_submitted:
+    import re as _re
+    phone_clean = (phone_input or "").strip()
+    if phone_clean and not _re.fullmatch(r"\+[1-9]\d{6,14}", phone_clean):
+        st.error("Format invalide. Utilisez le format E.164 : +33612345678")
+    else:
+        try:
+            from memory.database import get_connection
+            with get_connection() as conn:
+                conn.execute(
+                    "UPDATE users SET phone = %s WHERE id = %s",
+                    (phone_clean or None, client_id),
+                )
+            if phone_clean:
+                st.success(f"✅ Numéro enregistré : {phone_clean}")
+            else:
+                st.info("Numéro supprimé.")
+        except Exception as e:
+            st.error(f"Erreur lors de la sauvegarde : {e}")
+
 # ─── Configuration actuelle ───────────────────────────────────────────────────
 
 st.markdown("---")
