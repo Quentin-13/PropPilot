@@ -196,7 +196,30 @@ else:
 
             with action_col2:
                 if st.button("📞 Appeler", key=f"call_{lead_id}"):
-                    st.info(f"Appel sortant vers {selected_lead.telephone or 'numéro manquant'} (Phase 2 — VoiceCallAgent)")
+                    if not selected_lead.telephone:
+                        st.warning("Pas de numéro de téléphone")
+                    else:
+                        try:
+                            import httpx
+                            token = st.session_state.get("token", "")
+                            resp = httpx.post(
+                                f"{settings.api_url}/api/calls/outbound",
+                                json={
+                                    "lead_id": lead_id,
+                                    "agent_id": client_id,
+                                    "lead_phone": selected_lead.telephone,
+                                },
+                                headers={"Authorization": f"Bearer {token}"},
+                                timeout=10.0,
+                            )
+                            if resp.status_code == 200:
+                                data = resp.json()
+                                st.success(f"Appel initié ! {data.get('message', '')}")
+                            else:
+                                detail = resp.json().get("detail", resp.text)
+                                st.error(f"Erreur : {detail}")
+                        except Exception as exc:
+                            st.error(f"Impossible de joindre l'API : {exc}")
 
             with action_col3:
                 if st.button("📄 Générer annonce", key=f"listing_{lead_id}"):
@@ -229,6 +252,112 @@ else:
                 selected_lead.notes_agent = new_notes
                 update_lead(selected_lead)
                 st.success("Notes sauvegardées")
+
+            # ── Timeline interactions ──────────────────────────────────────────
+            st.markdown("#### 📅 Historique des interactions")
+
+            try:
+                from memory.lead_repository import get_conversation_history
+                from memory.call_repository import get_calls_by_lead
+
+                conversations = get_conversation_history(lead_id, limit=50)
+                calls_hist = get_calls_by_lead(lead_id)
+
+                timeline: list[dict] = []
+
+                for conv in conversations:
+                    canal = conv.canal.value if hasattr(conv.canal, "value") else str(conv.canal)
+                    canal_icons = {"sms": "💬", "whatsapp": "💬", "email": "📧", "appel": "📞"}
+                    icon = canal_icons.get(canal, "💬")
+                    timeline.append({
+                        "date": conv.created_at,
+                        "icon": icon,
+                        "label": f"{canal.upper()} · {conv.role.capitalize()}",
+                        "content": conv.contenu[:200] + ("…" if len(conv.contenu) > 200 else ""),
+                    })
+
+                for call in calls_hist:
+                    raw_dt = call.get("started_at") or call.get("created_at")
+                    if isinstance(raw_dt, str):
+                        try:
+                            raw_dt = datetime.fromisoformat(raw_dt)
+                        except Exception:
+                            raw_dt = datetime.now()
+                    dur = call.get("duration_seconds") or 0
+                    dur_str = f"{dur//60}m{dur%60:02d}s" if dur else "?"
+                    direction = (call.get("direction") or "").lower()
+                    dir_icon = "⬇️" if "inbound" in direction else "⬆️"
+                    resume = call.get("resume_appel") or ""
+                    content = f"Durée : {dur_str}"
+                    if resume:
+                        content += f" · {resume[:150]}{'…' if len(resume) > 150 else ''}"
+                    timeline.append({
+                        "date": raw_dt,
+                        "icon": f"📞{dir_icon}",
+                        "label": f"Appel {'entrant' if 'inbound' in direction else 'sortant'}",
+                        "content": content,
+                    })
+
+                timeline.sort(key=lambda x: x["date"] if x["date"] else datetime.min, reverse=True)
+
+                if not timeline:
+                    st.caption("Aucune interaction enregistrée pour ce lead.")
+                else:
+                    for item in timeline[:20]:
+                        dt_str = item["date"].strftime("%d/%m/%Y %H:%M") if item["date"] else "—"
+                        st.markdown(
+                            f'<div style="display:flex;gap:12px;padding:8px 0;'
+                            f'border-bottom:1px solid #1e2130;align-items:flex-start;">'
+                            f'<span style="font-size:1.1rem;min-width:28px;">{item["icon"]}</span>'
+                            f'<div><div style="color:#94a3b8;font-size:0.78rem;">'
+                            f'{dt_str} · {item["label"]}</div>'
+                            f'<div style="color:#e2e8f0;font-size:0.88rem;margin-top:2px;">'
+                            f'{item["content"]}</div></div></div>',
+                            unsafe_allow_html=True,
+                        )
+                    if len(timeline) > 20:
+                        st.caption(f"+ {len(timeline) - 20} interactions plus anciennes")
+            except Exception as exc:
+                st.caption(f"Historique indisponible : {exc}")
+
+            # ── Données extraites agrégées ─────────────────────────────────────
+            try:
+                from memory.call_repository import get_extractions_by_lead
+                extractions = get_extractions_by_lead(lead_id)
+
+                if extractions:
+                    st.markdown("#### 🧠 Données extraites des appels")
+                    last = extractions[0]
+
+                    ext_col1, ext_col2, ext_col3 = st.columns(3)
+                    with ext_col1:
+                        st.markdown(f"**Type projet :** {last.get('type_projet') or '—'}")
+                        bmin, bmax = last.get("budget_min"), last.get("budget_max")
+                        if bmin or bmax:
+                            bstr = f"{bmin:,} €".replace(",", " ") if bmin else ""
+                            bstr += " — " if bmin and bmax else ""
+                            bstr += f"{bmax:,} €".replace(",", " ") if bmax else ""
+                            st.markdown(f"**Budget :** {bstr}")
+                        else:
+                            st.markdown("**Budget :** —")
+                        st.markdown(f"**Zone :** {last.get('zone_geographique') or '—'}")
+                        st.markdown(f"**Type bien :** {last.get('type_bien') or '—'}")
+                    with ext_col2:
+                        st.markdown(f"**Motivation :** {last.get('motivation') or '—'}")
+                        st.markdown(f"**Score qualif :** {last.get('score_qualification') or '—'}")
+                        next_act = last.get("prochaine_action_suggeree")
+                        if next_act:
+                            st.markdown(f"**Prochaine action :** *{next_act}*")
+                    with ext_col3:
+                        pts = last.get("points_attention") or []
+                        if pts:
+                            st.markdown("**⚠️ Points d'attention**")
+                            for pt in (pts if isinstance(pts, list) else [str(pts)]):
+                                st.markdown(f"• {pt}")
+                    if len(extractions) > 1:
+                        st.caption(f"Basé sur le dernier appel analysé · {len(extractions)} appel(s) total")
+            except Exception:
+                pass
 
 # ─── Formulaire ajout lead manuel ─────────────────────────────────────────────
 

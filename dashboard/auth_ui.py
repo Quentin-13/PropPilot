@@ -385,6 +385,10 @@ def render_sidebar_logout() -> None:
 [data-testid="stSidebarNav"] a[href*="parametres"]     { display: none !important; }
 [data-testid="stSidebarNav"] a[href*="facturation"]    { display: none !important; }
 [data-testid="stSidebarNav"] a[href*="integrations"]   { display: none !important; }
+/* Masquer les nouvelles pages de l'auto-nav — gérées par les boutons ci-dessous */
+[data-testid="stSidebarNav"] a[href*="tasks"]          { display: none !important; }
+[data-testid="stSidebarNav"] a[href*="calls"]          { display: none !important; }
+[data-testid="stSidebarNav"] a[href*="mes_leads"]      { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
         else:
@@ -401,6 +405,10 @@ def render_sidebar_logout() -> None:
   { display: none !important; }
 [data-testid="stSidebarNav"] a[href*="admin"]
   { display: none !important; }
+/* Masquer les nouvelles pages de l'auto-nav — gérées par les boutons ci-dessous */
+[data-testid="stSidebarNav"] a[href*="tasks"]     { display: none !important; }
+[data-testid="stSidebarNav"] a[href*="calls"]     { display: none !important; }
+[data-testid="stSidebarNav"] a[href*="mes_leads"] { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -426,6 +434,19 @@ def render_sidebar_logout() -> None:
         st.markdown("---")
         st.markdown(
             "<div style='color: #94a3b8; font-size: 12px; text-transform: uppercase; "
-            "letter-spacing: 1px;'>Navigation</div>",
+            "letter-spacing: 1px; margin-bottom: 6px;'>Navigation</div>",
             unsafe_allow_html=True,
         )
+
+        if not is_admin:
+            if st.button("📋 Tâches du jour", use_container_width=True, key="_nav_tasks"):
+                st.switch_page("pages/tasks.py")
+            if st.button("👥 Mes leads", use_container_width=True, key="_nav_leads"):
+                st.switch_page("pages/01_mes_leads.py")
+            if st.button("📞 Appels capturés", use_container_width=True, key="_nav_calls"):
+                st.switch_page("pages/calls.py")
+            st.markdown(
+                "<div style='color: #94a3b8; font-size: 11px; margin: 8px 0 4px 0; "
+                "text-transform: uppercase; letter-spacing: 1px;'>Outils</div>",
+                unsafe_allow_html=True,
+            )
