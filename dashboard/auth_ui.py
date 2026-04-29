@@ -19,6 +19,7 @@ import streamlit as st
 from config.settings import get_settings
 from dashboard.auth_cookies import (
     get_cookie_manager,
+    is_cookie_loading,
     save_session as _cookie_save,
     load_session as _cookie_load,
     clear_session as _cookie_clear,
@@ -321,41 +322,82 @@ def require_non_demo() -> None:
 
 # ─── Garde d'authentification ─────────────────────────────────────────────────
 
+def _show_cookie_loading_screen() -> None:
+    """
+    Écran interstitiel affiché pendant le render #1 (avant que React ait envoyé
+    les cookies au backend Streamlit). Masque la sidebar et affiche un spinner
+    centré. Le composant React déclenche automatiquement le render #2.
+    """
+    st.markdown("""
+<style>
+[data-testid="stSidebarNav"] { display: none !important; }
+[data-testid="stSidebar"]    { display: none !important; }
+.block-container { padding-top: 0 !important; }
+</style>
+""", unsafe_allow_html=True)
+    st.markdown(
+        "<div style='display:flex;align-items:center;justify-content:center;"
+        "height:95vh;flex-direction:column;gap:16px;'>"
+        f"<div style='font-size:2.5rem;'>{_logo(56, 'ld')}</div>"
+        "<div style='color:#94a3b8;font-size:0.95rem;margin-top:8px;'>"
+        "Chargement de votre session…</div>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+
 def require_auth(require_active_plan: bool = True) -> None:
     """
-    Vérifie que l'utilisateur est authentifié (et, par défaut, que son plan est actif).
+    Garde d'authentification — à appeler APRÈS st.set_page_config() sur chaque page.
+
+    Gère 3 états distincts :
+
+    1. authenticated  → la page s'affiche normalement (fonction retourne sans stop).
+    2. loading        → render #1 après un refresh : React n'a pas encore envoyé les
+                        cookies à Streamlit. Affiche un spinner, stop. Le composant
+                        React déclenche render #2 automatiquement (~300 ms).
+    3. not_authenticated → render #2+ sans cookie valide : affiche la page de login.
 
     Args:
-        require_active_plan: Si True (défaut), redirige vers la sélection de forfait
-                             quand plan_active=False. Passer False sur la page facturation
-                             pour éviter une boucle de redirection.
-
-    Doit être appelé APRÈS st.set_page_config().
+        require_active_plan: Si True (défaut), bloque les plans inactifs sur
+                             une page d'attente. Passer False sur la facturation.
     """
-    # Rendre le cookie manager (nécessaire pour qu'il communique ses valeurs)
+    # ── Cas 1 : déjà authentifié dans cette session ────────────────────────────
+    if st.session_state.get("authenticated"):
+        if require_active_plan and not st.session_state.get("plan_active", True):
+            _show_plan_selection()
+            st.stop()
+        return  # → page s'affiche normalement
+
+    # ── Cas 2 & 3 : pas encore authentifié → rendre le CookieManager ──────────
+    # get_cookie_manager() doit être appelé ICI pour que le composant React soit
+    # présent dans le DOM et puisse envoyer les cookies au render suivant.
     get_cookie_manager()
 
-    if not st.session_state.get("authenticated"):
-        # Tentative de restauration depuis cookie
-        saved = _cookie_load()
-        if saved:
-            _set_session(
-                token=saved["token"],
-                user_id=saved["user_id"],
-                agency_name=saved["agency_name"],
-                plan=saved["plan"],
-                plan_active=saved["plan_active"],
-                is_admin=saved["is_admin"],
-                email=saved.get("email", ""),
-            )
-            st.rerun()
-
-        show_auth_page()
+    if is_cookie_loading():
+        # ── Cas 2 : render #1 — cookies pas encore disponibles ────────────────
+        # React va lire les cookies navigateur et déclencher render #2.
+        _show_cookie_loading_screen()
         st.stop()
+        return
 
-    if require_active_plan and not st.session_state.get("plan_active", True):
-        _show_plan_selection()
-        st.stop()
+    # ── Cas 3 : render #2+ — tenter la restauration depuis cookie ─────────────
+    saved = _cookie_load()
+    if saved:
+        _set_session(
+            token=saved["token"],
+            user_id=saved["user_id"],
+            agency_name=saved["agency_name"],
+            plan=saved["plan"],
+            plan_active=saved["plan_active"],
+            is_admin=saved["is_admin"],
+            email=saved.get("email", ""),
+        )
+        st.rerun()  # render #3 : authenticated=True → cas 1
+
+    # Cookies lus mais aucune session valide → page de connexion
+    show_auth_page()
+    st.stop()
 
 
 # ─── Sidebar : infos agence + déconnexion ─────────────────────────────────────
