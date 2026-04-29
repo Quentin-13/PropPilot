@@ -8,6 +8,8 @@ import hashlib
 import logging
 from datetime import datetime, timedelta
 
+import streamlit as st
+
 logger = logging.getLogger(__name__)
 
 _PREFIX = "proppilot_"
@@ -17,24 +19,25 @@ _SECRET = "PROPPILOT_SECRET_2026"
 _FIELDS = ["user_id", "token", "agency_name", "plan",
            "plan_active", "is_admin", "email", "hmac"]
 
-# Singleton manuel — NE PAS utiliser @st.cache_resource :
-# CookieManager est un widget Streamlit et ne peut pas être mis en cache.
-_cookie_manager_instance = None
+_CM_KEY = "_proppilot_cookie_manager"
 
 
 def get_cookie_manager():
     """
-    Retourne une instance unique de CookieManager.
-    Singleton géré manuellement pour éviter CachedWidgetWarning.
+    Retourne une instance unique de CookieManager par session Streamlit.
+
+    Stocké dans st.session_state (pas en global module) pour que le composant
+    React soit re-créé et re-rendu à chaque nouveau refresh de navigateur.
+    Sans ça, le singleton module-level survive au refresh mais le composant
+    React n'est jamais rendu dans la nouvelle session → cm.get() retourne None.
     """
-    global _cookie_manager_instance
     try:
         import extra_streamlit_components as stx
-        if _cookie_manager_instance is None:
-            _cookie_manager_instance = stx.CookieManager(
+        if _CM_KEY not in st.session_state:
+            st.session_state[_CM_KEY] = stx.CookieManager(
                 key="proppilot_cookies"
             )
-        return _cookie_manager_instance
+        return st.session_state[_CM_KEY]
     except Exception as e:
         logger.warning(f"CookieManager indisponible : {e}")
         return None
