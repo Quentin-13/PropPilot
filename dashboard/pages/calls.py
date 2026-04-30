@@ -233,7 +233,7 @@ with col_nav_r:
 if not calls_raw:
     st.info(
         "Aucun appel trouvé pour cette période. "
-        "Configurez un numéro Twilio dans **Paramètres** pour commencer à capturer des appels."
+        "Configurez votre numéro de téléphone dans **Paramètres** pour commencer à capturer des appels."
     )
     st.stop()
 
@@ -302,7 +302,7 @@ with info2_col2:
     st.markdown(f"**Mode**\n\n{mode_labels.get(mode, mode)}")
 with info2_col3:
     numéro_twilio = call.get("twilio_number") or "—"
-    st.markdown(f"**Numéro Twilio**\n\n`{numéro_twilio}`")
+    st.markdown(f"**Numéro**\n\n`{numéro_twilio}`")
 
 # Bouton fiche lead
 lead_id = call.get("lead_id")

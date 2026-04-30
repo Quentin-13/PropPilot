@@ -37,7 +37,7 @@ if "wizard_step" not in st.session_state:
 
 STEPS = [
     ("🏢", "Identité agence"),
-    ("📱", "Numéro Twilio"),
+    ("📱", "Numéro de téléphone"),
     ("📅", "Google Calendar"),
     ("💳", "Forfait & Billing"),
     ("🚀", "Premier lead test"),
@@ -135,35 +135,33 @@ elif st.session_state.wizard_step == 2:
     st.markdown("## Étape 2 — Numéro SMS / Téléphone")
 
     st.info("""
-    **Pourquoi Twilio ?**
-    Twilio vous fournit un numéro de téléphone français dédié pour recevoir les SMS/appels de vos prospects.
-    Vos leads peuvent contacter ce numéro — l'IA répond instantanément.
-
-    [Créer un compte Twilio →](https://www.twilio.com/try-twilio)
+    **Votre numéro de téléphonie dédié**
+    PropPilot vous fournit un numéro français dédié pour recevoir les SMS et appels de vos prospects.
+    Vos leads contactent ce numéro — l'IA répond instantanément, 24h/24.
     """)
 
     with st.form("step2_form"):
         col_b1, col_b2 = st.columns(2)
         with col_b1:
             twilio_sid = st.text_input(
-                "Twilio Account SID",
+                "Identifiant de compte",
                 value=settings.twilio_account_sid or "",
                 type="password",
                 placeholder="ACxxxxxxxxxxxxxxxxx",
             )
         with col_b2:
             twilio_token = st.text_input(
-                "Twilio Auth Token",
+                "Clé d'authentification",
                 value="",
                 type="password",
                 placeholder="xxxxxxxxxxxxxxxx",
             )
 
         phone_number = st.text_input(
-            "Numéro 06/07 Twilio (format E.164)",
+            "Votre numéro de téléphone (format E.164)",
             value=settings.twilio_sms_number or "",
             placeholder="+336XXXXXXXX",
-            help="Votre numéro 06/07 Twilio — reçoit les appels ET les SMS prospects",
+            help="Votre numéro dédié — reçoit les appels ET les SMS prospects",
         )
 
         test_number = st.text_input(
@@ -606,20 +604,3 @@ if phone_submitted:
         except Exception as e:
             st.error(f"Erreur lors de la sauvegarde : {e}")
 
-# ─── Configuration actuelle ───────────────────────────────────────────────────
-
-st.markdown("---")
-with st.expander("🔧 Configuration actuelle (lecture seule)"):
-    config_display = {
-        "Agence": agency_name,
-        "Tier": tier,
-        "Client ID": client_id,
-        "Modèle Claude": settings.claude_model,
-        "Twilio disponible": "✅ Oui" if settings.twilio_available else "⚠️ Mode mock",
-        "Anthropic disponible": "✅ Oui" if settings.anthropic_available else "⚠️ Mode mock",
-
-        "SendGrid disponible": "✅ Oui" if settings.sendgrid_available else "⚠️ Mode mock",
-        "Base de données": settings.database_path,
-    }
-    for key, val in config_display.items():
-        st.text(f"{key}: {val}")

@@ -482,8 +482,6 @@ def render_sidebar_logout() -> None:
                 st.switch_page("pages/06_parametres.py")
             if st.button("💳 Abonnement", use_container_width=True, key="_nav_facturation"):
                 st.switch_page("pages/09_facturation.py")
-            if st.button("🔗 Intégrations", use_container_width=True, key="_nav_integrations"):
-                st.switch_page("pages/11_integrations.py")
 
             st.markdown("---")
 
