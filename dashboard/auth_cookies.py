@@ -6,9 +6,8 @@ Double-render
 ─────────────
 CookieController s'appuie sur un composant React. Au render #1 (premier render
 d'une nouvelle session Streamlit), le composant React n'a pas encore communiqué
-ses valeurs : getAll() retourne {} (pas None). On détecte render #1 via
-l'absence de 'proppilot_cc' dans st.session_state (clé interne de la lib,
-absente avant le premier CookieController()).
+ses valeurs. On détecte render #1 via l'absence de 'proppilot_cc' dans
+st.session_state (clé interne de la lib, absente avant le premier CookieController()).
 
 Race condition iFrame
 ─────────────────────
@@ -17,13 +16,24 @@ Si st.rerun() est appelé juste après, la nouvelle page remplace l'iFrame avant
 que ws.set() ait eu le temps d'écrire dans document.cookie.
 Fix : ne jamais appeler save_session() dans le même render que st.rerun().
 Voir require_auth(write_pending_cookie=True) dans auth_ui.py.
+
+run_id=None (Railway)
+─────────────────────
+get_script_run_ctx() retourne None sur Railway. Sans la guard `run_id is not None`,
+None==None causerait un faux cache-hit permanent → _CC_INIT_KEY resterait False
+→ loading screen infini. Le cache run_id est donc désactivé quand run_id est None.
+
+Valeur cookie auto-parsée
+─────────────────────────
+Le composant React (streamlit-cookies-controller) auto-parse les valeurs JSON des
+cookies au retour de getAll(). load_session() reçoit donc un dict Python (et non
+une string JSON), et gère les deux cas avec isinstance(raw, dict).
 """
 from __future__ import annotations
 
 import hashlib
 import json
 import logging
-from datetime import timedelta
 
 import streamlit as st
 
@@ -53,27 +63,20 @@ def get_cookie_manager():
     Guard anti-DuplicateWidgetID : si déjà rendu ce tour-ci, retourne le cache.
 
     Détecte render #1 via l'absence de 'proppilot_cc' dans st.session_state
-    (clé interne de CookieController, créée lors du premier CookieController()).
-    getAll() retourne {} au render #1 (pas None) — on ne peut pas s'y fier.
+    (clé interne de CookieController, absente avant le premier CookieController()).
     """
     from streamlit_cookies_controller import CookieController
 
     run_id = _current_run_id()
-    print(f"[AUTH-DBG] get_cookie_manager() run_id={run_id}")
 
-    # Guard anti-DuplicateWidgetID : cache valide uniquement si run_id est un vrai UUID
-    # (pas None). Quand run_id=None (ex : Railway), None==None causerait un faux
-    # cache-hit permanent → _CC_INIT_KEY resterait False → loading screen infini.
+    # Cache valide uniquement si run_id est un vrai UUID (pas None).
+    # Quand run_id=None (Railway), None==None causerait un faux cache-hit
+    # permanent → _CC_INIT_KEY resterait False → loading screen infini.
     if run_id is not None and st.session_state.get(_CC_RUN_KEY) == run_id and _CC_KEY in st.session_state:
-        print(f"[AUTH-DBG] get_cookie_manager() → cache hit, _CC_INIT_KEY={st.session_state.get(_CC_INIT_KEY)}")
         return st.session_state[_CC_KEY]
 
     # 'proppilot_cc' absent = render #1 de cette session (lib jamais initialisée)
     first_session_render = "proppilot_cc" not in st.session_state
-    proppilot_cc_val = st.session_state.get("proppilot_cc", "<ABSENT>")
-    print(f"[AUTH-DBG] get_cookie_manager() first_session_render={first_session_render} "
-          f"proppilot_cc in session_state={'proppilot_cc' in st.session_state} "
-          f"proppilot_cc value={repr(proppilot_cc_val)}")
 
     cc = CookieController(key="proppilot_cc")
     st.session_state[_CC_KEY] = cc
@@ -81,8 +84,6 @@ def get_cookie_manager():
     # Render #1 → non initialisé (React pas encore répondu)
     # Render #2+ → initialisé (cookies disponibles dans st.session_state['proppilot_cc'])
     st.session_state[_CC_INIT_KEY] = not first_session_render
-    print(f"[AUTH-DBG] get_cookie_manager() → _CC_INIT_KEY set to {not first_session_render} "
-          f"(proppilot_cc after CC() = {repr(st.session_state.get('proppilot_cc', '<ABSENT>'))})")
 
     return cc
 
@@ -92,9 +93,7 @@ def is_cookie_loading() -> bool:
     True si render #1 (React n'a pas encore envoyé les cookies au backend).
     Doit être appelé APRÈS get_cookie_manager().
     """
-    result = not st.session_state.get(_CC_INIT_KEY, False)
-    print(f"[AUTH-DBG] is_cookie_loading() → {result} (_CC_INIT_KEY={st.session_state.get(_CC_INIT_KEY, '<ABSENT>')})")
-    return result
+    return not st.session_state.get(_CC_INIT_KEY, False)
 
 
 def _hmac(user_id: str) -> str:
@@ -118,10 +117,8 @@ def save_session(
     immédiatement après). Passer write_pending_cookie=True à require_auth()
     sur les pages landing — ne pas appeler directement depuis un handler de form.
     """
-    print(f"[AUTH-DBG] save_session() called for user_id={user_id}")
     cc = get_cookie_manager()
     if not cc:
-        print("[AUTH-DBG] save_session() → cc is None, aborting")
         return
     try:
         payload = json.dumps({
@@ -134,17 +131,14 @@ def save_session(
             "email":       email,
             "hmac":        _hmac(str(user_id)),
         })
-        print(f"[AUTH-DBG] save_session() → calling cc.set('{_SESSION_COOKIE}', ...)")
         cc.set(
             _SESSION_COOKIE,
             payload,
             max_age=SESSION_DAYS * 86400,
             same_site="lax",
         )
-        print("[AUTH-DBG] save_session() → cc.set() returned OK")
     except Exception as e:
         logger.error("save_session error : %s", e)
-        print(f"[AUTH-DBG] save_session() → EXCEPTION: {e}")
 
 
 def load_session() -> dict | None:
@@ -153,33 +147,23 @@ def load_session() -> dict | None:
     Retourne un dict compatible avec _set_session(), ou None.
     Doit être appelé APRÈS get_cookie_manager() ET is_cookie_loading() == False.
     """
-    print("[AUTH-DBG] load_session() called")
     # Réutilise le CC déjà créé ce render (par require_auth → get_cookie_manager).
     # Évite un second CookieController(key=…) dans le même render → DuplicateWidgetID
     # quand run_id=None empêche le cache normal de fonctionner.
     cc = st.session_state.get(_CC_KEY) or get_cookie_manager()
     if not cc:
-        print("[AUTH-DBG] load_session() → cc is None")
         return None
-    # Log the raw proppilot_cc value in session_state (set by React)
-    raw_cc = st.session_state.get("proppilot_cc", "<ABSENT>")
-    print(f"[AUTH-DBG] load_session() → st.session_state['proppilot_cc'] = {repr(raw_cc)[:120]}")
     try:
         raw = cc.get(_SESSION_COOKIE)
-        print(f"[AUTH-DBG] load_session() → cc.get('{_SESSION_COOKIE}') = {repr(raw)[:80] if raw else repr(raw)}")
         if not raw:
-            print("[AUTH-DBG] load_session() → raw is empty/None → returning None")
             return None
-        # React auto-parses JSON cookie values → raw peut être un dict ou une string
+        # Le composant React auto-parse les valeurs JSON des cookies au retour de
+        # getAll() → raw est un dict Python, pas une string. On gère les deux cas.
         data = raw if isinstance(raw, dict) else json.loads(raw)
         user_id = data.get("user_id", "")
-        hmac_ok = bool(user_id) and data.get("hmac") == _hmac(str(user_id))
-        print(f"[AUTH-DBG] load_session() → user_id={repr(user_id)} hmac_ok={hmac_ok}")
-        if not user_id or not hmac_ok:
+        if not user_id or data.get("hmac") != _hmac(str(user_id)):
             logger.warning("Cookie HMAC invalide — session rejetée")
-            print("[AUTH-DBG] load_session() → HMAC invalide → returning None")
             return None
-        print(f"[AUTH-DBG] load_session() → session OK, returning dict for user_id={user_id}")
         return {
             "user_id":     user_id,
             "token":       data.get("token", ""),
@@ -191,7 +175,6 @@ def load_session() -> dict | None:
         }
     except Exception as e:
         logger.error("load_session error : %s", e)
-        print(f"[AUTH-DBG] load_session() → EXCEPTION: {type(e).__name__}: {e}")
         return None
 
 

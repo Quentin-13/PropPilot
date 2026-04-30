@@ -25,11 +25,6 @@ st.set_page_config(
     page_icon="📋",
 )
 
-print(f"[AUTH-DBG] tasks.py: authenticated={st.session_state.get('authenticated')} "
-      f"user_id={st.session_state.get('user_id')} "
-      f"proppilot_cc={repr(st.session_state.get('proppilot_cc', '<ABSENT>'))[:80]} "
-      f"pending_save={'_proppilot_pending_save' in st.session_state}")
-
 require_auth(write_pending_cookie=True)
 render_sidebar_logout()
 
