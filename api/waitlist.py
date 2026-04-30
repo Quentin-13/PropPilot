@@ -46,10 +46,10 @@ class WaitlistRequest(BaseModel):
     prenom: str = Field(..., min_length=1, max_length=100)
     nom: str = Field(..., min_length=1, max_length=100)
     email: str = Field(..., max_length=320)
-    agence: str = Field(..., min_length=1, max_length=200)
-    type_agence: Literal["Indépendante", "Réseau", "Franchise", "Mandataire"]
-    taille_equipe: Literal["Solo", "2-5 agents", "6-15 agents", "16+ agents"]
-    crm_utilise: Literal["Hektor", "Apimo", "Netty", "Autre", "Aucun"]
+    agence: Optional[str] = Field(default=None, max_length=200)
+    type_agence: Optional[Literal["Indépendante", "Réseau", "Franchise", "Mandataire"]] = None
+    taille_equipe: Optional[Literal["Solo", "2-5 agents", "6-15 agents", "16+ agents"]] = None
+    crm_utilise: Optional[Literal["Hektor", "Apimo", "Netty", "Autre", "Aucun"]] = None
     # Honeypot : doit rester vide (rempli par bots)
     website: Optional[str] = Field(default=None)
 
@@ -138,13 +138,13 @@ def _html_admin_notification(data: WaitlistRequest) -> str:
       <tr><td style="padding:8px 0;color:#71717a">Email</td>
           <td style="padding:8px 0"><a href="mailto:{data.email}" style="color:#a3e635">{data.email}</a></td></tr>
       <tr><td style="padding:8px 0;color:#71717a">Agence</td>
-          <td style="padding:8px 0;font-weight:600">{data.agence}</td></tr>
+          <td style="padding:8px 0;font-weight:600">{data.agence or '—'}</td></tr>
       <tr><td style="padding:8px 0;color:#71717a">Type</td>
-          <td style="padding:8px 0">{data.type_agence}</td></tr>
+          <td style="padding:8px 0">{data.type_agence or '—'}</td></tr>
       <tr><td style="padding:8px 0;color:#71717a">Équipe</td>
-          <td style="padding:8px 0">{data.taille_equipe}</td></tr>
+          <td style="padding:8px 0">{data.taille_equipe or '—'}</td></tr>
       <tr><td style="padding:8px 0;color:#71717a">CRM</td>
-          <td style="padding:8px 0">{data.crm_utilise}</td></tr>
+          <td style="padding:8px 0">{data.crm_utilise or '—'}</td></tr>
     </table>
   </div>
 </body>
@@ -226,11 +226,11 @@ async def register_waitlist(body: WaitlistRequest, request: Request):
         to_email=settings.admin_notification_email,
         to_name="Admin PropPilot",
         subject=f"Nouvelle inscription waitlist : {body.prenom} {body.nom}",
-        body_text=f"Nouvel inscrit : {body.prenom} {body.nom} — {body.agence} ({body.email})",
+        body_text=f"Nouvel inscrit : {body.prenom} {body.nom} — {body.agence or '—'} ({body.email})",
         body_html=_html_admin_notification(body),
     )
 
-    logger.info(f"Waitlist inscription : {body.email} — {body.agence}")
+    logger.info(f"Waitlist inscription : {body.email} — {body.agence or '—'}")
     return WaitlistResponse(
         success=True,
         message=f"Merci {body.prenom} ! Vous êtes sur la liste d'attente. Consultez votre boîte mail.",

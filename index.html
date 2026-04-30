@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PropPilot — La mémoire commerciale automatique de votre agence</title>
-  <meta name="description" content="PropPilot capture vos appels, les transcrit et enrichit votre CRM automatiquement. Zéro saisie manuelle. Compatible Hektor, Apimo, Netty et plus." />
-  <meta property="og:title" content="PropPilot — La mémoire commerciale automatique de votre agence" />
-  <meta property="og:description" content="Chaque appel capturé, transcrit, structuré et synchronisé dans votre CRM. 100% automatique." />
+  <title>PropPilot — L'IA qui capture chaque appel et enrichit votre CRM automatiquement</title>
+  <meta name="description" content="Vos agents perdent 70% des informations échangées en appel. PropPilot capture chaque conversation, structure les données et enrichit votre CRM automatiquement. Beta privée — accès prioritaire ouvert." />
+  <meta property="og:title" content="PropPilot — L'IA qui capture chaque appel pour vos agents immobiliers" />
+  <meta property="og:description" content="Capturez chaque appel. Récupérez jusqu'à 2h par jour par agent. Ne perdez plus aucun lead chaud. Beta privée ouverte aux premières agences." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://proppilot.fr" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -276,6 +276,19 @@
     /* ── Animations scroll ── */
     .fade-in { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
     .fade-in.visible { opacity: 1; transform: translateY(0); }
+
+    /* ── Impact row (tableau comparaison) ── */
+    .impact-row td { font-weight: 700 !important; border-top: 2px solid var(--border) !important; }
+    .impact-row td:first-child { color: var(--text); }
+    .impact-row td:nth-child(2) { background: rgba(239,68,68,0.1) !important; color: #fca5a5 !important; }
+    .impact-row td:nth-child(3) { background: rgba(163,230,53,0.18) !important; color: var(--accent) !important; font-size: 1rem; }
+
+    /* ── Phrase de bascule (section problème) ── */
+    .probleme-bascule { margin-top: 40px; text-align: center; font-size: 0.9rem; color: #71717a; max-width: 640px; margin-left: auto; margin-right: auto; }
+
+    /* ── Champ optionnel (formulaire waitlist) ── */
+    .form-field-opt label { color: var(--muted); font-weight: 500; }
+    .form-field-opt .opt-tag { font-size: 0.75rem; color: #52525b; font-weight: 400; margin-left: 4px; }
   </style>
 </head>
 <body>
@@ -300,20 +313,18 @@
           Beta privée — accès prioritaire ouvert
         </div>
         <h1 id="hero-title">
-          La <em>mémoire commerciale</em><br>automatique de votre agence
+          Combien de mandats perdez-vous parce que vos agents<br>n'ont pas le temps de <em>tout noter</em> ?
         </h1>
         <p class="hero-subtitle">
-          Capturez et structurez automatiquement chaque conversation entre vos agents et leurs leads.
-          Numéro dédié pour les appels entrants. Click-to-call pour les sortants.
-          Synchronisation avec votre CRM existant. Vos agents se concentrent sur la relation.
-          PropPilot s'occupe de la donnée.
+          PropPilot capture chaque appel, structure automatiquement les informations, et enrichit votre CRM en continu.
+          Vos commerciaux récupèrent jusqu'à 2 heures par jour. Aucun lead chaud ne se perd dans le silence.
         </p>
         <div class="hero-actions">
           <a href="#waitlist" class="btn-primary">
-            Rejoindre la liste d'attente
+            Réserver mon accès en avant-première
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M8 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </a>
-          <a href="#comment" class="btn-secondary">Découvrir comment ça marche</a>
+          <a href="#comment" class="btn-secondary">Voir comment ça marche</a>
         </div>
       </div>
 
@@ -352,64 +363,61 @@
     <div class="container">
       <div class="probleme-grid">
         <div class="fade-in">
-          <h2 id="probleme-title">Les agences perdent chaque jour des opportunités par manque de traçabilité</h2>
+          <h2 id="probleme-title">Vos meilleurs leads se perdent dans le silence après l'appel</h2>
           <p style="margin-top:16px">
-            Vos agents passent des dizaines d'appels par jour. La majorité de l'information échangée
-            disparaît faute de temps pour saisir dans le CRM. Résultat : des leads oubliés,
-            des relances ratées, des mandats perdus.
+            Vos agents passent leur journée au téléphone. Mais ce qui se dit pendant ces appels —
+            projets, budgets, deadlines, signaux d'achat — disparaît dès que la conversation se termine.
+            Et avec, vos chances de signer.
           </p>
         </div>
         <div class="probleme-stats fade-in">
           <div class="stat-item">
             <div class="stat-number" aria-label="70 pourcent">70%</div>
             <div class="stat-label">
-              <strong>des infos collectées en appel ne sont jamais saisies dans le CRM</strong>
-              Saisie manuelle chronophage, oubli, priorités concurrentes.
+              <strong>des informations échangées en appel ne sont jamais saisies dans le CRM</strong>
+              5 minutes entre deux rendez-vous, ce n'est pas assez pour tout noter. Alors les détails s'oublient. Et les leads avec.
             </div>
           </div>
           <div class="stat-item">
             <div class="stat-number" aria-label="2 heures">2h</div>
             <div class="stat-label">
               <strong>perdues chaque jour par agent en tâches administratives</strong>
-              Saisie CRM, comptes-rendus, recherche d'informations passées.
+              Imaginez ce que vos commerciaux pourraient faire avec 10 heures supplémentaires par semaine. Plus d'appels. Plus de visites. Plus de mandats signés.
             </div>
           </div>
           <div class="stat-item">
             <div class="stat-number" aria-label="30 pourcent">30%</div>
             <div class="stat-label">
-              <strong>des leads chauds ne sont jamais requalifiés après un premier contact</strong>
-              Faute d'historique accessible et de relances automatisées.
+              <strong>des leads chauds ne reçoivent jamais de relance</strong>
+              Pas par mauvaise volonté. Par manque de temps et d'historique accessible. Chaque lead chaud non recontacté finit chez votre concurrent.
             </div>
           </div>
         </div>
       </div>
+      <p class="probleme-bascule fade-in"><em>Selon nos calculs, une agence de 5 agents peut perdre jusqu'à 150 000€ à 300 000€ de chiffre d'affaires invisible chaque année.</em></p>
     </div>
   </section>
 
   <!-- SECTION 3 — LA SOLUTION -->
   <section id="solution" aria-labelledby="solution-title">
     <div class="container">
-      <h2 id="solution-title">Trois piliers pour une mémoire commerciale parfaite</h2>
-      <p>PropPilot s'intègre silencieusement à votre flux de travail existant. Aucune formation requise.</p>
+      <h2 id="solution-title">PropPilot capture, structure et enrichit votre CRM.<br>Sans que vos agents tapent une seule ligne.</h2>
+      <p>Une intégration silencieuse à votre flux de travail existant. Aucune formation requise. Aucun changement d'habitude pour vos équipes.</p>
       <div class="piliers-grid" style="margin-top:0">
         <div class="pilier-card fade-in">
           <span class="pilier-icon" aria-hidden="true">🎙️</span>
-          <h3>Capture intelligente</h3>
-          <p>Tous vos appels entrants sur le numéro PropPilot sont enregistrés et transcrits automatiquement.
-          Pour les appels sortants vers vos leads, un click-to-call depuis le dashboard.
-          Aucune nouvelle application à installer sur votre téléphone.</p>
+          <h3>Plus aucune information ne se perd</h3>
+          <p>Chaque appel est capté. Chaque détail est extrait. Chaque fiche est complète, à jour, exploitable. Du premier contact jusqu'à la signature.</p>
         </div>
         <div class="pilier-card fade-in">
           <span class="pilier-icon" aria-hidden="true">🧠</span>
-          <h3>Structuration par IA</h3>
-          <p>Notre IA extrait les informations clés de chaque conversation : projet, budget, timeline,
-          contacts, prochaines étapes. Tout structuré, priorisé, prêt à l'emploi.</p>
+          <h3>Vos agents récupèrent jusqu'à 2 heures par jour</h3>
+          <p>Plus de saisie. Plus de comptes-rendus. Plus de recherche d'historique. Vos commerciaux font ce pour quoi ils sont payés : convertir.</p>
         </div>
         <div class="pilier-card fade-in">
           <span class="pilier-icon" aria-hidden="true">🔄</span>
-          <h3>Synchronisation CRM</h3>
-          <p>Les données extraites sont poussées directement dans votre CRM.
-          Fiches contacts mises à jour, rappels planifiés, historique enrichi. Sans intervention manuelle.</p>
+          <h3>Aucun lead chaud ne dort plus dans votre CRM</h3>
+          <p>Les rappels sont planifiés automatiquement. Les opportunités sont priorisées. Le bon agent est notifié au bon moment, avec le bon contexte.</p>
         </div>
       </div>
     </div>
@@ -510,6 +518,11 @@
               <td>Qualité des données CRM</td>
               <td>Dépend de la rigueur de chaque agent</td>
               <td>Standardisée et homogène pour toute l'équipe</td>
+            </tr>
+            <tr class="impact-row">
+              <td><strong>Impact financier estimé</strong><br><span style="font-size:0.8rem;font-weight:400;color:var(--muted)">selon nos calculs, agence de 5 agents</span></td>
+              <td>Jusqu'à −300 000 €/an de revenus invisibles</td>
+              <td>Jusqu'à +300 000 €/an récupérés</td>
             </tr>
             <tr>
               <td>Onboarding d'un nouveau agent</td>
@@ -658,56 +671,26 @@
               <input type="email" id="email" name="email" placeholder="marie.dupont@agence.fr" autocomplete="email" required aria-required="true" />
               <span class="error-msg" role="alert">Veuillez saisir une adresse email valide.</span>
             </div>
-            <div class="form-field full-width" id="field-agence">
-              <label for="agence">Nom de l'agence <span class="req" aria-hidden="true">*</span></label>
-              <input type="text" id="agence" name="agence" placeholder="Agence Martin Immobilier" autocomplete="organization" required aria-required="true" />
-              <span class="error-msg" role="alert">Veuillez saisir le nom de votre agence.</span>
-            </div>
-            <div class="form-field" id="field-type_agence">
-              <label for="type_agence">Type d'agence <span class="req" aria-hidden="true">*</span></label>
-              <select id="type_agence" name="type_agence" required aria-required="true">
-                <option value="" disabled selected>Choisir…</option>
+            <div class="form-field full-width form-field-opt" id="field-type_agence">
+              <label for="type_agence">Type d'agence <span class="opt-tag">(optionnel)</span></label>
+              <select id="type_agence" name="type_agence">
+                <option value="" selected>Choisir…</option>
                 <option value="Indépendante">Indépendante</option>
                 <option value="Réseau">Réseau</option>
                 <option value="Franchise">Franchise</option>
                 <option value="Mandataire">Mandataire</option>
               </select>
-              <span class="error-msg" role="alert">Veuillez sélectionner un type d'agence.</span>
-            </div>
-            <div class="form-field" id="field-taille_equipe">
-              <label for="taille_equipe">Taille de l'équipe <span class="req" aria-hidden="true">*</span></label>
-              <select id="taille_equipe" name="taille_equipe" required aria-required="true">
-                <option value="" disabled selected>Choisir…</option>
-                <option value="Solo">Solo</option>
-                <option value="2-5 agents">2–5 agents</option>
-                <option value="6-15 agents">6–15 agents</option>
-                <option value="16+ agents">16+ agents</option>
-              </select>
-              <span class="error-msg" role="alert">Veuillez sélectionner la taille de votre équipe.</span>
-            </div>
-            <div class="form-field full-width" id="field-crm_utilise">
-              <label for="crm_utilise">CRM utilisé <span class="req" aria-hidden="true">*</span></label>
-              <select id="crm_utilise" name="crm_utilise" required aria-required="true">
-                <option value="" disabled selected>Choisir…</option>
-                <option value="Hektor">Hektor</option>
-                <option value="Apimo">Apimo</option>
-                <option value="Netty">Netty</option>
-                <option value="Autre">Autre</option>
-                <option value="Aucun">Aucun</option>
-              </select>
-              <span class="error-msg" role="alert">Veuillez sélectionner votre CRM.</span>
             </div>
           </div>
 
           <div class="form-submit" style="margin-top:28px">
             <button type="submit" class="btn-primary" id="submit-btn">
-              Rejoindre la liste d'attente
+              Réserver mon accès en avant-première
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M8 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
           </div>
           <p class="form-legal">
-            Vos données sont utilisées uniquement pour vous contacter au sujet de PropPilot.
-            Pas de spam, désabonnement en un clic.
+            Email professionnel uniquement. Un email par mois maximum. Désabonnement en un clic.
             <a href="/legal/confidentialite" style="color:var(--muted)">Politique de confidentialité</a>.
           </p>
         </form>
@@ -765,7 +748,7 @@
     })();
 
     // Validation champ
-    const FIELDS = ['prenom', 'nom', 'email', 'agence', 'type_agence', 'taille_equipe', 'crm_utilise'];
+    const FIELDS = ['prenom', 'nom', 'email'];
     function validateField(name) {
       const el = document.getElementById(name);
       const container = document.getElementById('field-' + name);
@@ -793,14 +776,11 @@
       btn.textContent = 'Inscription en cours…';
 
       const payload = {
-        prenom:        document.getElementById('prenom').value.trim(),
-        nom:           document.getElementById('nom').value.trim(),
-        email:         document.getElementById('email').value.trim(),
-        agence:        document.getElementById('agence').value.trim(),
-        type_agence:   document.getElementById('type_agence').value,
-        taille_equipe: document.getElementById('taille_equipe').value,
-        crm_utilise:   document.getElementById('crm_utilise').value,
-        website:       document.getElementById('website').value,
+        prenom:      document.getElementById('prenom').value.trim(),
+        nom:         document.getElementById('nom').value.trim(),
+        email:       document.getElementById('email').value.trim(),
+        type_agence: document.getElementById('type_agence').value || null,
+        website:     document.getElementById('website').value,
       };
 
       try {
@@ -820,7 +800,7 @@
           successDiv.focus();
         } else if (res.status === 429) {
           btn.disabled = false;
-          btn.innerHTML = 'Rejoindre la liste d\'attente <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M8 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+          btn.innerHTML = 'Réserver mon accès en avant-première <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M8 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
           alert(data.detail || 'Trop de tentatives. Veuillez réessayer dans une heure.');
         } else {
           throw new Error(data.detail || 'Erreur');
