@@ -58,7 +58,7 @@ h1, h2, h3 { color: white !important; }
 
 # ─── Sécurité ─────────────────────────────────────────────────────────────────
 from dashboard.auth_ui import require_auth, render_sidebar_logout
-require_auth(require_active_plan=False)
+require_auth(require_active_plan=False, write_pending_cookie=True)
 render_sidebar_logout()
 
 if not st.session_state.get("is_admin", False):

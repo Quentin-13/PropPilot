@@ -251,7 +251,14 @@ def show_auth_page() -> None:
                             email=email,
                         )
                         if remember:
-                            _cookie_save(uid, token, aname, plan, plan_active, is_admin, email)
+                            # Différé : l'iFrame React de cc.set() charge de manière
+                            # asynchrone. Si st.rerun() suit immédiatement, la nouvelle
+                            # page remplace l'iFrame avant que ws.set() écrive le cookie.
+                            # Le cookie est donc écrit dans le premier render stable
+                            # (tasks.py / 00_proprietaire.py) via write_pending_cookie=True.
+                            st.session_state["_proppilot_pending_save"] = (
+                                uid, token, aname, plan, plan_active, is_admin, email
+                            )
                         if not plan_active:
                             st.session_state["plan_inactive_reason"] = "inactive"
                         st.rerun()
@@ -346,7 +353,7 @@ def _show_cookie_loading_screen() -> None:
     )
 
 
-def require_auth(require_active_plan: bool = True) -> None:
+def require_auth(require_active_plan: bool = True, write_pending_cookie: bool = False) -> None:
     """
     Garde d'authentification — à appeler APRÈS st.set_page_config() sur chaque page.
 
@@ -359,9 +366,24 @@ def require_auth(require_active_plan: bool = True) -> None:
     3. not_authenticated → render #2+ sans cookie valide : affiche la page de login.
 
     Args:
-        require_active_plan: Si True (défaut), bloque les plans inactifs sur
-                             une page d'attente. Passer False sur la facturation.
+        require_active_plan:   Si True (défaut), bloque les plans inactifs.
+        write_pending_cookie:  Si True, écrit le cookie de session différé depuis
+                               le dernier login. Passer True UNIQUEMENT sur les pages
+                               "landing" stables (tasks.py, 00_proprietaire.py) qui
+                               ne font pas de st.switch_page()/st.rerun() immédiat.
+                               Ne pas passer True sur app.py ni les autres pages.
     """
+    # ── Écriture cookie différée (pages landing uniquement) ───────────────────
+    # Le cookie est écrit ici, en tête du premier render stable après login,
+    # pour que l'iFrame React ait le temps d'exécuter ws.set() avant tout rerun.
+    if (
+        write_pending_cookie
+        and st.session_state.get("authenticated")
+        and "_proppilot_pending_save" in st.session_state
+    ):
+        pending = st.session_state.pop("_proppilot_pending_save")
+        _cookie_save(*pending)
+
     # ── Cas 1 : déjà authentifié dans cette session ────────────────────────────
     if st.session_state.get("authenticated"):
         if require_active_plan and not st.session_state.get("plan_active", True):

@@ -1,17 +1,22 @@
 """
 Gestion des cookies de session PropPilot.
-Utilise streamlit-cookies-controller (remplace extra_streamlit_components abandonné).
+Utilise streamlit-cookies-controller.
 
 Double-render
 ─────────────
-CookieController s'appuie sur un composant React. Au render #1 le composant n'a
-pas encore communiqué ses valeurs à Python : getAll() retourne None.
-Au render #2+ getAll() retourne un dict (vide ou avec les cookies existants).
+CookieController s'appuie sur un composant React. Au render #1 (premier render
+d'une nouvelle session Streamlit), le composant React n'a pas encore communiqué
+ses valeurs : getAll() retourne {} (pas None). On détecte render #1 via
+l'absence de 'proppilot_cc' dans st.session_state (clé interne de la lib,
+absente avant le premier CookieController()).
 
-is_cookie_loading() détecte render #1 (getAll() is None).
-get_cookie_manager() ne rend le composant qu'une fois par rerun (guard run_id).
-
-Session stockée en 1 cookie JSON signé HMAC (vs 8 cookies séparés avec l'ancienne lib).
+Race condition iFrame
+─────────────────────
+cc.set() ajoute une iFrame React dont le JS charge de manière asynchrone.
+Si st.rerun() est appelé juste après, la nouvelle page remplace l'iFrame avant
+que ws.set() ait eu le temps d'écrire dans document.cookie.
+Fix : ne jamais appeler save_session() dans le même render que st.rerun().
+Voir require_auth(write_pending_cookie=True) dans auth_ui.py.
 """
 from __future__ import annotations
 
@@ -28,8 +33,9 @@ _SESSION_COOKIE = "proppilot_session"
 SESSION_DAYS    = 30
 _SECRET         = "PROPPILOT_SECRET_2026"
 
-_CC_KEY     = "_proppilot_cc"      # objet CookieController mis en cache
-_CC_RUN_KEY = "_proppilot_cc_run"  # run_id du render où le CC a été créé
+_CC_KEY      = "_proppilot_cc"       # objet CookieController mis en cache
+_CC_RUN_KEY  = "_proppilot_cc_run"   # run_id du render où le CC a été créé
+_CC_INIT_KEY = "_proppilot_cc_init"  # False = render #1, True = render #2+
 
 
 def _current_run_id() -> str | None:
@@ -45,6 +51,10 @@ def get_cookie_manager():
     """
     Retourne le CookieController en le rendant une seule fois par rerun Streamlit.
     Guard anti-DuplicateWidgetID : si déjà rendu ce tour-ci, retourne le cache.
+
+    Détecte render #1 via l'absence de 'proppilot_cc' dans st.session_state
+    (clé interne de CookieController, créée lors du premier CookieController()).
+    getAll() retourne {} au render #1 (pas None) — on ne peut pas s'y fier.
     """
     from streamlit_cookies_controller import CookieController
 
@@ -53,21 +63,25 @@ def get_cookie_manager():
     if st.session_state.get(_CC_RUN_KEY) == run_id and _CC_KEY in st.session_state:
         return st.session_state[_CC_KEY]
 
+    # 'proppilot_cc' absent = render #1 de cette session (lib jamais initialisée)
+    first_session_render = "proppilot_cc" not in st.session_state
+
     cc = CookieController(key="proppilot_cc")
     st.session_state[_CC_KEY] = cc
     st.session_state[_CC_RUN_KEY] = run_id
+    # Render #1 → non initialisé (React pas encore répondu)
+    # Render #2+ → initialisé (cookies disponibles dans st.session_state['proppilot_cc'])
+    st.session_state[_CC_INIT_KEY] = not first_session_render
+
     return cc
 
 
 def is_cookie_loading() -> bool:
     """
-    True si on est au render #1 (React n'a pas encore envoyé les cookies au backend).
+    True si render #1 (React n'a pas encore envoyé les cookies au backend).
     Doit être appelé APRÈS get_cookie_manager().
     """
-    cc = st.session_state.get(_CC_KEY)
-    if not cc:
-        return False
-    return cc.getAll() is None
+    return not st.session_state.get(_CC_INIT_KEY, False)
 
 
 def _hmac(user_id: str) -> str:
@@ -84,7 +98,13 @@ def save_session(
     is_admin: bool,
     email: str = "",
 ) -> None:
-    """Écrit la session dans un cookie JSON unique valable 30 jours."""
+    """
+    Écrit la session dans un cookie JSON unique valable 30 jours.
+
+    Appeler uniquement depuis un render stable (sans st.rerun()/st.switch_page()
+    immédiatement après). Passer write_pending_cookie=True à require_auth()
+    sur les pages landing — ne pas appeler directement depuis un handler de form.
+    """
     cc = get_cookie_manager()
     if not cc:
         return

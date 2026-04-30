@@ -25,7 +25,7 @@ st.set_page_config(
     page_icon="📋",
 )
 
-require_auth()
+require_auth(write_pending_cookie=True)
 render_sidebar_logout()
 
 client_id = st.session_state.get("user_id", settings.agency_client_id)
