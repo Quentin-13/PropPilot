@@ -59,12 +59,18 @@ def get_cookie_manager():
     from streamlit_cookies_controller import CookieController
 
     run_id = _current_run_id()
+    print(f"[AUTH-DBG] get_cookie_manager() run_id={run_id}")
 
     if st.session_state.get(_CC_RUN_KEY) == run_id and _CC_KEY in st.session_state:
+        print(f"[AUTH-DBG] get_cookie_manager() → cache hit, _CC_INIT_KEY={st.session_state.get(_CC_INIT_KEY)}")
         return st.session_state[_CC_KEY]
 
     # 'proppilot_cc' absent = render #1 de cette session (lib jamais initialisée)
     first_session_render = "proppilot_cc" not in st.session_state
+    proppilot_cc_val = st.session_state.get("proppilot_cc", "<ABSENT>")
+    print(f"[AUTH-DBG] get_cookie_manager() first_session_render={first_session_render} "
+          f"proppilot_cc in session_state={'proppilot_cc' in st.session_state} "
+          f"proppilot_cc value={repr(proppilot_cc_val)}")
 
     cc = CookieController(key="proppilot_cc")
     st.session_state[_CC_KEY] = cc
@@ -72,6 +78,8 @@ def get_cookie_manager():
     # Render #1 → non initialisé (React pas encore répondu)
     # Render #2+ → initialisé (cookies disponibles dans st.session_state['proppilot_cc'])
     st.session_state[_CC_INIT_KEY] = not first_session_render
+    print(f"[AUTH-DBG] get_cookie_manager() → _CC_INIT_KEY set to {not first_session_render} "
+          f"(proppilot_cc after CC() = {repr(st.session_state.get('proppilot_cc', '<ABSENT>'))})")
 
     return cc
 
@@ -81,7 +89,9 @@ def is_cookie_loading() -> bool:
     True si render #1 (React n'a pas encore envoyé les cookies au backend).
     Doit être appelé APRÈS get_cookie_manager().
     """
-    return not st.session_state.get(_CC_INIT_KEY, False)
+    result = not st.session_state.get(_CC_INIT_KEY, False)
+    print(f"[AUTH-DBG] is_cookie_loading() → {result} (_CC_INIT_KEY={st.session_state.get(_CC_INIT_KEY, '<ABSENT>')})")
+    return result
 
 
 def _hmac(user_id: str) -> str:
@@ -105,8 +115,10 @@ def save_session(
     immédiatement après). Passer write_pending_cookie=True à require_auth()
     sur les pages landing — ne pas appeler directement depuis un handler de form.
     """
+    print(f"[AUTH-DBG] save_session() called for user_id={user_id}")
     cc = get_cookie_manager()
     if not cc:
+        print("[AUTH-DBG] save_session() → cc is None, aborting")
         return
     try:
         payload = json.dumps({
@@ -119,14 +131,17 @@ def save_session(
             "email":       email,
             "hmac":        _hmac(str(user_id)),
         })
+        print(f"[AUTH-DBG] save_session() → calling cc.set('{_SESSION_COOKIE}', ...)")
         cc.set(
             _SESSION_COOKIE,
             payload,
             max_age=SESSION_DAYS * 86400,
             same_site="lax",
         )
+        print("[AUTH-DBG] save_session() → cc.set() returned OK")
     except Exception as e:
         logger.error("save_session error : %s", e)
+        print(f"[AUTH-DBG] save_session() → EXCEPTION: {e}")
 
 
 def load_session() -> dict | None:
@@ -135,11 +150,14 @@ def load_session() -> dict | None:
     Retourne un dict compatible avec _set_session(), ou None.
     Doit être appelé APRÈS get_cookie_manager() ET is_cookie_loading() == False.
     """
+    print("[AUTH-DBG] load_session() called")
     cc = get_cookie_manager()
     if not cc:
+        print("[AUTH-DBG] load_session() → cc is None")
         return None
     try:
         raw = cc.get(_SESSION_COOKIE)
+        print(f"[AUTH-DBG] load_session() → cc.get('{_SESSION_COOKIE}') = {repr(raw)[:80] if raw else repr(raw)}")
         if not raw:
             return None
         data = json.loads(raw)

@@ -259,8 +259,10 @@ def show_auth_page() -> None:
                             st.session_state["_proppilot_pending_save"] = (
                                 uid, token, aname, plan, plan_active, is_admin, email
                             )
+                            print(f"[AUTH-DBG] login: _proppilot_pending_save set for user_id={uid}")
                         if not plan_active:
                             st.session_state["plan_inactive_reason"] = "inactive"
+                        print(f"[AUTH-DBG] login: calling st.rerun() — authenticated={st.session_state.get('authenticated')}")
                         st.rerun()
 
         # ── Signup ─────────────────────────────────────────────────────────────
@@ -373,39 +375,48 @@ def require_auth(require_active_plan: bool = True, write_pending_cookie: bool = 
                                ne font pas de st.switch_page()/st.rerun() immédiat.
                                Ne pas passer True sur app.py ni les autres pages.
     """
+    import traceback as _tb
+    _caller = _tb.extract_stack()[-2]
+    print(f"[AUTH-DBG] require_auth() called from {_caller.filename.split('/')[-1]}:{_caller.lineno} "
+          f"write_pending_cookie={write_pending_cookie} "
+          f"authenticated={st.session_state.get('authenticated')} "
+          f"pending_save={'_proppilot_pending_save' in st.session_state}")
+
     # ── Écriture cookie différée (pages landing uniquement) ───────────────────
-    # Le cookie est écrit ici, en tête du premier render stable après login,
-    # pour que l'iFrame React ait le temps d'exécuter ws.set() avant tout rerun.
     if (
         write_pending_cookie
         and st.session_state.get("authenticated")
         and "_proppilot_pending_save" in st.session_state
     ):
+        print("[AUTH-DBG] require_auth() → writing pending cookie")
         pending = st.session_state.pop("_proppilot_pending_save")
         _cookie_save(*pending)
+        print("[AUTH-DBG] require_auth() → pending cookie written")
 
     # ── Cas 1 : déjà authentifié dans cette session ────────────────────────────
     if st.session_state.get("authenticated"):
+        print("[AUTH-DBG] require_auth() → CAS 1 authenticated, returning")
         if require_active_plan and not st.session_state.get("plan_active", True):
             _show_plan_selection()
             st.stop()
         return  # → page s'affiche normalement
 
     # ── Cas 2 & 3 : pas encore authentifié → rendre le CookieManager ──────────
-    # get_cookie_manager() doit être appelé ICI pour que le composant React soit
-    # présent dans le DOM et puisse envoyer les cookies au render suivant.
+    print("[AUTH-DBG] require_auth() → not authenticated, calling get_cookie_manager()")
     get_cookie_manager()
 
     if is_cookie_loading():
         # ── Cas 2 : render #1 — cookies pas encore disponibles ────────────────
-        # React va lire les cookies navigateur et déclencher render #2.
+        print("[AUTH-DBG] require_auth() → CAS 2 loading screen (render #1)")
         _show_cookie_loading_screen()
         st.stop()
         return
 
     # ── Cas 3 : render #2+ — tenter la restauration depuis cookie ─────────────
+    print("[AUTH-DBG] require_auth() → CAS 3 loading done, trying _cookie_load()")
     saved = _cookie_load()
     if saved:
+        print(f"[AUTH-DBG] require_auth() → cookie loaded, user_id={saved.get('user_id')}, rerunning")
         _set_session(
             token=saved["token"],
             user_id=saved["user_id"],
@@ -418,6 +429,7 @@ def require_auth(require_active_plan: bool = True, write_pending_cookie: bool = 
         st.rerun()  # render #3 : authenticated=True → cas 1
 
     # Cookies lus mais aucune session valide → page de connexion
+    print("[AUTH-DBG] require_auth() → no cookie, showing auth page")
     show_auth_page()
     st.stop()
 
