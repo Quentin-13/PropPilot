@@ -170,7 +170,8 @@ def load_session() -> dict | None:
         if not raw:
             print("[AUTH-DBG] load_session() → raw is empty/None → returning None")
             return None
-        data = json.loads(raw)
+        # React auto-parses JSON cookie values → raw peut être un dict ou une string
+        data = raw if isinstance(raw, dict) else json.loads(raw)
         user_id = data.get("user_id", "")
         hmac_ok = bool(user_id) and data.get("hmac") == _hmac(str(user_id))
         print(f"[AUTH-DBG] load_session() → user_id={repr(user_id)} hmac_ok={hmac_ok}")
