@@ -61,7 +61,10 @@ def get_cookie_manager():
     run_id = _current_run_id()
     print(f"[AUTH-DBG] get_cookie_manager() run_id={run_id}")
 
-    if st.session_state.get(_CC_RUN_KEY) == run_id and _CC_KEY in st.session_state:
+    # Guard anti-DuplicateWidgetID : cache valide uniquement si run_id est un vrai UUID
+    # (pas None). Quand run_id=None (ex : Railway), None==None causerait un faux
+    # cache-hit permanent → _CC_INIT_KEY resterait False → loading screen infini.
+    if run_id is not None and st.session_state.get(_CC_RUN_KEY) == run_id and _CC_KEY in st.session_state:
         print(f"[AUTH-DBG] get_cookie_manager() → cache hit, _CC_INIT_KEY={st.session_state.get(_CC_INIT_KEY)}")
         return st.session_state[_CC_KEY]
 
@@ -151,7 +154,10 @@ def load_session() -> dict | None:
     Doit être appelé APRÈS get_cookie_manager() ET is_cookie_loading() == False.
     """
     print("[AUTH-DBG] load_session() called")
-    cc = get_cookie_manager()
+    # Réutilise le CC déjà créé ce render (par require_auth → get_cookie_manager).
+    # Évite un second CookieController(key=…) dans le même render → DuplicateWidgetID
+    # quand run_id=None empêche le cache normal de fonctionner.
+    cc = st.session_state.get(_CC_KEY) or get_cookie_manager()
     if not cc:
         print("[AUTH-DBG] load_session() → cc is None")
         return None
