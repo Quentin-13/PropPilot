@@ -161,16 +161,24 @@ def load_session() -> dict | None:
     if not cc:
         print("[AUTH-DBG] load_session() → cc is None")
         return None
+    # Log the raw proppilot_cc value in session_state (set by React)
+    raw_cc = st.session_state.get("proppilot_cc", "<ABSENT>")
+    print(f"[AUTH-DBG] load_session() → st.session_state['proppilot_cc'] = {repr(raw_cc)[:120]}")
     try:
         raw = cc.get(_SESSION_COOKIE)
         print(f"[AUTH-DBG] load_session() → cc.get('{_SESSION_COOKIE}') = {repr(raw)[:80] if raw else repr(raw)}")
         if not raw:
+            print("[AUTH-DBG] load_session() → raw is empty/None → returning None")
             return None
         data = json.loads(raw)
         user_id = data.get("user_id", "")
-        if not user_id or data.get("hmac") != _hmac(str(user_id)):
+        hmac_ok = bool(user_id) and data.get("hmac") == _hmac(str(user_id))
+        print(f"[AUTH-DBG] load_session() → user_id={repr(user_id)} hmac_ok={hmac_ok}")
+        if not user_id or not hmac_ok:
             logger.warning("Cookie HMAC invalide — session rejetée")
+            print("[AUTH-DBG] load_session() → HMAC invalide → returning None")
             return None
+        print(f"[AUTH-DBG] load_session() → session OK, returning dict for user_id={user_id}")
         return {
             "user_id":     user_id,
             "token":       data.get("token", ""),
@@ -182,6 +190,7 @@ def load_session() -> dict | None:
         }
     except Exception as e:
         logger.error("load_session error : %s", e)
+        print(f"[AUTH-DBG] load_session() → EXCEPTION: {type(e).__name__}: {e}")
         return None
 
 
