@@ -1,49 +1,38 @@
 """
 Gestion des cookies de session PropPilot.
-Permet de rester connecté 30 jours sans ressaisir ses identifiants.
+Utilise streamlit-cookies-controller (remplace extra_streamlit_components abandonné).
 
-Comportement du double-render extra_streamlit_components
-─────────────────────────────────────────────────────────
-stx.CookieManager fonctionne via un composant React qui lit les cookies
-navigateur et les envoie à Python. Ce composant s'exécute de manière
-asynchrone : au render #1 les cookies ne sont PAS encore disponibles
-(React n'a pas encore répondu). React déclenche un render #2 avec les
-vraies valeurs.
+Double-render
+─────────────
+CookieController s'appuie sur un composant React. Au render #1 le composant n'a
+pas encore communiqué ses valeurs à Python : getAll() retourne None.
+Au render #2+ getAll() retourne un dict (vide ou avec les cookies existants).
 
-Fix : appeler stx.CookieManager() à chaque NOUVEAU render (et non pas une
-seule fois via un singleton) pour que Streamlit retourne la valeur courante
-stockée dans son registry interne. Un guard par run_id évite le
-DuplicateWidgetID si get_cookie_manager() est appelé plusieurs fois dans
-le même render.
+is_cookie_loading() détecte render #1 (getAll() is None).
+get_cookie_manager() ne rend le composant qu'une fois par rerun (guard run_id).
 
-Conséquence : get_cookie_manager() en render #1 retourne cookies vides,
-en render #2 retourne les vraies valeurs. is_cookie_loading() permet à
-require_auth() de distinguer ces deux états.
+Session stockée en 1 cookie JSON signé HMAC (vs 8 cookies séparés avec l'ancienne lib).
 """
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import streamlit as st
 
 logger = logging.getLogger(__name__)
 
-_PREFIX = "proppilot_"
-SESSION_DAYS = 30
-_SECRET = "PROPPILOT_SECRET_2026"
+_SESSION_COOKIE = "proppilot_session"
+SESSION_DAYS    = 30
+_SECRET         = "PROPPILOT_SECRET_2026"
 
-_FIELDS = ["user_id", "token", "agency_name", "plan",
-           "plan_active", "is_admin", "email", "hmac"]
-
-_CM_KEY          = "_proppilot_cm"           # objet CookieManager mis en cache
-_CM_RUN_KEY      = "_proppilot_cm_run_id"    # run_id du render où le CM a été créé
-_CM_INIT_KEY     = "_proppilot_cm_initialized"  # False = render #1, True = render #2+
+_CC_KEY     = "_proppilot_cc"      # objet CookieController mis en cache
+_CC_RUN_KEY = "_proppilot_cc_run"  # run_id du render où le CC a été créé
 
 
 def _current_run_id() -> str | None:
-    """Retourne l'ID unique du run Streamlit en cours (change à chaque rerun)."""
     try:
         from streamlit.runtime.scriptrunner import get_script_run_ctx
         ctx = get_script_run_ctx()
@@ -54,50 +43,31 @@ def _current_run_id() -> str | None:
 
 def get_cookie_manager():
     """
-    Retourne le CookieManager en le re-rendant à chaque nouveau rerun Streamlit.
-
-    - Premier appel d'un nouveau rerun : appelle stx.CookieManager() pour rendre
-      le composant React et obtenir la valeur actualisée depuis le registry Streamlit.
-    - Appels suivants dans le même rerun : retourne l'objet mis en cache
-      (évite DuplicateWidgetID).
-
-    État _CM_INIT_KEY :
-      False = render #1 de la session (cookies pas encore disponibles)
-      True  = render #2+ (cookies disponibles dans le registry Streamlit)
+    Retourne le CookieController en le rendant une seule fois par rerun Streamlit.
+    Guard anti-DuplicateWidgetID : si déjà rendu ce tour-ci, retourne le cache.
     """
+    from streamlit_cookies_controller import CookieController
+
     run_id = _current_run_id()
 
-    # Guard : même rerun → retourner l'objet déjà rendu ce tour-ci
-    if st.session_state.get(_CM_RUN_KEY) == run_id and _CM_KEY in st.session_state:
-        return st.session_state.get(_CM_KEY)
+    if st.session_state.get(_CC_RUN_KEY) == run_id and _CC_KEY in st.session_state:
+        return st.session_state[_CC_KEY]
 
-    # Nouveau rerun : noter si c'est le tout premier render de cette session
-    first_session_render = _CM_KEY not in st.session_state
-
-    try:
-        import extra_streamlit_components as stx
-        cm = stx.CookieManager(key="proppilot_cookies")
-        st.session_state[_CM_KEY] = cm
-    except Exception as e:
-        logger.warning("CookieManager indisponible : %s", e)
-        st.session_state[_CM_KEY] = None
-        cm = None
-
-    st.session_state[_CM_RUN_KEY] = run_id
-    # Render #1 → pas encore initialisé. Render #2+ → initialisé (cookies disponibles)
-    st.session_state[_CM_INIT_KEY] = not first_session_render
-
-    return cm
+    cc = CookieController(key="proppilot_cc")
+    st.session_state[_CC_KEY] = cc
+    st.session_state[_CC_RUN_KEY] = run_id
+    return cc
 
 
 def is_cookie_loading() -> bool:
     """
-    True si on est au render #1 de la session (cookies pas encore lus par React).
+    True si on est au render #1 (React n'a pas encore envoyé les cookies au backend).
     Doit être appelé APRÈS get_cookie_manager().
     """
-    if not st.session_state.get(_CM_KEY):
-        return False  # CM indisponible → pas en loading, traiter comme non-connecté
-    return not st.session_state.get(_CM_INIT_KEY, True)
+    cc = st.session_state.get(_CC_KEY)
+    if not cc:
+        return False
+    return cc.getAll() is None
 
 
 def _hmac(user_id: str) -> str:
@@ -114,57 +84,57 @@ def save_session(
     is_admin: bool,
     email: str = "",
 ) -> None:
-    """Écrit tous les champs de session dans des cookies valables 30 jours."""
-    cm = get_cookie_manager()
-    if not cm:
+    """Écrit la session dans un cookie JSON unique valable 30 jours."""
+    cc = get_cookie_manager()
+    if not cc:
         return
     try:
-        expires = datetime.now() + timedelta(days=SESSION_DAYS)
-        values = {
-            "user_id":      str(user_id),
-            "token":        token,
-            "agency_name":  agency_name,
-            "plan":         plan,
-            "plan_active":  str(plan_active),
-            "is_admin":     str(is_admin),
-            "email":        email,
-            "hmac":         _hmac(str(user_id)),
-        }
-        for key, val in values.items():
-            cm.set(f"{_PREFIX}{key}", val, expires_at=expires)
+        payload = json.dumps({
+            "user_id":     str(user_id),
+            "token":       token,
+            "agency_name": agency_name,
+            "plan":        plan,
+            "plan_active": plan_active,
+            "is_admin":    is_admin,
+            "email":       email,
+            "hmac":        _hmac(str(user_id)),
+        })
+        cc.set(
+            _SESSION_COOKIE,
+            payload,
+            max_age=SESSION_DAYS * 86400,
+            same_site="lax",
+        )
     except Exception as e:
         logger.error("save_session error : %s", e)
 
 
 def load_session() -> dict | None:
     """
-    Tente de restaurer la session depuis les cookies.
+    Restaure la session depuis le cookie JSON.
     Retourne un dict compatible avec _set_session(), ou None.
     Doit être appelé APRÈS get_cookie_manager() ET is_cookie_loading() == False.
     """
-    cm = get_cookie_manager()
-    if not cm:
+    cc = get_cookie_manager()
+    if not cc:
         return None
     try:
-        user_id   = cm.get(f"{_PREFIX}user_id")
-        token     = cm.get(f"{_PREFIX}token")
-        hmac_val  = cm.get(f"{_PREFIX}hmac")
-
-        if not all([user_id, token, hmac_val]):
+        raw = cc.get(_SESSION_COOKIE)
+        if not raw:
             return None
-
-        if hmac_val != _hmac(str(user_id)):
+        data = json.loads(raw)
+        user_id = data.get("user_id", "")
+        if not user_id or data.get("hmac") != _hmac(str(user_id)):
             logger.warning("Cookie HMAC invalide — session rejetée")
             return None
-
         return {
             "user_id":     user_id,
-            "token":       token,
-            "agency_name": cm.get(f"{_PREFIX}agency_name") or "Mon Agence",
-            "plan":        cm.get(f"{_PREFIX}plan") or "Starter",
-            "plan_active": cm.get(f"{_PREFIX}plan_active") == "True",
-            "is_admin":    cm.get(f"{_PREFIX}is_admin") == "True",
-            "email":       cm.get(f"{_PREFIX}email") or "",
+            "token":       data.get("token", ""),
+            "agency_name": data.get("agency_name") or "Mon Agence",
+            "plan":        data.get("plan") or "Starter",
+            "plan_active": bool(data.get("plan_active", False)),
+            "is_admin":    bool(data.get("is_admin", False)),
+            "email":       data.get("email") or "",
         }
     except Exception as e:
         logger.error("load_session error : %s", e)
@@ -172,12 +142,11 @@ def load_session() -> dict | None:
 
 
 def clear_session() -> None:
-    """Supprime tous les cookies de session (appelé au logout)."""
-    cm = get_cookie_manager()
-    if not cm:
+    """Supprime le cookie de session (appelé au logout)."""
+    cc = get_cookie_manager()
+    if not cc:
         return
     try:
-        for key in _FIELDS:
-            cm.delete(f"{_PREFIX}{key}")
+        cc.remove(_SESSION_COOKIE, same_site="lax")
     except Exception as e:
         logger.error("clear_session error : %s", e)
