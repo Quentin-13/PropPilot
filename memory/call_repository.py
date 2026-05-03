@@ -198,7 +198,7 @@ def get_calls_by_client(
     Retourne les appels d'un client avec extraction et infos lead,
     triés par date décroissante.
     """
-    conditions = ["c.client_id = %s"]
+    conditions = ["c.agency_id = %s"]
     params: list = [client_id]
 
     if since:
@@ -262,7 +262,7 @@ def get_calls_by_client(
 
 def count_calls_by_client(client_id: str, since: Optional[datetime] = None) -> int:
     """Compte le nombre d'appels d'un client."""
-    conditions = ["client_id = %s"]
+    conditions = ["agency_id = %s"]
     params: list = [client_id]
     if since:
         conditions.append("created_at >= %s")
