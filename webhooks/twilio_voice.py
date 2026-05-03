@@ -49,7 +49,7 @@ def _build_inbound_twiml(
     else:
         escaped = legal_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         notice_xml = (
-            f'<Say language="fr-FR" voice="Polly.Léa">{escaped}</Say>'
+            f'<Say language="fr-FR" voice="Polly.Lea-Neural">{escaped}</Say>'
         )
 
     # Dial vers l'agent (ou message si pas d'agent configuré)
@@ -67,7 +67,7 @@ def _build_inbound_twiml(
     else:
         # Pas d'agent configuré : enregistrement direct (boîte vocale)
         dial_xml = (
-            f'<Say language="fr-FR" voice="Polly.Léa">'
+            f'<Say language="fr-FR" voice="Polly.Lea-Neural">'
             f'Aucun conseiller n\'est disponible pour le moment. '
             f'Laissez-nous votre message après le signal.'
             f'</Say>'
@@ -89,7 +89,7 @@ def _build_voicemail_twiml(recording_cb: str) -> str:
     return (
         '<?xml version="1.0" encoding="UTF-8"?>'
         "<Response>"
-        '<Say language="fr-FR" voice="Polly.Léa">'
+        '<Say language="fr-FR" voice="Polly.Lea-Neural">'
         "Votre conseiller est actuellement indisponible. "
         "Laissez-nous votre message après le signal, nous vous rappellerons."
         "</Say>"
@@ -162,7 +162,9 @@ async def voice_incoming(request: Request, background_tasks: BackgroundTasks):
     )
 
     # Construire le TwiML
-    base_url = str(request.base_url).rstrip("/")
+    forwarded_proto = request.headers.get("X-Forwarded-Proto", request.url.scheme)
+    forwarded_host = request.headers.get("X-Forwarded-Host", request.url.netloc)
+    base_url = f"{forwarded_proto}://{forwarded_host}"
     twiml = _build_inbound_twiml(
         agent_phone=agent_phone,
         legal_text=settings.legal_notice_text,
@@ -185,7 +187,9 @@ async def voice_voicemail(request: Request):
     dial_status = form.get("DialCallStatus", "no-answer")
     logger.info("[Voice] No answer call_sid=%s dial_status=%s", call_sid, dial_status)
 
-    base_url = str(request.base_url).rstrip("/")
+    forwarded_proto = request.headers.get("X-Forwarded-Proto", request.url.scheme)
+    forwarded_host = request.headers.get("X-Forwarded-Host", request.url.netloc)
+    base_url = f"{forwarded_proto}://{forwarded_host}"
     recording_cb = f"{base_url}/webhooks/twilio/voice/recording"
     twiml = _build_voicemail_twiml(recording_cb)
 
