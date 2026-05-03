@@ -32,7 +32,11 @@ async def validate_twilio_signature(request: Request) -> bool:
         )
         return False
 
-    url = str(request.url)
+    forwarded_proto = request.headers.get("X-Forwarded-Proto", request.url.scheme)
+    forwarded_host = request.headers.get("X-Forwarded-Host", request.url.netloc)
+    url = f"{forwarded_proto}://{forwarded_host}{request.url.path}"
+    if request.url.query:
+        url += f"?{request.url.query}"
     try:
         form_data = await request.form()
         params = dict(form_data)
@@ -42,6 +46,7 @@ async def validate_twilio_signature(request: Request) -> bool:
     try:
         from twilio.request_validator import RequestValidator
         validator = RequestValidator(auth_token)
+        logger.info("[Security] Validation Twilio — URL reconstruite: %s", url)
         valid = validator.validate(url, params, twilio_signature)
     except Exception as e:
         logger.error("[Security] Erreur RequestValidator Twilio : %s", e)
