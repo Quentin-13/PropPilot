@@ -11,6 +11,9 @@ sys.path.insert(0, str(ROOT))
 
 from datetime import datetime, timedelta
 from typing import Optional
+from zoneinfo import ZoneInfo
+
+from dashboard.utils.datetime_helpers import to_paris_tz
 
 import streamlit as st
 
@@ -51,6 +54,7 @@ except Exception as exc:
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 now = datetime.now()
+_now_paris = datetime.now(ZoneInfo("Europe/Paris"))
 today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 today_end = today_start + timedelta(days=1)
 
@@ -87,11 +91,12 @@ def _type_badge(rtype: str) -> str:
 def _fmt_dt(dt: Optional[datetime]) -> str:
     if not dt:
         return "—"
-    if dt.date() == now.date():
-        return f"Aujourd'hui {dt.strftime('%H:%M')}"
-    if dt.date() == (now - timedelta(days=1)).date():
-        return f"Hier {dt.strftime('%H:%M')}"
-    return dt.strftime("%d/%m/%Y %H:%M")
+    dt_paris = to_paris_tz(dt)
+    if dt_paris.date() == _now_paris.date():
+        return f"Aujourd'hui {dt_paris.strftime('%H:%M')}"
+    if dt_paris.date() == (_now_paris - timedelta(days=1)).date():
+        return f"Hier {dt_paris.strftime('%H:%M')}"
+    return dt_paris.strftime("%d/%m/%Y %H:%M")
 
 
 # ─── Partitionnement ──────────────────────────────────────────────────────────

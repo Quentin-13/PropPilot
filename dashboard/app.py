@@ -17,6 +17,7 @@ from memory.database import init_database
 init_database()
 
 from config.settings import get_settings
+from dashboard.utils.datetime_helpers import fmt_paris_datetime
 settings = get_settings()
 
 # ─── Configuration Streamlit ───────────────────────────────────────────────────
@@ -429,7 +430,7 @@ if leads_count > 0 and leads:
         source  = lead.source.value if hasattr(lead.source, "value") else str(lead.source)
         score   = lead.score
         statut  = lead.statut.value if hasattr(lead.statut, "value") else str(lead.statut)
-        created = lead.created_at.strftime("%d/%m") if lead.created_at else "—"
+        created = fmt_paris_datetime(lead.created_at, "%d/%m")
 
         rows_html += (
             '<div style="display:grid; grid-template-columns:2fr 1.5fr 80px 1.5fr 1.2fr;'

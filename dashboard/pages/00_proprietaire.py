@@ -16,6 +16,7 @@ import pandas as pd
 import streamlit as st
 
 from config.settings import get_settings
+from dashboard.utils.datetime_helpers import fmt_paris_datetime
 from memory.database import get_connection
 
 st.set_page_config(
@@ -483,7 +484,7 @@ for c in clients:
     if c["created_at"]:
         try:
             dt = datetime.fromisoformat(str(c["created_at"])[:19])
-            created_str = dt.strftime("%d/%m/%Y")
+            created_str = fmt_paris_datetime(dt, "%d/%m/%Y")
         except Exception:
             created_str = str(c["created_at"])[:10]
 

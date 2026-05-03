@@ -14,6 +14,7 @@ import pandas as pd
 from datetime import datetime
 
 from config.settings import get_settings
+from dashboard.utils.datetime_helpers import fmt_paris_datetime
 from memory.lead_repository import (
     get_leads_by_client,
     get_pipeline_stats,
@@ -122,8 +123,8 @@ else:
             "Localisation": lead.localisation or "—",
             "Statut": lead.statut.value.replace("_", " ").capitalize(),
             "Source": lead.source.value.capitalize(),
-            "Prochain suivi": lead.prochain_followup.strftime("%d/%m %H:%M") if lead.prochain_followup else "—",
-            "Créé le": lead.created_at.strftime("%d/%m/%Y"),
+            "Prochain suivi": fmt_paris_datetime(lead.prochain_followup, "%d/%m %H:%M"),
+            "Créé le": fmt_paris_datetime(lead.created_at, "%d/%m/%Y"),
         })
 
     df = pd.DataFrame(rows)
@@ -329,7 +330,7 @@ else:
                     st.caption("Aucune interaction enregistrée pour ce lead.")
                 else:
                     for item in timeline[:20]:
-                        dt_str = item["date"].strftime("%d/%m/%Y %H:%M") if item["date"] else "—"
+                        dt_str = fmt_paris_datetime(item["date"], "%d/%m/%Y %H:%M")
                         st.markdown(
                             f'<div style="display:flex;gap:12px;padding:8px 0;'
                             f'border-bottom:1px solid #1e2130;align-items:flex-start;">'

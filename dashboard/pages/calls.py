@@ -17,6 +17,7 @@ import streamlit as st
 
 from config.settings import get_settings
 from dashboard.auth_ui import require_auth, render_sidebar_logout
+from dashboard.utils.datetime_helpers import fmt_paris_datetime
 
 settings = get_settings()
 
@@ -126,7 +127,7 @@ def _fmt_dt(dt) -> str:
             dt = datetime.fromisoformat(dt)
         except Exception:
             return dt
-    return dt.strftime("%d/%m/%Y %H:%M")
+    return fmt_paris_datetime(dt, "%d/%m/%Y %H:%M")
 
 
 def _direction_label(direction: Optional[str]) -> str:
