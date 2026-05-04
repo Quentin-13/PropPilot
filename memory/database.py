@@ -377,6 +377,15 @@ def _run_migrations(conn) -> None:
         END $$
     """)
 
+    # Migration conversations — read_at pour tracking messages non lus
+    conn.execute(
+        "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS read_at TIMESTAMP NULL"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_conversations_client_read_at "
+        "ON conversations(client_id, read_at)"
+    )
+
 
 # ─── Init / Reset ─────────────────────────────────────────────────────────────
 

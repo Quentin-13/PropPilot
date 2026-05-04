@@ -799,6 +799,215 @@ async def api_sms_send(payload: _SmsSendRequest, request: Request):
     return {"ok": True, "twilio_sid": message.sid, "status": message.status, "conversation_id": conversation_id}
 
 
+# ─── Lecture conversations SMS ────────────────────────────────────────────────
+
+@app.get("/api/sms/conversations", tags=["api"])
+async def api_sms_conversations(request: Request, limit: int = 100):
+    """Liste tous les threads SMS de l'agence connectée (un thread = un lead)."""
+    client_id = request.state.user_id
+    if limit > 500:
+        limit = 500
+
+    from memory.database import get_connection
+
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                l.id               AS lead_id,
+                l.prenom,
+                l.nom,
+                l.telephone,
+                l.score,
+                l.statut,
+                l.projet,
+                l.localisation,
+                l.budget,
+                last_c.contenu     AS dernier_message,
+                last_c.role        AS dernier_message_role,
+                last_c.created_at  AS dernier_message_at,
+                counts.nb_messages_total,
+                counts.nb_non_lus,
+                calls_agg.dernier_appel_at
+            FROM leads l
+            INNER JOIN (
+                SELECT
+                    lead_id,
+                    COUNT(*) AS nb_messages_total,
+                    SUM(CASE WHEN role = 'user' AND read_at IS NULL THEN 1 ELSE 0 END) AS nb_non_lus
+                FROM conversations
+                WHERE client_id = %s AND canal = 'sms'
+                GROUP BY lead_id
+            ) counts ON counts.lead_id = l.id
+            INNER JOIN LATERAL (
+                SELECT contenu, role, created_at
+                FROM conversations
+                WHERE lead_id = l.id AND client_id = %s AND canal = 'sms'
+                ORDER BY created_at DESC
+                LIMIT 1
+            ) last_c ON TRUE
+            LEFT JOIN (
+                SELECT lead_id, MAX(created_at) AS dernier_appel_at
+                FROM calls
+                WHERE client_id = %s
+                GROUP BY lead_id
+            ) calls_agg ON calls_agg.lead_id = l.id
+            WHERE l.client_id = %s
+            ORDER BY last_c.created_at DESC
+            LIMIT %s
+            """,
+            (client_id, client_id, client_id, client_id, limit),
+        ).fetchall()
+
+        unread_row = conn.execute(
+            "SELECT COUNT(*) AS cnt FROM conversations "
+            "WHERE client_id = %s AND canal = 'sms' AND role = 'user' AND read_at IS NULL",
+            (client_id,),
+        ).fetchone()
+
+    total_unread = int(unread_row["cnt"]) if unread_row else 0
+
+    threads = []
+    for row in rows:
+        d = dict(row)
+        projet = d.get("projet") or ""
+        localisation = d.get("localisation") or ""
+        budget_texte = d.get("budget") or ""
+        if projet or localisation or budget_texte:
+            extraction_resume = {
+                "budget": budget_texte if budget_texte else None,
+                "budget_min": None,
+                "budget_max": None,
+                "type_bien": projet if projet else None,
+                "zone": localisation if localisation else None,
+            }
+        else:
+            extraction_resume = None
+
+        dernier = d.get("dernier_message") or ""
+        threads.append({
+            "lead_id": d["lead_id"],
+            "prenom": d.get("prenom") or "",
+            "nom": d.get("nom") or "",
+            "telephone": d.get("telephone") or "",
+            "score": d.get("score"),
+            "statut": d.get("statut"),
+            "dernier_message": dernier[:100],
+            "dernier_message_role": d.get("dernier_message_role"),
+            "dernier_message_at": d["dernier_message_at"].isoformat() if d.get("dernier_message_at") else None,
+            "nb_messages_total": int(d.get("nb_messages_total") or 0),
+            "nb_non_lus": int(d.get("nb_non_lus") or 0),
+            "dernier_appel_at": d["dernier_appel_at"].isoformat() if d.get("dernier_appel_at") else None,
+            "extraction_resume": extraction_resume,
+        })
+
+    logger.info("[SMS conversations] client=%s threads=%d unread=%d", client_id, len(threads), total_unread)
+    return {"ok": True, "threads": threads, "total_unread": total_unread}
+
+
+@app.get("/api/leads/{lead_id}/conversations", tags=["api"])
+async def api_lead_conversations(lead_id: str, request: Request):
+    """Détail du thread SMS pour un lead spécifique."""
+    client_id = request.state.user_id
+
+    import json as _json
+    from memory.database import get_connection
+
+    with get_connection() as conn:
+        lead_row = conn.execute(
+            "SELECT id, prenom, nom, telephone, score, statut "
+            "FROM leads WHERE id = %s AND client_id = %s LIMIT 1",
+            (lead_id, client_id),
+        ).fetchone()
+
+    if not lead_row:
+        raise HTTPException(status_code=404, detail="Lead introuvable")
+
+    with get_connection() as conn:
+        msg_rows = conn.execute(
+            "SELECT id, role, contenu, created_at, read_at, metadata "
+            "FROM conversations "
+            "WHERE lead_id = %s AND client_id = %s AND canal = 'sms' "
+            "ORDER BY created_at ASC",
+            (lead_id, client_id),
+        ).fetchall()
+
+    lead = dict(lead_row)
+    messages = []
+    for row in msg_rows:
+        d = dict(row)
+        messages.append({
+            "id": d["id"],
+            "role": d["role"],
+            "contenu": d["contenu"],
+            "created_at": d["created_at"].isoformat() if d.get("created_at") else None,
+            "read_at": d["read_at"].isoformat() if d.get("read_at") else None,
+            "metadata": _json.loads(d.get("metadata") or "{}"),
+        })
+
+    logger.info("[SMS thread] client=%s lead=%s messages=%d", client_id, lead_id, len(messages))
+    return {
+        "ok": True,
+        "lead": {
+            "id": lead["id"],
+            "prenom": lead.get("prenom") or "",
+            "nom": lead.get("nom") or "",
+            "telephone": lead.get("telephone") or "",
+            "score": lead.get("score"),
+            "statut": lead.get("statut"),
+        },
+        "messages": messages,
+    }
+
+
+@app.post("/api/sms/conversations/{lead_id}/mark_as_read", tags=["api"])
+async def api_sms_mark_as_read(lead_id: str, request: Request):
+    """Marque tous les SMS entrants non lus du lead comme lus."""
+    client_id = request.state.user_id
+
+    from memory.database import get_connection
+
+    with get_connection() as conn:
+        lead_row = conn.execute(
+            "SELECT id FROM leads WHERE id = %s AND client_id = %s LIMIT 1",
+            (lead_id, client_id),
+        ).fetchone()
+
+    if not lead_row:
+        raise HTTPException(status_code=404, detail="Lead introuvable")
+
+    with get_connection() as conn:
+        cur = conn.execute(
+            "UPDATE conversations SET read_at = NOW() "
+            "WHERE lead_id = %s AND client_id = %s AND canal = 'sms' "
+            "AND role = 'user' AND read_at IS NULL",
+            (lead_id, client_id),
+        )
+        marked = cur.rowcount if cur.rowcount is not None and cur.rowcount >= 0 else 0
+
+    logger.info("[SMS mark_as_read] client=%s lead=%s marked=%d", client_id, lead_id, marked)
+    return {"ok": True, "marked_as_read": marked}
+
+
+@app.get("/api/sms/unread_count", tags=["api"])
+async def api_sms_unread_count(request: Request):
+    """Compteur global SMS non lus pour le badge de notification dashboard."""
+    client_id = request.state.user_id
+
+    from memory.database import get_connection
+
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS cnt FROM conversations "
+            "WHERE client_id = %s AND canal = 'sms' AND role = 'user' AND read_at IS NULL",
+            (client_id,),
+        ).fetchone()
+
+    unread_count = int(row["cnt"]) if row else 0
+    logger.info("[SMS unread_count] client=%s count=%d", client_id, unread_count)
+    return {"ok": True, "unread_count": unread_count}
+
+
 # ─── API interne (back-office) ─────────────────────────────────────────────────
 
 @app.get("/api/status", tags=["api"])
