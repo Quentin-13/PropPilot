@@ -269,6 +269,18 @@ async def confidentialite():
     return FileResponse(path, media_type="text/html")
 
 
+@app.get("/legal/cgv", tags=["legal"])
+async def cgv():
+    path = os.path.join(os.path.dirname(__file__), "static/legal/cgv.html")
+    return FileResponse(path, media_type="text/html")
+
+
+@app.get("/legal/cookies", tags=["legal"])
+async def cookies():
+    path = os.path.join(os.path.dirname(__file__), "static/legal/cookies.html")
+    return FileResponse(path, media_type="text/html")
+
+
 @app.get("/health", tags=["health"])
 async def health(request: Request):
     """Health check — détails disponibles uniquement avec X-Health-Key."""

@@ -3,29 +3,41 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mentions Légales — PropPilot</title>
+  <title>Mentions légales — PropPilot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg:      #09090b;
+      --surface: #111113;
+      --border:  #27272a;
+      --text:    #fafafa;
+      --muted:   #a1a1aa;
+      --accent:  #a3e635;
+      --font:    'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #0f1117;
-      color: #e2e8f0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
       line-height: 1.7;
     }
     nav {
       padding: 16px 40px;
-      border-bottom: 1px solid #1e2130;
+      border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       gap: 12px;
     }
     nav a {
-      color: #8892a4;
+      color: var(--muted);
       text-decoration: none;
       font-size: 0.9rem;
     }
-    nav a:hover { color: white; }
-    nav span { color: #3b82f6; font-weight: 700; font-size: 1.1rem; }
+    nav a:hover { color: var(--text); }
+    nav span { color: var(--accent); font-weight: 700; font-size: 1.1rem; }
     .container {
       max-width: 800px;
       margin: 0 auto;
@@ -33,38 +45,43 @@
     }
     h1 {
       font-size: 2rem;
-      color: white;
+      color: var(--text);
       margin-bottom: 8px;
     }
     .date {
-      color: #8892a4;
+      color: var(--muted);
       font-size: 0.9rem;
       margin-bottom: 48px;
     }
     h2 {
       font-size: 1.1rem;
-      color: #3b82f6;
+      color: var(--accent);
       margin: 36px 0 12px;
       padding-bottom: 8px;
-      border-bottom: 1px solid #1e2130;
+      border-bottom: 1px solid var(--border);
     }
-    p { margin-bottom: 12px; color: #cbd5e1; }
+    h3 {
+      font-size: 1rem;
+      color: var(--muted);
+      margin: 20px 0 8px;
+    }
+    p { margin-bottom: 12px; color: var(--text); }
     ul { padding-left: 20px; margin-bottom: 12px; }
-    li { color: #cbd5e1; margin-bottom: 6px; }
-    a { color: #3b82f6; }
+    li { color: var(--text); margin-bottom: 6px; }
+    a { color: var(--accent); }
     footer {
       margin-top: 80px;
       padding: 24px 40px;
-      border-top: 1px solid #1e2130;
+      border-top: 1px solid var(--border);
       text-align: center;
     }
     footer a {
-      color: #8892a4;
+      color: var(--muted);
       text-decoration: none;
       margin: 0 12px;
       font-size: 0.85rem;
     }
-    footer a:hover { color: white; }
+    footer a:hover { color: var(--text); }
   </style>
 </head>
 <body>
@@ -73,42 +90,51 @@
     <span>PropPilot</span>
   </nav>
   <div class="container">
-    <h1>Mentions Légales</h1>
-    <p class="date">Dernière mise à jour : 19 mars 2026</p>
+    <h1>Mentions légales</h1>
+    <p class="date">Dernière mise à jour : 4 mai 2026</p>
 
     <h2>1. Éditeur du site</h2>
+    <p>Le site <strong>proppilot.fr</strong> est édité par :</p>
+    <p><strong>Quentin GOUAZE</strong>, exerçant sous le statut d'auto-entrepreneur (micro-entreprise).</p>
     <ul>
-      <li>Nom : Quentin Gouaze</li>
-      <li>Forme juridique : Micro-entreprise</li>
-      <li>SIREN : 878 944 420</li>
-      <li>SIRET : 878 944 420 00024</li>
-      <li>Adresse : Toulouse, France</li>
-      <li>Email : <a href="mailto:contact@proppilot.fr">contact@proppilot.fr</a></li>
+      <li><strong>Adresse du siège social</strong> : 54 Avenue de Toulouse, 31390 Carbonne, France</li>
+      <li><strong>SIRET</strong> : 87894442000024</li>
+      <li><strong>Code APE/NAF</strong> : 5829C</li>
+      <li><strong>N° de TVA intracommunautaire</strong> : Non assujetti à la TVA en application de l'article 293 B du CGI</li>
+      <li><strong>Email de contact</strong> : <a href="mailto:contact@proppilot.fr">contact@proppilot.fr</a></li>
     </ul>
 
-    <h2>2. Hébergement</h2>
-    <ul>
-      <li>Société : Railway Corp.</li>
-      <li>Adresse : 340 S Lemon Ave #4227, Walnut, CA 91789, États-Unis</li>
-      <li>Site web : <a href="https://railway.app">railway.app</a></li>
-    </ul>
+    <h2>2. Directeur de la publication</h2>
+    <p>Le directeur de la publication du site est <strong>Quentin GOUAZE</strong>, en sa qualité d'éditeur.</p>
 
-    <h2>3. Directeur de la publication</h2>
-    <p>Quentin Gouaze, fondateur de PropPilot.</p>
+    <h2>3. Hébergement du site</h2>
+    <p>Le site <strong>proppilot.fr</strong> ainsi que l'application back-end sont hébergés par :</p>
+    <p><strong>Railway Corp.</strong><br>2261 Market Street #4382<br>San Francisco, CA 94114<br>États-Unis<br>Site web : <a href="https://railway.app">railway.app</a></p>
+    <p>Les serveurs de traitement et de stockage sont localisés en <strong>région Union européenne (Amsterdam, Pays-Bas)</strong>.</p>
 
     <h2>4. Propriété intellectuelle</h2>
-    <p>L'ensemble des éléments constituant le site proppilot.fr sont la propriété exclusive de Quentin Gouaze / PropPilot. Toute reproduction sans autorisation écrite est interdite.</p>
+    <p>L'ensemble des éléments présents sur le site <strong>proppilot.fr</strong> (textes, images, logos, graphismes, code source, structure, mise en page) est la propriété exclusive de <strong>Quentin GOUAZE</strong>, sauf mention contraire, et est protégé par les lois françaises et internationales relatives à la propriété intellectuelle.</p>
+    <p>Toute reproduction, représentation, modification, publication, adaptation totale ou partielle des éléments du site, quels que soient le moyen ou le procédé utilisé, est interdite sans l'autorisation écrite préalable de l'éditeur, sauf exceptions prévues à l'article L. 122-5 du Code de la propriété intellectuelle.</p>
 
-    <h2>5. Données personnelles</h2>
-    <p>Conformément au RGPD, vous disposez de droits sur vos données personnelles. Pour les exercer : <a href="mailto:contact@proppilot.fr">contact@proppilot.fr</a></p>
+    <h2>5. Liens hypertextes</h2>
+    <p>Le site <strong>proppilot.fr</strong> peut contenir des liens hypertextes vers d'autres sites internet. L'éditeur n'exerce aucun contrôle sur ces sites et décline toute responsabilité quant à leur contenu, leur fonctionnement ou les conséquences de leur consultation par l'utilisateur.</p>
 
-    <h2>6. Loi applicable</h2>
-    <p>Les présentes mentions légales sont soumises au droit français. Tout litige sera soumis aux tribunaux français.</p>
+    <h2>6. Crédits</h2>
+    <p>Conception et développement : <strong>Quentin GOUAZE</strong></p>
+
+    <h2>7. Contact</h2>
+    <p>Pour toute question relative au site :</p>
+    <ul>
+      <li><strong>Par email</strong> : <a href="mailto:contact@proppilot.fr">contact@proppilot.fr</a></li>
+      <li><strong>Par courrier</strong> : 54 Avenue de Toulouse, 31390 Carbonne, France</li>
+    </ul>
   </div>
   <footer>
     <a href="/legal/mentions-legales">Mentions légales</a>
     <a href="/legal/cgu">CGU</a>
+    <a href="/legal/cgv">CGV</a>
     <a href="/legal/confidentialite">Confidentialité</a>
+    <a href="/legal/cookies">Cookies</a>
     <a href="mailto:contact@proppilot.fr">Contact</a>
   </footer>
 </body>

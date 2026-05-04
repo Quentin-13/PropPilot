@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Politique de gestion des cookies — PropPilot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:      #09090b;
+      --surface: #111113;
+      --border:  #27272a;
+      --text:    #fafafa;
+      --muted:   #a1a1aa;
+      --accent:  #a3e635;
+      --font:    'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+    nav {
+      padding: 16px 40px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    nav a:hover { color: var(--text); }
+    nav span { color: var(--accent); font-weight: 700; font-size: 1.1rem; }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 60px 40px;
+    }
+    h1 {
+      font-size: 2rem;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .date {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 48px;
+    }
+    h2 {
+      font-size: 1.1rem;
+      color: var(--accent);
+      margin: 36px 0 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    h3 {
+      font-size: 1rem;
+      color: var(--muted);
+      margin: 20px 0 8px;
+    }
+    p { margin-bottom: 12px; color: var(--text); }
+    ul { padding-left: 20px; margin-bottom: 12px; }
+    li { color: var(--text); margin-bottom: 6px; }
+    a { color: var(--accent); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 0.9rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      background: var(--surface);
+      color: var(--text);
+      font-weight: 600;
+    }
+    td {
+      color: var(--muted);
+    }
+    .warning {
+      background: var(--border);
+      border-left: 3px solid #f59e0b;
+      padding: 12px 16px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+    footer {
+      margin-top: 80px;
+      padding: 24px 40px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+    footer a {
+      color: var(--muted);
+      text-decoration: none;
+      margin: 0 12px;
+      font-size: 0.85rem;
+    }
+    footer a:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/">← Retour</a>
+    <span>PropPilot</span>
+  </nav>
+  <div class="container">
+    <h1>Politique de gestion des cookies</h1>
+    <p class="date">Dernière mise à jour : 4 mai 2026</p>
+
+    <h2>1. Qu'est-ce qu'un cookie ?</h2>
+    <p>Un cookie est un petit fichier texte déposé sur votre terminal (ordinateur, tablette, smartphone) lors de la visite d'un site web. Il permet au site de mémoriser certaines informations vous concernant.</p>
+
+    <h2>2. Cookies utilisés sur proppilot.fr</h2>
+    <p>Le site <strong>proppilot.fr</strong> utilise un nombre limité de cookies, classés selon leur finalité :</p>
+
+    <h3>2.1. Cookies strictement nécessaires</h3>
+    <p>Ces cookies sont indispensables au fonctionnement du site. Ils ne nécessitent pas votre consentement préalable au sens de l'article 82 de la loi Informatique et Libertés.</p>
+    <table>
+      <thead>
+        <tr><th>Cookie</th><th>Émetteur</th><th>Finalité</th><th>Durée</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Cookie de session</td><td>proppilot.fr</td><td>Maintien de la connexion utilisateur</td><td>Session</td></tr>
+        <tr><td>Cookie CSRF</td><td>proppilot.fr</td><td>Protection contre les attaques de type Cross-Site Request Forgery</td><td>Session</td></tr>
+      </tbody>
+    </table>
+
+    <h3>2.2. Cookies tiers (services intégrés)</h3>
+    <p>Ces cookies sont déposés lorsque vous interagissez avec des services tiers intégrés au site. Leur dépôt est conditionné à votre utilisation effective de ces services.</p>
+    <table>
+      <thead>
+        <tr><th>Service</th><th>Finalité</th><th>Plus d'infos</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Calendly</strong></td><td>Prise de rendez-vous en ligne</td><td><a href="https://calendly.com/legal/cookie-notice">Politique de cookies Calendly</a></td></tr>
+        <tr><td><strong>Stripe</strong></td><td>Sécurité des paiements et prévention de la fraude</td><td><a href="https://stripe.com/cookie-settings">Politique de cookies Stripe</a></td></tr>
+      </tbody>
+    </table>
+
+    <h3>2.3. Cookies de mesure d'audience</h3>
+    <p>Le site <strong>proppilot.fr</strong> <strong>n'utilise actuellement aucun outil de mesure d'audience</strong> (Google Analytics, Matomo, Hotjar, etc.).</p>
+
+    <h2>3. Gestion des cookies</h2>
+    <p>Vous pouvez à tout moment configurer votre navigateur pour accepter, refuser ou supprimer les cookies. Les modalités sont propres à chaque navigateur :</p>
+    <ul>
+      <li><strong>Chrome</strong> : Paramètres → Confidentialité et sécurité → Cookies</li>
+      <li><strong>Firefox</strong> : Paramètres → Vie privée et sécurité → Cookies</li>
+      <li><strong>Safari</strong> : Préférences → Confidentialité → Cookies</li>
+      <li><strong>Edge</strong> : Paramètres → Cookies et autorisations de site</li>
+    </ul>
+    <p class="warning">⚠️ <strong>Attention</strong> : la désactivation de certains cookies peut affecter le bon fonctionnement du site (impossibilité de prendre rendez-vous, de souscrire à un abonnement, etc.).</p>
+
+    <h2>4. Contact</h2>
+    <p>Pour toute question relative à la gestion des cookies :</p>
+    <ul>
+      <li><strong>Par email</strong> : <a href="mailto:privacy@proppilot.fr">privacy@proppilot.fr</a></li>
+      <li><strong>Par courrier</strong> : 54 Avenue de Toulouse, 31390 Carbonne, France</li>
+    </ul>
+  </div>
+  <footer>
+    <a href="/legal/mentions-legales">Mentions légales</a>
+    <a href="/legal/cgu">CGU</a>
+    <a href="/legal/cgv">CGV</a>
+    <a href="/legal/confidentialite">Confidentialité</a>
+    <a href="/legal/cookies">Cookies</a>
+    <a href="mailto:contact@proppilot.fr">Contact</a>
+  </footer>
+</body>
+</html>

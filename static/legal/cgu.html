@@ -4,28 +4,40 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Conditions Générales d'Utilisation — PropPilot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg:      #09090b;
+      --surface: #111113;
+      --border:  #27272a;
+      --text:    #fafafa;
+      --muted:   #a1a1aa;
+      --accent:  #a3e635;
+      --font:    'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #0f1117;
-      color: #e2e8f0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
       line-height: 1.7;
     }
     nav {
       padding: 16px 40px;
-      border-bottom: 1px solid #1e2130;
+      border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       gap: 12px;
     }
     nav a {
-      color: #8892a4;
+      color: var(--muted);
       text-decoration: none;
       font-size: 0.9rem;
     }
-    nav a:hover { color: white; }
-    nav span { color: #3b82f6; font-weight: 700; font-size: 1.1rem; }
+    nav a:hover { color: var(--text); }
+    nav span { color: var(--accent); font-weight: 700; font-size: 1.1rem; }
     .container {
       max-width: 800px;
       margin: 0 auto;
@@ -33,38 +45,43 @@
     }
     h1 {
       font-size: 2rem;
-      color: white;
+      color: var(--text);
       margin-bottom: 8px;
     }
     .date {
-      color: #8892a4;
+      color: var(--muted);
       font-size: 0.9rem;
       margin-bottom: 48px;
     }
     h2 {
       font-size: 1.1rem;
-      color: #3b82f6;
+      color: var(--accent);
       margin: 36px 0 12px;
       padding-bottom: 8px;
-      border-bottom: 1px solid #1e2130;
+      border-bottom: 1px solid var(--border);
     }
-    p { margin-bottom: 12px; color: #cbd5e1; }
+    h3 {
+      font-size: 1rem;
+      color: var(--muted);
+      margin: 20px 0 8px;
+    }
+    p { margin-bottom: 12px; color: var(--text); }
     ul { padding-left: 20px; margin-bottom: 12px; }
-    li { color: #cbd5e1; margin-bottom: 6px; }
-    a { color: #3b82f6; }
+    li { color: var(--text); margin-bottom: 6px; }
+    a { color: var(--accent); }
     footer {
       margin-top: 80px;
       padding: 24px 40px;
-      border-top: 1px solid #1e2130;
+      border-top: 1px solid var(--border);
       text-align: center;
     }
     footer a {
-      color: #8892a4;
+      color: var(--muted);
       text-decoration: none;
       margin: 0 12px;
       font-size: 0.85rem;
     }
-    footer a:hover { color: white; }
+    footer a:hover { color: var(--text); }
   </style>
 </head>
 <body>
@@ -74,45 +91,96 @@
   </nav>
   <div class="container">
     <h1>Conditions Générales d'Utilisation</h1>
-    <p class="date">Dernière mise à jour : 19 mars 2026</p>
+    <p class="date">Dernière mise à jour : 4 mai 2026</p>
 
     <h2>1. Objet</h2>
-    <p>Les présentes CGU définissent les modalités d'utilisation de la plateforme PropPilot accessible à l'adresse proppilot.fr.</p>
+    <p>Les présentes Conditions Générales d'Utilisation (« CGU ») régissent l'accès et l'utilisation du site <strong>proppilot.fr</strong> et du service PropPilot (ci-après « le Service ») fournis par <strong>Quentin GOUAZE</strong>, auto-entrepreneur, SIRET 87894442000024, ci-après « l'Éditeur ».</p>
+    <p>L'utilisation du Service implique l'acceptation pleine et entière des présentes CGU.</p>
 
-    <h2>2. Éditeur</h2>
+    <h2>2. Description du Service</h2>
+    <p>PropPilot est une solution logicielle de capture, structuration et enrichissement de conversations professionnelles destinée aux agences immobilières et agents indépendants. Le Service permet notamment :</p>
     <ul>
-      <li>Quentin Gouaze — Micro-entreprise</li>
-      <li>SIREN : 878 944 420 — SIRET : 878 944 420 00024</li>
-      <li>Email : <a href="mailto:contact@proppilot.fr">contact@proppilot.fr</a></li>
+      <li>La capture des appels et SMS échangés entre l'agent et ses prospects</li>
+      <li>L'extraction automatisée d'informations structurées (budget, urgence, motivation, etc.)</li>
+      <li>La restitution de ces données enrichies dans un tableau de bord ou via une intégration au CRM du client</li>
     </ul>
 
-    <h2>3. Accès au service</h2>
-    <p>PropPilot est un SaaS destiné aux professionnels de l'immobilier. L'accès nécessite un compte utilisateur et un abonnement payant.</p>
+    <h2>3. Accès au Service</h2>
+    <h3>3.1. Conditions d'accès</h3>
+    <p>Le Service est accessible aux professionnels de l'immobilier majeurs, agissant dans le cadre de leur activité professionnelle.</p>
+    <h3>3.2. Création de compte</h3>
+    <p>L'accès au Service nécessite la création d'un compte utilisateur. L'utilisateur s'engage à fournir des informations exactes et à les maintenir à jour.</p>
+    <p>L'utilisateur est seul responsable de la confidentialité de ses identifiants. Toute utilisation du Service avec ses identifiants est réputée être effectuée par lui-même.</p>
+    <h3>3.3. Disponibilité</h3>
+    <p>L'Éditeur s'efforce d'assurer la disponibilité du Service 24h/24 et 7j/7. Toutefois, il ne peut garantir une disponibilité absolue, notamment en raison d'opérations de maintenance, d'évolutions techniques ou de cas de force majeure.</p>
+    <p>L'Éditeur s'engage à informer les utilisateurs de toute interruption planifiée dans la mesure du possible.</p>
 
-    <h2>4. Forfaits et tarifs</h2>
+    <h2>4. Utilisation du Service</h2>
+    <h3>4.1. Engagements de l'utilisateur</h3>
+    <p>L'utilisateur s'engage à :</p>
     <ul>
-      <li>Indépendant : 250 € HT/mois (engagement 1 an) ou 320 € HT/mois</li>
-      <li>Starter : 790 € HT/mois (engagement 1 an) ou 950 € HT/mois</li>
-      <li>Pro : 1 490 € HT/mois (engagement 1 an) ou 1 790 € HT/mois</li>
-      <li>Elite : 2 990 € HT/mois (engagement 1 an) ou 3 590 € HT/mois</li>
+      <li>Utiliser le Service conformément à sa destination professionnelle</li>
+      <li>Respecter les lois et règlements en vigueur, notamment en matière de protection des données personnelles (RGPD) et de prospection commerciale</li>
+      <li>Obtenir les consentements et informations nécessaires auprès de ses propres prospects pour permettre la capture et le traitement de leurs données par le Service</li>
+      <li>Ne pas tenter de contourner, désactiver ou compromettre les mesures de sécurité du Service</li>
+      <li>Ne pas utiliser le Service à des fins illicites, frauduleuses ou portant atteinte aux droits de tiers</li>
     </ul>
+    <h3>4.2. Responsabilité de l'utilisateur en matière de RGPD</h3>
+    <p>L'utilisateur reconnaît qu'en sa qualité de responsable de traitement vis-à-vis de ses propres prospects, il lui incombe de :</p>
+    <ul>
+      <li>Informer ses prospects du recours à PropPilot et du traitement de leurs données</li>
+      <li>Recueillir le consentement requis le cas échéant</li>
+      <li>Respecter les droits des personnes concernées (accès, rectification, effacement, etc.)</li>
+    </ul>
+    <p>L'Éditeur intervient en qualité de sous-traitant au sens du RGPD pour le traitement de ces données. Un Data Processing Agreement (DPA) est signé entre les parties à la souscription du Service.</p>
 
-    <h2>5. Paiement</h2>
-    <p>Le paiement s'effectue par prélèvement automatique via Stripe. L'abonnement est renouvelé automatiquement chaque mois sauf résiliation.</p>
+    <h2>5. Propriété intellectuelle</h2>
+    <h3>5.1. Droits de l'Éditeur</h3>
+    <p>L'ensemble des éléments du Service (interface, code source, marque, logos, contenus) est la propriété exclusive de l'Éditeur ou fait l'objet de licences obtenues auprès de tiers. Toute reproduction non autorisée est interdite.</p>
+    <h3>5.2. Droits de l'utilisateur sur ses données</h3>
+    <p>L'utilisateur conserve la pleine propriété des données qu'il fournit au Service ou qui sont collectées dans le cadre de son utilisation. L'Éditeur ne dispose que d'un droit d'utilisation strictement limité à l'exécution du Service.</p>
+    <p>À la résiliation du contrat, l'utilisateur peut demander l'exportation de ses données dans un format structuré et exploitable, dans un délai raisonnable.</p>
 
-    <h2>6. Résiliation</h2>
-    <p>Résiliation possible depuis l'espace client. Pour les abonnements avec engagement, la résiliation prend effet à l'issue de la période. Sans engagement, à la fin du mois en cours.</p>
+    <h2>6. Limitation de responsabilité</h2>
+    <p>Dans toute la mesure permise par la loi applicable, l'Éditeur ne saurait être tenu responsable :</p>
+    <ul>
+      <li>Des dommages indirects, immatériels ou consécutifs (perte de chance, perte de chiffre d'affaires, atteinte à l'image, etc.)</li>
+      <li>Des dommages résultant d'une utilisation non conforme du Service par l'utilisateur</li>
+      <li>Des interruptions ou indisponibilités du Service dues à des cas de force majeure ou à des prestataires tiers (hébergeur, partenaires techniques, etc.)</li>
+      <li>Des conséquences d'une décision commerciale prise par l'utilisateur sur la base des données ou recommandations fournies par le Service</li>
+    </ul>
+    <p>La responsabilité totale de l'Éditeur, tous dommages confondus, est limitée au montant des sommes effectivement versées par l'utilisateur au cours des 12 mois précédant le fait générateur du dommage.</p>
 
-    <h2>7. Propriété intellectuelle</h2>
-    <p>PropPilot et ses composants sont la propriété de Quentin Gouaze. Toute utilisation non autorisée est interdite.</p>
+    <h2>7. Suspension et résiliation</h2>
+    <h3>7.1. Suspension</h3>
+    <p>L'Éditeur se réserve le droit de suspendre l'accès au Service en cas de :</p>
+    <ul>
+      <li>Manquement grave de l'utilisateur aux présentes CGU</li>
+      <li>Non-paiement des sommes dues</li>
+      <li>Suspicion d'utilisation frauduleuse ou contraire à la loi</li>
+    </ul>
+    <h3>7.2. Résiliation</h3>
+    <p>Les modalités de résiliation sont précisées dans les Conditions Générales de Vente (CGV).</p>
 
-    <h2>8. Loi applicable</h2>
-    <p>CGU soumises au droit français. Juridiction compétente : tribunaux de Toulouse.</p>
+    <h2>8. Modification des CGU</h2>
+    <p>L'Éditeur se réserve le droit de modifier les présentes CGU à tout moment. Les utilisateurs seront informés des modifications substantielles par email ou par notification sur le Service. La poursuite de l'utilisation après modification vaut acceptation des nouvelles CGU.</p>
+
+    <h2>9. Loi applicable et juridiction compétente</h2>
+    <p>Les présentes CGU sont soumises au droit français. En cas de litige, et après tentative de résolution amiable, les tribunaux de <strong>Toulouse</strong> seront seuls compétents.</p>
+
+    <h2>10. Contact</h2>
+    <p>Pour toute question relative aux présentes CGU :</p>
+    <ul>
+      <li><strong>Par email</strong> : <a href="mailto:contact@proppilot.fr">contact@proppilot.fr</a></li>
+      <li><strong>Par courrier</strong> : 54 Avenue de Toulouse, 31390 Carbonne, France</li>
+    </ul>
   </div>
   <footer>
     <a href="/legal/mentions-legales">Mentions légales</a>
     <a href="/legal/cgu">CGU</a>
+    <a href="/legal/cgv">CGV</a>
     <a href="/legal/confidentialite">Confidentialité</a>
+    <a href="/legal/cookies">Cookies</a>
     <a href="mailto:contact@proppilot.fr">Contact</a>
   </footer>
 </body>

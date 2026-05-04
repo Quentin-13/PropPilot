@@ -3,29 +3,41 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Politique de Confidentialité — PropPilot</title>
+  <title>Politique de confidentialité — PropPilot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg:      #09090b;
+      --surface: #111113;
+      --border:  #27272a;
+      --text:    #fafafa;
+      --muted:   #a1a1aa;
+      --accent:  #a3e635;
+      --font:    'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #0f1117;
-      color: #e2e8f0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
       line-height: 1.7;
     }
     nav {
       padding: 16px 40px;
-      border-bottom: 1px solid #1e2130;
+      border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       gap: 12px;
     }
     nav a {
-      color: #8892a4;
+      color: var(--muted);
       text-decoration: none;
       font-size: 0.9rem;
     }
-    nav a:hover { color: white; }
-    nav span { color: #3b82f6; font-weight: 700; font-size: 1.1rem; }
+    nav a:hover { color: var(--text); }
+    nav span { color: var(--accent); font-weight: 700; font-size: 1.1rem; }
     .container {
       max-width: 800px;
       margin: 0 auto;
@@ -33,38 +45,62 @@
     }
     h1 {
       font-size: 2rem;
-      color: white;
+      color: var(--text);
       margin-bottom: 8px;
     }
     .date {
-      color: #8892a4;
+      color: var(--muted);
       font-size: 0.9rem;
       margin-bottom: 48px;
     }
     h2 {
       font-size: 1.1rem;
-      color: #3b82f6;
+      color: var(--accent);
       margin: 36px 0 12px;
       padding-bottom: 8px;
-      border-bottom: 1px solid #1e2130;
+      border-bottom: 1px solid var(--border);
     }
-    p { margin-bottom: 12px; color: #cbd5e1; }
+    h3 {
+      font-size: 1rem;
+      color: var(--muted);
+      margin: 20px 0 8px;
+    }
+    p { margin-bottom: 12px; color: var(--text); }
     ul { padding-left: 20px; margin-bottom: 12px; }
-    li { color: #cbd5e1; margin-bottom: 6px; }
-    a { color: #3b82f6; }
+    li { color: var(--text); margin-bottom: 6px; }
+    a { color: var(--accent); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 0.9rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      background: var(--surface);
+      color: var(--text);
+      font-weight: 600;
+    }
+    td {
+      color: var(--muted);
+    }
     footer {
       margin-top: 80px;
       padding: 24px 40px;
-      border-top: 1px solid #1e2130;
+      border-top: 1px solid var(--border);
       text-align: center;
     }
     footer a {
-      color: #8892a4;
+      color: var(--muted);
       text-decoration: none;
       margin: 0 12px;
       font-size: 0.85rem;
     }
-    footer a:hover { color: white; }
+    footer a:hover { color: var(--text); }
   </style>
 </head>
 <body>
@@ -73,55 +109,151 @@
     <span>PropPilot</span>
   </nav>
   <div class="container">
-    <h1>Politique de Confidentialité</h1>
-    <p class="date">Dernière mise à jour : 19 mars 2026</p>
+    <h1>Politique de confidentialité</h1>
+    <p class="date">Dernière mise à jour : 4 mai 2026</p>
 
-    <h2>1. Responsable du traitement</h2>
+    <h2>1. Préambule</h2>
+    <p>La présente politique de confidentialité décrit la manière dont <strong>Quentin GOUAZE</strong>, exerçant sous le statut d'auto-entrepreneur (SIRET 87894442000024), ci-après « PropPilot » ou « nous », collecte, utilise et protège les données personnelles des utilisateurs du site <strong>proppilot.fr</strong> et du service PropPilot (ci-après le « Service »).</p>
+    <p>Cette politique est conforme au Règlement Général sur la Protection des Données (RGPD) du 27 avril 2016 et à la loi française « Informatique et Libertés » du 6 janvier 1978 modifiée.</p>
+
+    <h2>2. Responsable du traitement</h2>
+    <p>Le responsable du traitement des données collectées sur le site et via le Service est :</p>
+    <p><strong>Quentin GOUAZE</strong><br>54 Avenue de Toulouse, 31390 Carbonne, France<br>SIRET : 87894442000024<br>Email : <a href="mailto:privacy@proppilot.fr">privacy@proppilot.fr</a></p>
+
+    <h2>3. Données personnelles collectées</h2>
+    <h3>3.1. Données collectées sur le site proppilot.fr</h3>
+    <p>Lorsque vous visitez notre site, nous collectons les données suivantes :</p>
     <ul>
-      <li>Quentin Gouaze — PropPilot</li>
-      <li>SIREN : 878 944 420 — SIRET : 878 944 420 00024</li>
-      <li>Email : <a href="mailto:contact@proppilot.fr">contact@proppilot.fr</a></li>
+      <li><strong>Données de contact</strong> (lorsque vous prenez rendez-vous via Calendly) : nom, prénom, adresse email, créneau réservé, fuseau horaire, éventuellement téléphone et message libre.</li>
+      <li><strong>Données techniques</strong> (logs serveur de notre hébergeur) : adresse IP, navigateur, système d'exploitation, date et heure de visite. Ces données sont utilisées exclusivement à des fins de sécurité et ne sont pas exploitées commercialement.</li>
+    </ul>
+    <h3>3.2. Données collectées dans le cadre du Service PropPilot</h3>
+    <p>Lorsqu'un utilisateur professionnel (agence immobilière, agent indépendant) souscrit à notre Service et l'utilise dans son activité, nous traitons les catégories de données suivantes :</p>
+    <p><strong>Données concernant l'utilisateur professionnel (notre client direct) :</strong></p>
+    <ul>
+      <li>Nom, prénom, email professionnel, numéro de téléphone, nom de l'agence, fonction</li>
+      <li>Données de paiement (gérées par notre prestataire Stripe — voir section 6)</li>
+      <li>Données de connexion et d'usage du Service</li>
+    </ul>
+    <p><strong>Données concernant les prospects de l'utilisateur professionnel :</strong><br>Dans le cadre de l'utilisation du Service par l'utilisateur professionnel, PropPilot agit comme <strong>sous-traitant au sens du RGPD</strong> et traite, pour le compte du client professionnel, les données suivantes des prospects :</p>
+    <ul>
+      <li>Numéro de téléphone, prénom (le cas échéant)</li>
+      <li>Contenu des conversations téléphoniques (transcriptions audio) et SMS échangés entre l'agent et le prospect</li>
+      <li>Données extraites de ces conversations (budget exprimé, type de bien recherché, zone géographique, urgence, motivation)</li>
     </ul>
 
-    <h2>2. Données collectées</h2>
+    <h2>4. Finalités du traitement et bases légales</h2>
+    <table>
+      <thead>
+        <tr><th>Finalité</th><th>Base légale (RGPD art. 6)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Gestion de la prise de rendez-vous via Calendly</td><td>Consentement de la personne concernée</td></tr>
+        <tr><td>Création et gestion du compte utilisateur professionnel</td><td>Exécution d'un contrat</td></tr>
+        <tr><td>Facturation et gestion des paiements</td><td>Exécution d'un contrat / Obligation légale (comptabilité)</td></tr>
+        <tr><td>Capture, structuration et restitution des conversations agent/prospect</td><td>Exécution d'un contrat (avec le client professionnel)</td></tr>
+        <tr><td>Sécurité du Service, prévention des fraudes et abus</td><td>Intérêt légitime</td></tr>
+        <tr><td>Réponse aux demandes de contact via email</td><td>Intérêt légitime</td></tr>
+        <tr><td>Envoi d'emails commerciaux (newsletter, mises à jour produit)</td><td>Consentement (opt-in)</td></tr>
+      </tbody>
+    </table>
+
+    <h2>5. Durées de conservation des données</h2>
+    <table>
+      <thead>
+        <tr><th>Type de donnée</th><th>Durée de conservation</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Données de prise de rendez-vous (Calendly)</td><td>13 mois après le rendez-vous, puis archivage 3 ans</td></tr>
+        <tr><td>Données de compte utilisateur professionnel</td><td>Pendant la durée du contrat + 3 ans après résiliation (prescription commerciale)</td></tr>
+        <tr><td>Données de facturation (Stripe)</td><td>10 ans (obligation comptable et fiscale)</td></tr>
+        <tr><td>Conversations agent/prospect et transcriptions</td><td>Pendant la durée du contrat avec le client professionnel + 30 jours, puis suppression définitive</td></tr>
+        <tr><td>Logs techniques (sécurité)</td><td>12 mois maximum</td></tr>
+        <tr><td>Emails de contact</td><td>3 ans à compter du dernier échange</td></tr>
+      </tbody>
+    </table>
+
+    <h2>6. Sous-traitants et transferts de données</h2>
+    <p>Pour fournir le Service, PropPilot fait appel à des sous-traitants techniques agissant en qualité de sous-traitants au sens du RGPD.</p>
+    <h3>6.1. Sous-traitants traitant les données en Union européenne</h3>
+    <p>Les sous-traitants suivants traitent les données dans des centres de données situés en Union européenne :</p>
+    <table>
+      <thead>
+        <tr><th>Prestataire</th><th>Finalité</th><th>Localisation</th><th>Garanties</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Railway</strong></td><td>Hébergement du site web et de l'application back-end</td><td>Amsterdam (Pays-Bas)</td><td>DPA conforme RGPD</td></tr>
+        <tr><td><strong>Twilio</strong></td><td>Réception et envoi de communications téléphoniques (appels et SMS)</td><td>Région irlandaise</td><td>DPA conforme RGPD signé</td></tr>
+        <tr><td><strong>Backblaze</strong></td><td>Stockage chiffré des enregistrements audio</td><td>Région européenne</td><td>DPA conforme RGPD signé</td></tr>
+      </tbody>
+    </table>
+    <h3>6.2. Autres sous-traitants techniques</h3>
+    <p>Pour les fonctions suivantes, PropPilot fait appel à des prestataires techniques sous DPA conforme RGPD, avec mise en place des clauses contractuelles types lorsque les données transitent hors de l'Union européenne :</p>
+    <table>
+      <thead>
+        <tr><th>Catégorie de service</th><th>Localisation</th><th>Garanties</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Traitement des paiements</td><td>États-Unis et Union européenne</td><td>Conformité PCI-DSS, CCT, Data Privacy Framework</td></tr>
+        <tr><td>Prise de rendez-vous en ligne</td><td>États-Unis</td><td>CCT, Data Privacy Framework</td></tr>
+        <tr><td>Analyse et structuration linguistique des conversations</td><td>Union européenne et États-Unis</td><td>DPA conforme RGPD, CCT</td></tr>
+        <tr><td>Transcription audio (speech-to-text)</td><td>États-Unis</td><td>DPA conforme RGPD, CCT</td></tr>
+      </tbody>
+    </table>
+    <p>La liste nominative et à jour de ces sous-traitants est tenue à disposition des Clients professionnels dans le cadre du Data Processing Agreement (DPA) signé à la souscription du Service. Les personnes concernées peuvent également obtenir cette liste sur simple demande à <a href="mailto:privacy@proppilot.fr">privacy@proppilot.fr</a>.</p>
+    <p>Aucun transfert de données personnelles n'est effectué en dehors de l'Union européenne sans qu'un mécanisme de transfert valide au sens du RGPD (clauses contractuelles types, décision d'adéquation) ne soit mis en place.</p>
+
+    <h2>7. Sécurité des données</h2>
+    <p>PropPilot met en œuvre des mesures techniques et organisationnelles appropriées pour protéger les données personnelles, notamment :</p>
     <ul>
-      <li>Identification : nom, email, téléphone</li>
-      <li>Professionnelles : nom agence, SIRET, forfait</li>
-      <li>Utilisation : leads traités, appels, SMS envoyés</li>
-      <li>Facturation : traitées par Stripe, non stockées par PropPilot</li>
+      <li>Chiffrement des données en transit (HTTPS/TLS 1.2+)</li>
+      <li>Chiffrement des données stockées (audio, base de données)</li>
+      <li>Authentification renforcée par jetons et hachage cryptographique des mots de passe</li>
+      <li>Journalisation des accès aux données sensibles</li>
+      <li>Accès aux données strictement limité (principe du moindre privilège)</li>
+      <li>Sauvegardes régulières et tests de restauration</li>
+      <li>Validation des signatures cryptographiques sur les webhooks entrants</li>
     </ul>
 
-    <h2>3. Finalités</h2>
+    <h2>8. Vos droits (articles 15 à 22 du RGPD)</h2>
+    <p>Conformément au RGPD, vous disposez des droits suivants :</p>
     <ul>
-      <li>Fournir et améliorer le service PropPilot</li>
-      <li>Gérer les abonnements et la facturation</li>
-      <li>Respecter nos obligations légales</li>
+      <li><strong>Droit d'accès</strong> : obtenir confirmation que vos données sont traitées et en obtenir une copie</li>
+      <li><strong>Droit de rectification</strong> : faire corriger des données inexactes ou incomplètes</li>
+      <li><strong>Droit à l'effacement</strong> (« droit à l'oubli ») : faire supprimer vos données dans les cas prévus par le RGPD</li>
+      <li><strong>Droit à la limitation du traitement</strong> : faire suspendre le traitement de vos données</li>
+      <li><strong>Droit à la portabilité</strong> : recevoir vos données dans un format structuré et lisible par machine</li>
+      <li><strong>Droit d'opposition</strong> : vous opposer au traitement de vos données pour des motifs légitimes ou à des fins de prospection</li>
+      <li><strong>Droit de retirer votre consentement</strong> à tout moment lorsque le traitement repose sur celui-ci</li>
+      <li><strong>Droit de définir des directives post-mortem</strong> sur le sort de vos données après votre décès</li>
     </ul>
+    <p>Pour exercer ces droits, contactez-nous à : <a href="mailto:privacy@proppilot.fr"><strong>privacy@proppilot.fr</strong></a></p>
+    <p>Une réponse vous sera apportée dans un délai d'un mois maximum à compter de la réception de votre demande.</p>
 
-    <h2>4. Durée de conservation</h2>
+    <h2>9. Réclamation auprès de la CNIL</h2>
+    <p>Si vous estimez, après nous avoir contactés, que vos droits ne sont pas respectés, vous pouvez adresser une réclamation à :</p>
+    <p><strong>CNIL</strong><br>3 Place de Fontenoy - TSA 80715<br>75334 PARIS CEDEX 07<br>Téléphone : 01 53 73 22 22<br>Site web : <a href="https://www.cnil.fr">cnil.fr</a></p>
+
+    <h2>10. Cookies</h2>
+    <p>Le site <strong>proppilot.fr</strong> utilise un nombre limité de cookies, exclusivement nécessaires à son bon fonctionnement et à l'utilisation des services tiers intégrés (Calendly, Stripe). Pour plus de détails, consultez notre <a href="/legal/cookies">Politique de gestion des cookies</a>.</p>
+
+    <h2>11. Modification de la politique de confidentialité</h2>
+    <p>La présente politique peut être modifiée à tout moment pour refléter des évolutions légales, techniques ou organisationnelles. La date de la dernière mise à jour figure en haut du document.</p>
+    <p>En cas de modification substantielle, les utilisateurs seront informés par email ou par une notification sur le site.</p>
+
+    <h2>12. Contact</h2>
+    <p>Pour toute question relative à la protection de vos données personnelles :</p>
     <ul>
-      <li>Données de compte : durée abonnement + 3 ans</li>
-      <li>Données de facturation : 10 ans (obligation légale)</li>
-      <li>Données leads : 12 mois après fin de contrat</li>
+      <li><strong>Par email</strong> : <a href="mailto:privacy@proppilot.fr">privacy@proppilot.fr</a></li>
+      <li><strong>Par courrier</strong> : 54 Avenue de Toulouse, 31390 Carbonne, France</li>
     </ul>
-
-    <h2>5. Sous-traitants</h2>
-    <ul>
-      <li>Stripe — paiement — États-Unis</li>
-      <li>Anthropic — IA — États-Unis</li>
-      <li>Railway — hébergement — États-Unis</li>
-      <li>Twilio — voix — États-Unis</li>
-      <li>smsmode — SMS — France 🇫🇷</li>
-      <li>SendGrid — emails — États-Unis</li>
-    </ul>
-
-    <h2>6. Vos droits (RGPD)</h2>
-    <p>Accès, rectification, effacement, portabilité, opposition. Contact : <a href="mailto:contact@proppilot.fr">contact@proppilot.fr</a> — Réclamation : <a href="https://www.cnil.fr">cnil.fr</a></p>
   </div>
   <footer>
     <a href="/legal/mentions-legales">Mentions légales</a>
     <a href="/legal/cgu">CGU</a>
+    <a href="/legal/cgv">CGV</a>
     <a href="/legal/confidentialite">Confidentialité</a>
+    <a href="/legal/cookies">Cookies</a>
     <a href="mailto:contact@proppilot.fr">Contact</a>
   </footer>
 </body>
