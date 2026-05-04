@@ -752,7 +752,8 @@ async def sms_page(token: str = ""):
         raise HTTPException(status_code=500, detail="Template SMS introuvable")
 
     html = template_path.read_text(encoding="utf-8")
-    html = html.replace("{{TOKEN}}", token)
+    # Remplacement ciblé uniquement dans la meta tag pour éviter les collisions avec le JS
+    html = html.replace('content="{{AUTH_TOKEN}}"', f'content="{token}"')
     return HTMLResponse(content=html)
 
 

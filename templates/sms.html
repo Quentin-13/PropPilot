@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="auth-token" content="{{TOKEN}}">
+  <meta name="auth-token" content="{{AUTH_TOKEN}}">
   <title>SMS — PropPilot</title>
   <style>
     :root {
@@ -358,12 +358,11 @@
   ═══════════════════════════════════════════════════════════════════════ */
   var metaToken = document.querySelector('meta[name="auth-token"]');
   var TOKEN = metaToken ? metaToken.getAttribute('content') : '';
-  if (TOKEN && TOKEN !== '{{TOKEN}}') {
-    sessionStorage.setItem('pp_sms_token', TOKEN);
-  } else {
-    TOKEN = sessionStorage.getItem('pp_sms_token') || '';
+  // Si le token est vide ou n'a pas été remplacé par le backend, afficher un message d'erreur au lieu de rediriger
+  if (!TOKEN || TOKEN === '{{AUTH_TOKEN}}') {
+    document.body.innerHTML = '<div style="padding:40px; text-align:center; font-family:sans-serif;"><h1>Session invalide</h1><p>Veuillez vous reconnecter depuis le dashboard.</p><p><a href="/">Retour</a></p></div>';
+    return;
   }
-  if (!TOKEN) { window.location.href = '/'; return; }
 
   /* ═══════════════════════════════════════════════════════════════════════
      STATE
@@ -402,8 +401,10 @@
       body:    opts.body    || undefined,
     }).then(function (res) {
       if (res.status === 401) {
-        sessionStorage.removeItem('pp_sms_token');
-        window.location.href = '/';
+        if (!window._authErrorShown) {
+          window._authErrorShown = true;
+          document.body.innerHTML = '<div style="padding:40px; text-align:center; font-family:sans-serif;"><h1>Session expirée</h1><p>Veuillez vous reconnecter depuis le dashboard.</p><p><a href="/">Retour</a></p></div>';
+        }
         return null;
       }
       if (!res.ok) throw new Error('HTTP ' + res.status);
