@@ -22,7 +22,7 @@ from urllib.parse import quote
 from fastapi import BackgroundTasks, FastAPI, Form, Header, HTTPException, Request, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -191,7 +191,7 @@ app.include_router(waitlist_router)
 async def jwt_middleware(request: Request, call_next):
     """Vérifie le JWT Bearer token et plan_active sur toutes les routes /api/*."""
     # /api/calendar/callback est une redirection Google — pas de JWT
-    _exempt = {"/api/calendar/callback"}
+    _exempt = {"/api/calendar/callback", "/sms"}
     if request.url.path.startswith("/api/") and request.url.path not in _exempt:
         auth_header = request.headers.get("Authorization", "")
         if not auth_header.startswith("Bearer "):
@@ -712,6 +712,48 @@ async def twilio_sms_incoming(request: Request, background_tasks: BackgroundTask
         media_type="application/xml",
     )
 
+
+
+# ─── Page SMS (HTML standalone) ───────────────────────────────────────────────
+
+@app.get("/sms", tags=["pages"])
+async def sms_page(token: str = ""):
+    """Sert la page SMS HTML. Auth via JWT en query param ?token=xxx."""
+    from pathlib import Path
+    from memory.auth import verify_token
+
+    _error_page = (
+        '<html><head><meta charset="UTF-8"><title>PropPilot</title>'
+        '<style>body{font-family:sans-serif;padding:60px;color:#1a1d21;}</style></head>'
+        '<body><h2>{title}</h2><p>{msg}</p><p><a href="/">Retour à l\'accueil</a></p></body></html>'
+    )
+
+    if not token:
+        return HTMLResponse(
+            _error_page.format(
+                title="Session expirée",
+                msg="Veuillez vous reconnecter depuis le dashboard.",
+            ),
+            status_code=401,
+        )
+
+    payload = verify_token(token)
+    if not payload:
+        return HTMLResponse(
+            _error_page.format(
+                title="Token invalide ou expiré",
+                msg="Votre session a expiré. Veuillez vous reconnecter.",
+            ),
+            status_code=401,
+        )
+
+    template_path = Path("templates/sms.html")
+    if not template_path.exists():
+        raise HTTPException(status_code=500, detail="Template SMS introuvable")
+
+    html = template_path.read_text(encoding="utf-8")
+    html = html.replace("{{TOKEN}}", token)
+    return HTMLResponse(content=html)
 
 
 # ─── Envoi SMS sortant ────────────────────────────────────────────────────────

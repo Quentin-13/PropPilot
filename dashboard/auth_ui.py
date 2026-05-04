@@ -474,6 +474,23 @@ def render_sidebar_logout() -> None:
                 st.switch_page("pages/01_mes_leads.py")
             if st.button("📞 Appels capturés", use_container_width=True, key="_nav_calls"):
                 st.switch_page("pages/calls.py")
+            _sms_unread = 0
+            try:
+                from memory.sms_repository import get_unread_count_total as _get_unread_sms
+                _sms_cid = st.session_state.get("user_id", "")
+                if _sms_cid:
+                    _sms_unread = _get_unread_sms(_sms_cid)
+            except Exception:
+                pass
+            _sms_btn_label = f"💬 SMS ({_sms_unread})" if _sms_unread > 0 else "💬 SMS"
+            if st.button(_sms_btn_label, use_container_width=True, key="_nav_sms"):
+                import streamlit.components.v1 as _components
+                _token   = st.session_state.get("token", "")
+                _api_url = get_settings().api_url
+                _components.html(
+                    f'<script>window.top.location.href = "{_api_url}/sms?token={_token}";</script>',
+                    height=0,
+                )
 
             st.markdown("---")
 
