@@ -714,6 +714,91 @@ async def twilio_sms_incoming(request: Request, background_tasks: BackgroundTask
 
 
 
+# ─── Envoi SMS sortant ────────────────────────────────────────────────────────
+
+class _SmsSendRequest(BaseModel):
+    lead_id: str
+    body: str
+
+
+@app.post("/api/sms/send", tags=["api"])
+async def api_sms_send(payload: _SmsSendRequest, request: Request):
+    """Envoie un SMS à un lead via Twilio et stocke le message en base."""
+    client_id = request.state.user_id
+
+    if not payload.body or not payload.body.strip():
+        raise HTTPException(status_code=400, detail="Le corps du SMS ne peut pas être vide")
+    if len(payload.body) > 1600:
+        raise HTTPException(status_code=400, detail="Le SMS dépasse la limite de 1600 caractères")
+
+    from memory.database import get_connection
+
+    # Vérification lead + ownership
+    with get_connection() as conn:
+        lead_row = conn.execute(
+            "SELECT id, telephone FROM leads WHERE id = %s AND client_id = %s LIMIT 1",
+            (payload.lead_id, client_id),
+        ).fetchone()
+
+    if not lead_row:
+        raise HTTPException(status_code=404, detail="Lead introuvable")
+
+    telephone = lead_row["telephone"]
+    if not telephone:
+        raise HTTPException(status_code=400, detail="Ce lead n'a pas de numéro de téléphone")
+
+    # Récupération du numéro Twilio assigné à l'utilisateur
+    with get_connection() as conn:
+        user_row = conn.execute(
+            "SELECT twilio_sms_number FROM users WHERE id = %s LIMIT 1",
+            (client_id,),
+        ).fetchone()
+
+    if not user_row or not user_row["twilio_sms_number"]:
+        raise HTTPException(status_code=400, detail="Aucun numéro SMS Twilio assigné à ce compte")
+
+    from_number = user_row["twilio_sms_number"]
+
+    # Envoi via Twilio
+    settings = get_settings()
+    from twilio.rest import Client as TwilioClient
+
+    twilio_client = TwilioClient(settings.twilio_account_sid, settings.twilio_auth_token)
+    message = twilio_client.messages.create(
+        from_=from_number,
+        to=telephone,
+        body=payload.body,
+    )
+    logger.info(
+        "[SMS sortant] %s → %s | SID=%s | status=%s",
+        from_number, telephone, message.sid, message.status,
+    )
+
+    # Stockage en base (non bloquant si erreur — le SMS est déjà parti)
+    conversation_id: str | None = None
+    try:
+        from memory.lead_repository import add_conversation_message
+        from memory.models import Canal
+        conv = add_conversation_message(
+            lead_id=payload.lead_id,
+            client_id=client_id,
+            role="assistant",
+            contenu=payload.body,
+            canal=Canal.SMS,
+            metadata={
+                "twilio_message_sid": message.sid,
+                "status": message.status,
+                "from_number": from_number,
+                "to_number": telephone,
+            },
+        )
+        conversation_id = conv.id
+    except Exception as e:
+        logger.error("[SMS sortant] Erreur stockage conversation : %s", e)
+
+    return {"ok": True, "twilio_sid": message.sid, "status": message.status, "conversation_id": conversation_id}
+
+
 # ─── API interne (back-office) ─────────────────────────────────────────────────
 
 @app.get("/api/status", tags=["api"])
