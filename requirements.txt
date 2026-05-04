@@ -33,6 +33,7 @@ sendgrid>=6.0.0
 # Dashboard
 streamlit>=1.35.0
 streamlit-cookies-controller>=0.0.4
+streamlit-autorefresh>=0.1.0
 plotly>=5.20.0
 pandas>=2.0.0
 

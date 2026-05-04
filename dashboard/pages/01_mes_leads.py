@@ -266,6 +266,10 @@ else:
                     st.warning("Lead marqué comme perdu")
                     st.rerun()
 
+            if st.button("💬 Voir SMS", key=f"voir_sms_{lead_id}"):
+                st.session_state["selected_lead_id"] = lead_id
+                st.switch_page("pages/04_sms.py")
+
             # Notes agent
             st.markdown("#### Notes agent")
             new_notes = st.text_area(

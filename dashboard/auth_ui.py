@@ -483,14 +483,22 @@ def render_sidebar_logout() -> None:
             except Exception:
                 pass
             _sms_btn_label = f"💬 SMS ({_sms_unread})" if _sms_unread > 0 else "💬 SMS"
-            if st.button(_sms_btn_label, use_container_width=True, key="_nav_sms"):
-                import streamlit.components.v1 as _components
-                _token   = st.session_state.get("token", "")
-                _api_url = get_settings().api_url
-                _components.html(
-                    f'<script>window.top.location.href = "{_api_url}/sms?token={_token}";</script>',
-                    height=0,
-                )
+            _token   = st.session_state.get("token", "")
+            _api_url = get_settings().api_url
+            st.markdown(
+                f"""
+                <a href="{_api_url}/sms?token={_token}" target="_self"
+                   style="display:block; width:100%; padding:0.5rem 1rem; margin:0.25rem 0 0.5rem 0;
+                          background-color:rgb(240,242,246); color:rgb(49,51,63) !important;
+                          border:1px solid rgba(49,51,63,0.2); border-radius:0.5rem;
+                          text-decoration:none; text-align:center; font-weight:400;
+                          font-size:1rem; cursor:pointer; box-sizing:border-box;
+                          line-height:1.5;">
+                    {_sms_btn_label}
+                </a>
+                """,
+                unsafe_allow_html=True,
+            )
 
             st.markdown("---")
 
