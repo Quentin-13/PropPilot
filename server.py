@@ -747,7 +747,7 @@ async def sms_page(token: str = ""):
             status_code=401,
         )
 
-    template_path = Path("templates/sms.html")
+    template_path = Path(__file__).parent / "templates" / "sms.html"
     if not template_path.exists():
         raise HTTPException(status_code=500, detail="Template SMS introuvable")
 
