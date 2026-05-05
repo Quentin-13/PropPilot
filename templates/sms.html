@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="auth-token" content="{{AUTH_TOKEN}}">
   <title>SMS — PropPilot</title>
   <style>
@@ -309,6 +309,61 @@
     .messages::-webkit-scrollbar-track { background: transparent; }
     .threads-list::-webkit-scrollbar-thumb,
     .messages::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+    /* ── Bouton retour liste (mobile only) ───────────────────────────────── */
+    .btn-back-list {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
+      color: var(--accent);
+      font-size: 22px;
+      padding: 0 12px 0 0;
+      cursor: pointer;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+
+    /* ── Mobile : single-pane ────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      /* Sidebar plein écran */
+      .threads-panel {
+        width: 100%;
+        border-right: none;
+      }
+
+      /* Panneau conversation : hors écran à droite par défaut */
+      .conv-panel {
+        position: fixed;
+        inset: 0;
+        height: 100dvh;
+        background: var(--bg-primary);
+        z-index: 10;
+        transform: translateX(100%);
+        transition: transform 0.25s ease;
+      }
+
+      /* Quand une conv est ouverte : slide-in */
+      .main.conv-open .conv-panel {
+        transform: translateX(0);
+      }
+
+      /* Bouton retour liste visible sur mobile */
+      .btn-back-list {
+        display: flex;
+      }
+
+      /* Zone saisie : padding iPhone notch */
+      .compose {
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
+      }
+
+      /* Toasts repositionnés pour ne pas chevaucher le clavier */
+      .toasts {
+        bottom: 80px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -557,6 +612,12 @@
                       + '<div class="conv-hdr-phone">' + phone + '</div>'
                       + extra
                       + '</div>';
+    var backBtn = document.createElement('button');
+    backBtn.className = 'btn-back-list';
+    backBtn.setAttribute('aria-label', 'Retour à la liste');
+    backBtn.textContent = '‹';
+    backBtn.onclick = backToList;
+    convHdr.insertBefore(backBtn, convHdr.firstChild);
     convEmpty.style.display    = 'none';
     messagesEl.style.display   = 'flex';
     composeEl.style.display    = 'flex';
@@ -576,6 +637,7 @@
     if (card) card.classList.add('active');
 
     loadThread(true);
+    document.querySelector('.main').classList.add('conv-open');
 
     /* Mark as read silently */
     api('/api/sms/conversations/' + leadId + '/mark_as_read', { method: 'POST' })
@@ -586,6 +648,11 @@
         if (th) th.nb_non_lus = 0;
       })
       .catch(function () {});
+  }
+
+  /* ── Retour liste (mobile) ──────────────────────────────────────────────── */
+  function backToList() {
+    document.querySelector('.main').classList.remove('conv-open');
   }
 
   /* ═══════════════════════════════════════════════════════════════════════
