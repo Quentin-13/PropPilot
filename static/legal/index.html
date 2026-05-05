@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pages légales — PropPilot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:      #09090b;
+      --surface: #111113;
+      --border:  #27272a;
+      --text:    #fafafa;
+      --muted:   #a1a1aa;
+      --accent:  #a3e635;
+      --font:    'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+    nav {
+      padding: 16px 40px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    nav a:hover { color: var(--text); }
+    nav span { color: var(--accent); font-weight: 700; font-size: 1.1rem; }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 60px 40px;
+    }
+    h1 {
+      font-size: 2rem;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .date {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 48px;
+    }
+    h2 {
+      font-size: 1.1rem;
+      color: var(--accent);
+      margin: 36px 0 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    p { margin-bottom: 12px; color: var(--text); }
+    a { color: var(--accent); }
+    .legal-index {
+      display: grid;
+      gap: 1.5rem;
+      margin: 2rem 0;
+    }
+    .legal-index article {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      background: var(--surface);
+    }
+    .legal-index article h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.1rem;
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    .legal-index article h2 a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .legal-index article h2 a:hover {
+      text-decoration: underline;
+    }
+    .legal-index article p {
+      margin: 0;
+      font-size: 0.95rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .legal-contact {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+    }
+    .legal-contact h2 {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    footer {
+      margin-top: 80px;
+      padding: 24px 40px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+    footer a {
+      color: var(--muted);
+      text-decoration: none;
+      margin: 0 12px;
+      font-size: 0.85rem;
+    }
+    footer a:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/">← Retour</a>
+    <span>PropPilot</span>
+  </nav>
+  <div class="container">
+    <h1>Pages légales</h1>
+    <p class="date">Dernière mise à jour : 5 mai 2026</p>
+
+    <p>
+      Cette page regroupe l'ensemble des informations légales et contractuelles
+      relatives au site <strong>proppilot.fr</strong> et au service PropPilot.
+    </p>
+
+    <div class="legal-index">
+      <article>
+        <h2><a href="/legal/mentions-legales">Mentions légales</a></h2>
+        <p>
+          Identité de l'éditeur, hébergement, propriété intellectuelle.
+          Information obligatoire au titre de l'article 6 de la LCEN.
+        </p>
+      </article>
+
+      <article>
+        <h2><a href="/legal/confidentialite">Politique de confidentialité</a></h2>
+        <p>
+          Traitement des données personnelles, finalités, durées de conservation,
+          droits des personnes concernées. Information au titre des articles 13 et 14 du RGPD.
+        </p>
+      </article>
+
+      <article>
+        <h2><a href="/legal/cgu">Conditions générales d'utilisation (CGU)</a></h2>
+        <p>
+          Conditions d'accès et d'utilisation du site et du service PropPilot.
+        </p>
+      </article>
+
+      <article>
+        <h2><a href="/legal/cgv">Conditions générales de vente (CGV)</a></h2>
+        <p>
+          Conditions contractuelles applicables à la souscription d'un abonnement
+          au service PropPilot.
+        </p>
+      </article>
+
+      <article>
+        <h2><a href="/legal/cookies">Politique de gestion des cookies</a></h2>
+        <p>
+          Cookies utilisés sur le site, finalités et modalités de gestion.
+          Information au titre de l'article 82 de la Loi Informatique et Libertés.
+        </p>
+      </article>
+    </div>
+
+    <div class="legal-contact">
+      <h2>Contact</h2>
+      <p>
+        Pour toute question relative aux informations légales ou contractuelles :
+        <a href="mailto:contact@proppilot.fr">contact@proppilot.fr</a>
+      </p>
+      <p>
+        Pour toute question relative à la protection des données personnelles :
+        <a href="mailto:privacy@proppilot.fr">privacy@proppilot.fr</a>
+      </p>
+    </div>
+  </div>
+  <footer>
+    <a href="/legal/mentions-legales">Mentions légales</a>
+    <a href="/legal/cgu">CGU</a>
+    <a href="/legal/cgv">CGV</a>
+    <a href="/legal/confidentialite">Confidentialité</a>
+    <a href="/legal/cookies">Cookies</a>
+    <a href="mailto:contact@proppilot.fr">Contact</a>
+  </footer>
+</body>
+</html>

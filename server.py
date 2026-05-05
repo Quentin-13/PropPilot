@@ -247,6 +247,13 @@ async def root():
     return FileResponse("index.html")
 
 
+@app.get("/legal", tags=["legal"])
+@app.get("/legal/", tags=["legal"])
+async def legal_index():
+    path = os.path.join(os.path.dirname(__file__), "static/legal/index.html")
+    return FileResponse(path, media_type="text/html")
+
+
 @app.get("/legal/mentions-legales", tags=["legal"])
 async def mentions_legales():
     path = os.path.join(os.path.dirname(__file__), "static/legal/mentions-legales.html")
