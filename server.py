@@ -36,7 +36,6 @@ from tools.security import (
 )
 from webhooks.twilio_voice import router as voice_router
 from api.calls import router as calls_router
-from api.waitlist import router as waitlist_router
 
 logger = logging.getLogger(__name__)
 
@@ -182,9 +181,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # ── Sprint A — capture d'appels ───────────────────────────────────────────────
 app.include_router(voice_router)
 app.include_router(calls_router)
-
-# ── Landing waitlist ──────────────────────────────────────────────────────────
-app.include_router(waitlist_router)
 
 
 @app.middleware("http")

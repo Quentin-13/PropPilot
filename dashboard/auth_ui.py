@@ -308,12 +308,12 @@ def show_auth_page() -> None:
             60 Jours Satisfait ou Remboursé · Support email inclus
         </div>
         <div style="text-align: center; margin-top: 16px; color: #71717a; font-size: 11px; line-height: 1.6; padding: 0 8px;">
-            Vous n'avez pas encore de compte ? PropPilot est en bêta privée.<br>
-            <a href="https://proppilot.fr#waitlist"
-               style="color: #a3e635; text-decoration: none;">
-                Inscrivez-vous à la liste d'attente
+            Vous n'avez pas encore de compte ?<br>
+            <a href="https://calendly.com/quentin-gouaze/30min"
+               style="color: #a3e635; text-decoration: none;" target="_blank" rel="noopener noreferrer">
+                Réserver une démo
             </a>
-            pour un accès prioritaire au lancement.
+            pour découvrir PropPilot.
         </div>
         """, unsafe_allow_html=True)
 

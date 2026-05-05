@@ -118,10 +118,6 @@ class Settings(BaseSettings):
     # Admin
     admin_password: str = Field(default="changeme", alias="ADMIN_PASSWORD")
 
-    # Waitlist
-    admin_notification_email: str = Field(default="pro.quentingouaze@gmail.com", alias="ADMIN_NOTIFICATION_EMAIL")
-    waitlist_email_from: str = Field(default="noreply@proppilot.fr", alias="WAITLIST_EMAIL_FROM")
-
     # Mode
     debug: bool = Field(default=False, alias="DEBUG")
     mock_mode: Literal["auto", "always", "never"] = Field(default="auto", alias="MOCK_MODE")
