@@ -118,7 +118,7 @@
   </nav>
   <div class="container">
     <h1>Politique de gestion des cookies</h1>
-    <p class="date">Dernière mise à jour : 4 mai 2026</p>
+    <p class="date">Dernière mise à jour : 5 mai 2026</p>
 
     <h2>1. Qu'est-ce qu'un cookie ?</h2>
     <p>Un cookie est un petit fichier texte déposé sur votre terminal (ordinateur, tablette, smartphone) lors de la visite d'un site web. Il permet au site de mémoriser certaines informations vous concernant.</p>
@@ -135,8 +135,10 @@
       <tbody>
         <tr><td>Cookie de session</td><td>proppilot.fr</td><td>Maintien de la connexion utilisateur</td><td>Session</td></tr>
         <tr><td>Cookie CSRF</td><td>proppilot.fr</td><td>Protection contre les attaques de type Cross-Site Request Forgery</td><td>Session</td></tr>
+        <tr><td><code>pp_cookies_acknowledged</code></td><td>proppilot.fr</td><td>Mémoriser que vous avez pris connaissance de la bannière d'information cookies, afin de ne pas la réafficher à chaque visite</td><td>12 mois</td></tr>
       </tbody>
     </table>
+    <p style="font-size:0.82rem;color:var(--muted);margin-top:8px"><em>Note technique : <code>pp_cookies_acknowledged</code> est implémenté via <code>localStorage</code> et non via un cookie HTTP au sens strict. Le régime juridique applicable (article 82 de la Loi Informatique et Libertés) est identique.</em></p>
 
     <h3>2.2. Cookies tiers (services intégrés)</h3>
     <p>Ces cookies sont déposés lorsque vous interagissez avec des services tiers intégrés au site. Leur dépôt est conditionné à votre utilisation effective de ces services.</p>
