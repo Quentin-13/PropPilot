@@ -799,7 +799,7 @@ async def sms_page(token: str = ""):
 
     _error_page = (
         '<html><head><meta charset="UTF-8"><title>PropPilot</title>'
-        '<style>body{font-family:sans-serif;padding:60px;color:#1a1d21;}</style></head>'
+        '<style>body{{font-family:sans-serif;padding:60px;color:#1a1d21;}}</style></head>'
         '<body><h2>{title}</h2><p>{msg}</p><p><a href="/">Retour à l\'accueil</a></p></body></html>'
     )
 

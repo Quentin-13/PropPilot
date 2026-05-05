@@ -95,7 +95,7 @@ class Settings(BaseSettings):
     # JWT
     jwt_secret_key: str = Field(default="change-this-secret-in-production", alias="JWT_SECRET_KEY")
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
-    jwt_expire_hours: int = Field(default=24, alias="JWT_EXPIRE_HOURS")
+    jwt_expire_hours: int = Field(default=720, alias="JWT_EXPIRE_HOURS")
 
     # Configuration Agence
     agency_name: str = Field(default="", alias="AGENCY_NAME")
