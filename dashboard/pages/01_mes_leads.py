@@ -350,15 +350,14 @@ else:
             except Exception as exc:
                 st.caption(f"Historique indisponible : {exc}")
 
-            # ── Données extraites agrégées ─────────────────────────────────────
+            # ── Données extraites agrégées (appel ou SMS) ──────────────────────
             try:
-                from memory.call_repository import get_extractions_by_lead
-                extractions = get_extractions_by_lead(lead_id)
+                from memory.call_repository import get_latest_extraction_for_lead
+                last = get_latest_extraction_for_lead(lead_id)
 
-                if extractions:
-                    st.markdown("#### 🧠 Données extraites des appels")
-                    last = extractions[0]
-
+                if last:
+                    source_label = "appel téléphonique" if last.get("source") == "call" else "SMS"
+                    st.markdown("#### 🧠 Données extraites par l'IA")
                     ext_col1, ext_col2, ext_col3 = st.columns(3)
                     with ext_col1:
                         st.markdown(f"**Type projet :** {last.get('type_projet') or '—'}")
@@ -384,8 +383,7 @@ else:
                             st.markdown("**⚠️ Points d'attention**")
                             for pt in (pts if isinstance(pts, list) else [str(pts)]):
                                 st.markdown(f"• {pt}")
-                    if len(extractions) > 1:
-                        st.caption(f"Basé sur le dernier appel analysé · {len(extractions)} appel(s) total")
+                    st.caption(f"Source : {source_label}")
             except Exception:
                 pass
 

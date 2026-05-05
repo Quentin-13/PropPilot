@@ -88,6 +88,57 @@ def _send_weekly_reports_job() -> None:
             logger.error(f"[CRON] Rapport hebdo non envoyé à {row['email']} : {e}")
 
 
+def _run_sms_extraction_batch() -> None:
+    """
+    Batch SMS — extrait les données structurées des threads actifs (toutes les 4 min).
+
+    Analyse les threads ayant reçu un SMS entrant dans les 30 dernières minutes.
+    Skip si la dernière extraction SMS est plus récente que le dernier message.
+    """
+    from memory.sms_repository import get_active_sms_leads, get_sms_thread_messages
+    from memory.call_repository import get_latest_extraction_for_lead, save_sms_extraction
+    from lib.sms_extraction_pipeline import SmsExtractionPipeline
+
+    try:
+        active = get_active_sms_leads(since_minutes=30)
+    except Exception as e:
+        logger.error("[SMS Batch] get_active_sms_leads: %s", e)
+        return
+
+    if not active:
+        return
+
+    logger.info("[SMS Batch] %d thread(s) SMS actif(s)", len(active))
+    pipeline = SmsExtractionPipeline()
+
+    for item in active:
+        lead_id = item["lead_id"]
+        client_id = item["client_id"]
+        last_sms_at = item["last_sms_at"]
+
+        # Skip si l'extraction SMS est déjà à jour
+        try:
+            last_ext = get_latest_extraction_for_lead(lead_id)
+            if last_ext and last_ext.get("source") == "sms":
+                ext_at = last_ext.get("extracted_at")
+                if ext_at and ext_at >= last_sms_at:
+                    continue
+        except Exception:
+            pass
+
+        try:
+            messages = get_sms_thread_messages(lead_id, client_id)
+            data = pipeline.extract(lead_id=lead_id, messages=messages)
+            if data:
+                save_sms_extraction(lead_id=lead_id, client_id=client_id, data=data)
+                logger.info(
+                    "[SMS Batch] OK lead_id=%s score=%s",
+                    lead_id, data.score_qualification,
+                )
+        except Exception as e:
+            logger.error("[SMS Batch] lead_id=%s: %s", lead_id, e)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialisation au démarrage du serveur."""
@@ -105,12 +156,13 @@ async def lifespan(app: FastAPI):
         else:
             raise
 
-    # APScheduler — rapport hebdomadaire le lundi à 8h (pas en mode test)
+    # APScheduler — rapport hebdo + extraction SMS (pas en mode test)
     scheduler = None
     if not settings.testing:
         try:
             from apscheduler.schedulers.background import BackgroundScheduler
             from apscheduler.triggers.cron import CronTrigger
+            from apscheduler.triggers.interval import IntervalTrigger
             scheduler = BackgroundScheduler(timezone="Europe/Paris")
             scheduler.add_job(
                 _send_weekly_reports_job,
@@ -118,8 +170,16 @@ async def lifespan(app: FastAPI):
                 id="weekly_report",
                 replace_existing=True,
             )
+            scheduler.add_job(
+                _run_sms_extraction_batch,
+                IntervalTrigger(minutes=4),
+                id="sms_extraction_batch",
+                replace_existing=True,
+            )
             scheduler.start()
-            logger.info("APScheduler démarré — rapport hebdo lundi 8h (Europe/Paris)")
+            logger.info(
+                "APScheduler démarré — rapport hebdo lundi 8h + extraction SMS toutes 4 min"
+            )
         except Exception as e:
             logger.warning(f"APScheduler non démarré : {e}")
 

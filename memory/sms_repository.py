@@ -178,6 +178,48 @@ def get_unread_count_total(client_id: str) -> int:
     return int(row["cnt"]) if row else 0
 
 
+def get_active_sms_leads(since_minutes: int = 30) -> list[dict]:
+    """
+    Retourne les leads ayant reçu au moins un SMS entrant dans les N dernières minutes.
+
+    Chaque entrée contient lead_id, client_id et last_sms_at (datetime du dernier message).
+    Utilisé par le batch d'extraction SMS.
+    """
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT lead_id, client_id, MAX(created_at) AS last_sms_at
+            FROM conversations
+            WHERE canal = 'sms'
+              AND role = 'user'
+              AND created_at >= NOW() - INTERVAL '%s minutes'
+            GROUP BY lead_id, client_id
+            ORDER BY last_sms_at DESC
+            """,
+            (since_minutes,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_sms_thread_messages(lead_id: str, client_id: str) -> list[dict]:
+    """
+    Retourne tous les messages SMS d'un thread dans l'ordre chronologique.
+
+    Format compatible avec SmsExtractionPipeline.extract().
+    """
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT role, contenu, created_at
+            FROM conversations
+            WHERE lead_id = %s AND client_id = %s AND canal = 'sms'
+            ORDER BY created_at ASC
+            """,
+            (lead_id, client_id),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def send_sms(client_id: str, lead_id: str, body: str) -> dict:
     """Envoie un SMS via Twilio et stocke le message en base.
 

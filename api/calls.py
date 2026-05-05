@@ -260,7 +260,7 @@ async def list_calls(request: Request, limit: int = 20, offset: int = 0):
                    started_at, ended_at, duration_seconds,
                    status, score_qualification
             FROM calls c
-            LEFT JOIN call_extractions ce ON ce.call_id = c.id
+            LEFT JOIN conversation_extractions ce ON ce.call_id = c.id AND ce.source = 'call'
             WHERE c.agent_id = %s OR c.agency_id = (
                 SELECT agency_name FROM users WHERE id = %s LIMIT 1
             )
