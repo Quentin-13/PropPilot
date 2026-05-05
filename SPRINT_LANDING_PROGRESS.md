@@ -3,6 +3,10 @@
 Branche : `feature/landing-redesign`
 Démarré : 2026-04-28
 
+> **Mise à jour 2026-05-05** : La waitlist (Étape 2 + Section 8 frontend + JS) et la roadmap publique (Section 7)
+> ont été supprimées dans le cadre du lot n° 2 (corrections RGPD) et du lot n° 3 (nettoyage backend).
+> Les CTA pointent désormais vers Calendly. La migration 007 supprime la table `waitlist` en base.
+
 ---
 
 ## Étapes
