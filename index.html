@@ -204,67 +204,6 @@
     .crm-dot-soon { background: var(--muted); }
     .crm-note { font-size: 0.85rem; color: var(--muted); }
 
-    /* ── Section 7 — Roadmap ── */
-    #roadmap { text-align: center; }
-    #roadmap h2 { margin-bottom: 16px; }
-    #roadmap > .container > p { max-width: 540px; margin: 0 auto 64px; }
-    .roadmap-timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; text-align: left; }
-    .roadmap-phase { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; }
-    .roadmap-phase.active { border-color: var(--accent); }
-    .phase-tag { display: inline-block; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 10px; border-radius: 100px; margin-bottom: 16px; }
-    .tag-active { background: var(--accent-dim); color: var(--accent); }
-    .tag-soon   { background: rgba(255,255,255,0.05); color: var(--muted); }
-    .tag-plan   { background: rgba(255,255,255,0.03); color: #52525b; }
-    .phase-version { font-size: 0.75rem; font-weight: 800; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
-    .roadmap-phase h3 { font-size: 1rem; margin-bottom: 12px; }
-    .roadmap-phase ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
-    .roadmap-phase ul li { font-size: 0.82rem; color: var(--muted); padding-left: 14px; position: relative; }
-    .roadmap-phase ul li::before { content: "·"; position: absolute; left: 0; color: var(--accent); font-size: 1.2rem; line-height: 1; }
-    @media (max-width: 900px) { .roadmap-timeline { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 600px) { .roadmap-timeline { grid-template-columns: 1fr; } }
-
-    /* ── Section 8 — Waitlist ── */
-    #waitlist { background: radial-gradient(ellipse 80% 60% at 50% 100%, rgba(163,230,53,0.06) 0%, transparent 60%); }
-    #waitlist .container { max-width: 680px; }
-    #waitlist h2 { text-align: center; margin-bottom: 12px; }
-    .waitlist-intro { text-align: center; max-width: 520px; margin: 0 auto 48px; }
-    .waitlist-count {
-      display: inline-flex; align-items: center; gap: 8px;
-      font-size: 0.85rem; font-weight: 600; color: var(--accent);
-      background: var(--accent-dim); padding: 6px 14px; border-radius: 100px; margin-bottom: 16px;
-    }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    .form-field { display: flex; flex-direction: column; gap: 6px; }
-    .form-field.full-width { grid-column: 1 / -1; }
-    .form-field label { font-size: 0.85rem; font-weight: 600; color: var(--text); }
-    .form-field label .req { color: var(--accent); }
-    .form-field input, .form-field select {
-      background: var(--surface-2); border: 1px solid var(--border);
-      border-radius: 8px; padding: 12px 16px; color: var(--text);
-      font-size: 0.95rem; font-family: var(--font); transition: border-color 0.2s; width: 100%;
-      -webkit-appearance: none; appearance: none;
-    }
-    .form-field select {
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a1a1aa' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-      background-repeat: no-repeat; background-position: right 14px center; padding-right: 40px; cursor: pointer;
-      background-color: var(--surface-2);
-    }
-    .form-field input:focus, .form-field select:focus { outline: none; border-color: var(--accent); }
-    .form-field input::placeholder { color: #52525b; }
-    .form-field .error-msg { font-size: 0.78rem; color: var(--red); display: none; }
-    .form-field.has-error .error-msg { display: block; }
-    .form-field.has-error input, .form-field.has-error select { border-color: var(--red); }
-    .hp-field { position: absolute; left: -9999px; opacity: 0; pointer-events: none; }
-    .form-submit { margin-top: 8px; }
-    .form-submit .btn-primary { width: 100%; justify-content: center; font-size: 1.05rem; padding: 18px; }
-    .form-submit .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
-    .form-legal { font-size: 0.75rem; color: #52525b; text-align: center; margin-top: 12px; }
-    .form-success { display: none; text-align: center; padding: 48px 32px; background: var(--surface); border: 1px solid rgba(163,230,53,0.3); border-radius: var(--radius-lg); }
-    .form-success .success-icon { font-size: 3rem; margin-bottom: 16px; }
-    .form-success h3 { color: var(--accent); margin-bottom: 12px; font-size: 1.5rem; }
-    .form-success p { max-width: 400px; margin: 0 auto; }
-    @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
-
     /* ── Footer ── */
     footer { border-top: 1px solid var(--border); padding: 40px 0; background: var(--surface); }
     .footer-inner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
@@ -285,10 +224,6 @@
 
     /* ── Phrase de bascule (section problème) ── */
     .probleme-bascule { margin-top: 40px; text-align: center; font-size: 0.9rem; color: #71717a; max-width: 640px; margin-left: auto; margin-right: auto; }
-
-    /* ── Champ optionnel (formulaire waitlist) ── */
-    .form-field-opt label { color: var(--muted); font-weight: 500; }
-    .form-field-opt .opt-tag { font-size: 0.75rem; color: #52525b; font-weight: 400; margin-left: 4px; }
 
     /* Cookie banner */
     #cookie-banner {
@@ -333,7 +268,7 @@
       <a href="/" class="logo" aria-label="PropPilot — accueil">Prop<span>Pilot</span></a>
       <div class="nav-right">
         <a href="https://proppilot-dashboard-production.up.railway.app" class="nav-login">Connexion</a>
-        <a href="#waitlist" class="nav-cta">Rejoindre la liste d'attente</a>
+        <a href="https://calendly.com/quentin-gouaze/30min" class="nav-cta" target="_blank" rel="noopener noreferrer">Réserver une démo</a>
       </div>
     </div>
   </nav>
@@ -354,8 +289,8 @@
           Vos commerciaux récupèrent jusqu'à 2 heures par jour. Aucun lead chaud ne se perd dans le silence.
         </p>
         <div class="hero-actions">
-          <a href="#waitlist" class="btn-primary">
-            Réserver mon accès en avant-première
+          <a href="https://calendly.com/quentin-gouaze/30min" class="btn-primary" target="_blank" rel="noopener noreferrer">
+            Réserver une démo
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M8 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </a>
           <a href="#comment" class="btn-secondary">Voir comment ça marche</a>
@@ -606,135 +541,9 @@
         </div>
       </div>
       <p class="crm-note">
-        Nouveaux connecteurs en cours de développement —
-        <a href="#waitlist" style="color:var(--accent);text-decoration:none">rejoignez la liste d'attente</a>
-        pour être notifié.
+        Vous utilisez un autre CRM ? Parlons-en lors d'une démo.
+        <a href="https://calendly.com/quentin-gouaze/30min" style="color:var(--accent);text-decoration:none" target="_blank" rel="noopener noreferrer">Réserver une démo →</a>
       </p>
-    </div>
-  </section>
-
-  <!-- SECTION 7 — ROADMAP -->
-  <section id="roadmap" aria-labelledby="roadmap-title">
-    <div class="container">
-      <h2 id="roadmap-title">Ce qui arrive ensuite</h2>
-      <p>Une vision transparente de ce que nous construisons, dans l'ordre.</p>
-      <div class="roadmap-timeline" role="list" aria-label="Phases de développement PropPilot">
-        <div class="roadmap-phase active fade-in" role="listitem">
-          <span class="phase-tag tag-active">En cours</span>
-          <div class="phase-version">V1 — En cours</div>
-          <h3>Capture &amp; sync Hektor</h3>
-          <ul>
-            <li>Capture appels entrants et sortants</li>
-            <li>Transcription IA temps réel</li>
-            <li>Extraction structurée par IA</li>
-            <li>Synchronisation Hektor CRM</li>
-            <li>Dashboard insights</li>
-          </ul>
-        </div>
-        <div class="roadmap-phase fade-in" role="listitem">
-          <span class="phase-tag tag-soon">Q3 2026</span>
-          <div class="phase-version">V2</div>
-          <h3>Connecteurs &amp; emails</h3>
-          <ul>
-            <li>Connecteurs Apimo &amp; Netty</li>
-            <li>Capture et analyse des emails</li>
-            <li>Dashboard avancé avec analytics</li>
-            <li>API publique partenaires</li>
-          </ul>
-        </div>
-        <div class="roadmap-phase fade-in" role="listitem">
-          <span class="phase-tag tag-plan">Q4 2026</span>
-          <div class="phase-version">V3</div>
-          <h3>Mobile &amp; capture totale</h3>
-          <ul>
-            <li>App mobile iOS &amp; Android</li>
-            <li>Capture appels mobiles</li>
-            <li>WhatsApp Business intégré</li>
-            <li>Alertes intelligentes</li>
-          </ul>
-        </div>
-        <div class="roadmap-phase fade-in" role="listitem">
-          <span class="phase-tag tag-plan">2027</span>
-          <div class="phase-version">V4</div>
-          <h3>Collaboratif &amp; opérateurs</h3>
-          <ul>
-            <li>Module collaboratif multi-agences</li>
-            <li>Partenariats opérateurs télécom</li>
-            <li>Intégrations PBX cloud</li>
-            <li>IA prédictive mandats</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- SECTION 8 — FORMULAIRE WAITLIST -->
-  <section id="waitlist" aria-labelledby="waitlist-title">
-    <div class="container">
-      <h2 id="waitlist-title">Accédez à PropPilot en priorité</h2>
-      <div class="waitlist-intro">
-        <div class="waitlist-count" id="waitlist-count" style="margin:0 auto 12px" aria-live="polite">
-          <span class="badge-dot" aria-hidden="true"></span>
-          <span id="count-text">Chargement…</span>
-        </div>
-        <p>Inscrivez-vous maintenant pour être parmi les premières agences à bénéficier de PropPilot lors de l'ouverture.</p>
-      </div>
-
-      <div id="form-container">
-        <form id="waitlist-form" class="card" novalidate aria-label="Formulaire d'inscription liste d'attente">
-
-          <!-- Honeypot anti-spam -->
-          <div class="hp-field" aria-hidden="true">
-            <label for="website">Ne pas remplir</label>
-            <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" />
-          </div>
-
-          <div class="form-grid">
-            <div class="form-field" id="field-prenom">
-              <label for="prenom">Prénom <span class="req" aria-hidden="true">*</span></label>
-              <input type="text" id="prenom" name="prenom" placeholder="Marie" autocomplete="given-name" required aria-required="true" />
-              <span class="error-msg" role="alert">Veuillez saisir votre prénom.</span>
-            </div>
-            <div class="form-field" id="field-nom">
-              <label for="nom">Nom <span class="req" aria-hidden="true">*</span></label>
-              <input type="text" id="nom" name="nom" placeholder="Dupont" autocomplete="family-name" required aria-required="true" />
-              <span class="error-msg" role="alert">Veuillez saisir votre nom.</span>
-            </div>
-            <div class="form-field full-width" id="field-email">
-              <label for="email">Email professionnel <span class="req" aria-hidden="true">*</span></label>
-              <input type="email" id="email" name="email" placeholder="marie.dupont@agence.fr" autocomplete="email" required aria-required="true" />
-              <span class="error-msg" role="alert">Veuillez saisir une adresse email valide.</span>
-            </div>
-            <div class="form-field full-width form-field-opt" id="field-type_agence">
-              <label for="type_agence">Type d'agence <span class="opt-tag">(optionnel)</span></label>
-              <select id="type_agence" name="type_agence">
-                <option value="" selected>Choisir…</option>
-                <option value="Indépendante">Indépendante</option>
-                <option value="Réseau">Réseau</option>
-                <option value="Franchise">Franchise</option>
-                <option value="Mandataire">Mandataire</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-submit" style="margin-top:28px">
-            <button type="submit" class="btn-primary" id="submit-btn">
-              Réserver mon accès en avant-première
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M8 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
-          </div>
-          <p class="form-legal">
-            Email professionnel uniquement. Un email par mois maximum. Désabonnement en un clic.
-            <a href="/legal/confidentialite" style="color:var(--muted)">Politique de confidentialité</a>.
-          </p>
-        </form>
-      </div>
-
-      <div class="form-success" id="form-success" role="status" aria-live="polite" aria-atomic="true">
-        <div class="success-icon" aria-hidden="true">🎉</div>
-        <h3>Vous êtes sur la liste !</h3>
-        <p id="success-message">Consultez votre boîte mail — un email de confirmation vient de partir. Nous vous contacterons en priorité lors du lancement.</p>
-      </div>
     </div>
   </section>
 
@@ -749,7 +558,7 @@
           <a href="/legal/cgu">CGU</a>
           <a href="/legal/cgv">CGV</a>
           <a href="/legal/cookies">Cookies</a>
-          <a href="mailto:pro.quentingouaze@gmail.com">Contact</a>
+          <a href="mailto:contact@proppilot.fr">Contact</a>
         </nav>
       </div>
     </div>
@@ -777,87 +586,6 @@
       });
     }, { threshold: 0.1 });
     document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
-
-    // Compteur waitlist
-    (async function loadCount() {
-      try {
-        const res = await fetch('/api/waitlist/count');
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        const el = document.getElementById('count-text');
-        if (el) el.textContent = data.count > 0
-          ? `${data.count} agence${data.count > 1 ? 's' : ''} déjà inscrite${data.count > 1 ? 's' : ''}`
-          : 'Soyez parmi les premiers inscrits';
-      } catch {
-        const el = document.getElementById('count-text');
-        if (el) el.textContent = 'Soyez parmi les premiers inscrits';
-      }
-    })();
-
-    // Validation champ
-    const FIELDS = ['prenom', 'nom', 'email'];
-    function validateField(name) {
-      const el = document.getElementById(name);
-      const container = document.getElementById('field-' + name);
-      if (!el || !container) return true;
-      const val = el.value.trim();
-      let valid = val.length > 0;
-      if (name === 'email') valid = valid && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
-      container.classList.toggle('has-error', !valid);
-      return valid;
-    }
-    FIELDS.forEach(name => {
-      const el = document.getElementById(name);
-      if (el) el.addEventListener('blur', () => validateField(name));
-    });
-
-    // Soumission
-    document.getElementById('waitlist-form').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      let allValid = true;
-      FIELDS.forEach(name => { if (!validateField(name)) allValid = false; });
-      if (!allValid) return;
-
-      const btn = document.getElementById('submit-btn');
-      btn.disabled = true;
-      btn.textContent = 'Inscription en cours…';
-
-      const payload = {
-        prenom:      document.getElementById('prenom').value.trim(),
-        nom:         document.getElementById('nom').value.trim(),
-        email:       document.getElementById('email').value.trim(),
-        type_agence: document.getElementById('type_agence').value || null,
-        website:     document.getElementById('website').value,
-      };
-
-      try {
-        const res = await fetch('/api/waitlist', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-
-        if (res.status === 201 || data.success) {
-          document.getElementById('form-container').style.display = 'none';
-          const successDiv = document.getElementById('form-success');
-          const msgEl = document.getElementById('success-message');
-          if (msgEl && data.message) msgEl.textContent = data.message;
-          successDiv.style.display = 'block';
-          successDiv.focus();
-        } else if (res.status === 429) {
-          btn.disabled = false;
-          btn.innerHTML = 'Réserver mon accès en avant-première <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M8 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-          alert(data.detail || 'Trop de tentatives. Veuillez réessayer dans une heure.');
-        } else {
-          throw new Error(data.detail || 'Erreur');
-        }
-      } catch {
-        btn.disabled = false;
-        btn.innerHTML = 'Rejoindre la liste d\'attente <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M8 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-        alert('Une erreur est survenue. Veuillez réessayer ou nous contacter directement.');
-      }
-    });
   </script>
 
   <script>
