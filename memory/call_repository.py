@@ -1,5 +1,5 @@
 """
-CRUD pour les tables calls et call_extractions.
+CRUD pour les tables calls et conversation_extractions.
 Garantit l'idempotence sur call_sid (un même CallSid ne crée pas de doublon).
 """
 from __future__ import annotations
@@ -123,11 +123,11 @@ def get_call_by_id(call_id: str) -> Optional[dict]:
         return dict(row) if row else None
 
 
-# ── call_extractions ──────────────────────────────────────────────────────────
+# ── conversation_extractions ──────────────────────────────────────────────────
 
 def save_call_extraction(call_id: str, data) -> int:
     """
-    Sauvegarde une CallExtractionData en DB.
+    Sauvegarde une CallExtractionData en DB (source='call').
     data est un CallExtractionData depuis lib/call_extraction_pipeline.
 
     Retourne l'id SERIAL de l'extraction créée.
@@ -136,11 +136,18 @@ def save_call_extraction(call_id: str, data) -> int:
 
     assert isinstance(data, CallExtractionData)
 
+    # Résoudre lead_id depuis la table calls
+    with get_connection() as conn:
+        call_row = conn.execute(
+            "SELECT lead_id FROM calls WHERE id = %s LIMIT 1", (call_id,)
+        ).fetchone()
+    lead_id = call_row["lead_id"] if call_row else None
+
     with get_connection() as conn:
         row = conn.execute(
             """
-            INSERT INTO call_extractions (
-                call_id, lead_id,
+            INSERT INTO conversation_extractions (
+                source, call_id, lead_id,
                 type_projet, budget_min, budget_max, zone_geographique,
                 type_bien, surface_min, surface_max,
                 criteres, timing, financement,
@@ -149,7 +156,7 @@ def save_call_extraction(call_id: str, data) -> int:
                 extraction_model, extraction_prompt_version,
                 extracted_at
             ) VALUES (
-                %s, %s,
+                'call', %s, %s,
                 %s, %s, %s, %s,
                 %s, %s, %s,
                 %s, %s, %s,
@@ -160,7 +167,7 @@ def save_call_extraction(call_id: str, data) -> int:
             ) RETURNING id
             """,
             (
-                call_id, None,
+                call_id, lead_id,
                 data.type_projet, data.budget_min, data.budget_max, data.zone_geographique,
                 data.type_bien, data.surface_min, data.surface_max,
                 json.dumps(data.criteres, ensure_ascii=False),
@@ -180,7 +187,8 @@ def save_call_extraction(call_id: str, data) -> int:
 def get_extraction_by_call(call_id: str) -> Optional[dict]:
     with get_connection() as conn:
         row = conn.execute(
-            "SELECT * FROM call_extractions WHERE call_id = %s ORDER BY extracted_at DESC LIMIT 1",
+            "SELECT * FROM conversation_extractions "
+            "WHERE call_id = %s AND source = 'call' ORDER BY extracted_at DESC LIMIT 1",
             (call_id,),
         ).fetchone()
         return dict(row) if row else None
@@ -226,7 +234,7 @@ def get_calls_by_client(
                 ce.criteres, ce.timing, ce.financement,
                 l.prenom, l.nom, l.telephone AS lead_telephone
             FROM calls c
-            LEFT JOIN call_extractions ce ON ce.call_id = c.id
+            LEFT JOIN conversation_extractions ce ON ce.call_id = c.id AND ce.source = 'call'
             LEFT JOIN leads l ON l.id = c.lead_id
             WHERE {where}
             ORDER BY c.created_at DESC
@@ -288,7 +296,7 @@ def get_calls_by_lead(lead_id: str) -> list[dict]:
                    ce.type_projet, ce.budget_min, ce.budget_max,
                    ce.zone_geographique, ce.motivation, ce.prochaine_action_suggeree
             FROM calls c
-            LEFT JOIN call_extractions ce ON ce.call_id = c.id
+            LEFT JOIN conversation_extractions ce ON ce.call_id = c.id AND ce.source = 'call'
             WHERE c.lead_id = %s
             ORDER BY c.created_at DESC
             """,
@@ -298,15 +306,13 @@ def get_calls_by_lead(lead_id: str) -> list[dict]:
 
 
 def get_extractions_by_lead(lead_id: str) -> list[dict]:
-    """Retourne toutes les extractions pour les appels d'un lead."""
+    """Retourne toutes les extractions d'appels pour un lead (source='call')."""
     with get_connection() as conn:
         rows = conn.execute(
             """
-            SELECT ce.*
-            FROM call_extractions ce
-            JOIN calls c ON c.id = ce.call_id
-            WHERE c.lead_id = %s
-            ORDER BY ce.extracted_at DESC
+            SELECT * FROM conversation_extractions
+            WHERE lead_id = %s AND source = 'call'
+            ORDER BY extracted_at DESC
             """,
             (lead_id,),
         ).fetchall()
@@ -322,6 +328,86 @@ def get_extractions_by_lead(lead_id: str) -> list[dict]:
                     d[field] = {} if field != "points_attention" else []
         result.append(d)
     return result
+
+
+def get_latest_extraction_for_lead(lead_id: str) -> Optional[dict]:
+    """Retourne la dernière extraction pour un lead, tous canaux confondus (call + sms)."""
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT * FROM conversation_extractions
+            WHERE lead_id = %s
+            ORDER BY extracted_at DESC
+            LIMIT 1
+            """,
+            (lead_id,),
+        ).fetchone()
+    if not row:
+        return None
+    d = dict(row)
+    for field in ("criteres", "timing", "financement", "points_attention"):
+        val = d.get(field)
+        if isinstance(val, str):
+            try:
+                d[field] = json.loads(val)
+            except Exception:
+                d[field] = {} if field != "points_attention" else []
+    return d
+
+
+def save_sms_extraction(lead_id: str, client_id: str, data) -> int:
+    """
+    Sauvegarde une extraction SMS en DB (source='sms').
+    data est un CallExtractionData depuis lib/sms_extraction_pipeline.
+
+    Retourne l'id SERIAL de l'extraction créée.
+    """
+    from lib.call_extraction_pipeline import CallExtractionData
+
+    assert isinstance(data, CallExtractionData)
+
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            INSERT INTO conversation_extractions (
+                source, lead_id,
+                type_projet, budget_min, budget_max, zone_geographique,
+                type_bien, surface_min, surface_max,
+                criteres, timing, financement,
+                motivation, score_qualification,
+                prochaine_action_suggeree, resume_appel, points_attention,
+                extraction_model, extraction_prompt_version,
+                extracted_at
+            ) VALUES (
+                'sms', %s,
+                %s, %s, %s, %s,
+                %s, %s, %s,
+                %s, %s, %s,
+                %s, %s,
+                %s, %s, %s,
+                %s, %s,
+                NOW()
+            ) RETURNING id
+            """,
+            (
+                lead_id,
+                data.type_projet, data.budget_min, data.budget_max, data.zone_geographique,
+                data.type_bien, data.surface_min, data.surface_max,
+                json.dumps(data.criteres, ensure_ascii=False),
+                json.dumps(data.timing, ensure_ascii=False),
+                json.dumps(data.financement, ensure_ascii=False),
+                data.motivation, data.score_qualification,
+                data.prochaine_action_suggeree, data.resume_appel,
+                json.dumps(data.points_attention, ensure_ascii=False),
+                data.extraction_model, data.extraction_prompt_version,
+            ),
+        )
+        extraction_id = row.fetchone()["id"]
+        logger.info(
+            "[CallRepo] SMS extraction saved id=%d lead_id=%s client=%s",
+            extraction_id, lead_id, client_id,
+        )
+        return extraction_id
 
 
 def get_phone_number_config(twilio_number: str) -> Optional[dict]:

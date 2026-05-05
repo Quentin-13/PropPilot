@@ -1,5 +1,5 @@
 """
-Lecture seule — inspecte la table calls et call_extractions.
+Lecture seule — inspecte la table calls et conversation_extractions.
 Usage : python scripts/inspect_calls.py
 """
 import sys
@@ -57,20 +57,20 @@ def main() -> None:
         )
         print_rows(cur)
 
-        # ── 3. Colonnes de call_extractions ───────────────────────────────────
-        section("Colonnes de la table 'call_extractions'")
+        # ── 3. Colonnes de conversation_extractions ───────────────────────────
+        section("Colonnes de la table 'conversation_extractions'")
         cur = conn.execute(
             "SELECT column_name, data_type "
             "FROM information_schema.columns "
-            "WHERE table_name = 'call_extractions' "
+            "WHERE table_name = 'conversation_extractions' "
             "ORDER BY ordinal_position"
         )
         print_columns(cur)
 
         # ── 4. Les 5 dernières extractions ────────────────────────────────────
-        section("5 dernières extractions (call_extractions ORDER BY created_at DESC)")
+        section("5 dernières extractions (conversation_extractions ORDER BY extracted_at DESC)")
         cur = conn.execute(
-            "SELECT * FROM call_extractions ORDER BY created_at DESC LIMIT 5"
+            "SELECT * FROM conversation_extractions ORDER BY extracted_at DESC LIMIT 5"
         )
         print_rows(cur)
 

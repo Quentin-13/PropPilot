@@ -1,7 +1,7 @@
 """
 Extraction structurée depuis une transcription d'appel.
 
-Utilise Claude pour extraire les 13 champs définis dans la table call_extractions.
+Utilise Claude pour extraire les 13 champs définis dans la table conversation_extractions.
 Stocke le résultat en DB et met à jour le statut du call.
 
 Usage :
