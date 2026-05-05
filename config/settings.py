@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     legal_notice_text: str = Field(
         default=(
             "Pour des raisons de qualité de service et de conformité, "
-            "cet appel est susceptible d'être enregistré. "
+            "cet appel sera enregistré et analysé automatiquement. "
             "En restant en ligne, vous acceptez ces conditions."
         ),
         alias="LEGAL_NOTICE_TEXT",
