@@ -107,6 +107,12 @@ class Settings(BaseSettings):
     # URL de l'API FastAPI (pour le dashboard)
     api_url: str = Field(default="http://localhost:8000", alias="API_URL")
 
+    # URL du dashboard Streamlit (pour le bouton retour dans l'interface SMS)
+    dashboard_url: str = Field(
+        default="https://proppilot-dashboard-production.up.railway.app",
+        alias="DASHBOARD_URL",
+    )
+
     # Stripe
     stripe_secret_key: Optional[str] = Field(default=None, alias="STRIPE_SECRET_KEY")
     stripe_publishable_key: Optional[str] = Field(default=None, alias="STRIPE_PUBLISHABLE_KEY")

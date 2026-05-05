@@ -829,6 +829,7 @@ async def sms_page(token: str = ""):
     html = template_path.read_text(encoding="utf-8")
     # Remplacement ciblé uniquement dans la meta tag pour éviter les collisions avec le JS
     html = html.replace('content="{{AUTH_TOKEN}}"', f'content="{token}"')
+    html = html.replace('{{DASHBOARD_URL}}', get_settings().dashboard_url)
     return HTMLResponse(content=html)
 
 

@@ -315,7 +315,7 @@
 
 <div class="app">
   <header class="hdr">
-    <a href="/" class="hdr-back">&#8592; Retour Dashboard</a>
+    <a href="{{DASHBOARD_URL}}" class="hdr-back">&#8592; Retour Dashboard</a>
     <span class="hdr-title">PropPilot — Messages</span>
     <span class="hdr-user" id="hdr-user"></span>
   </header>
@@ -360,7 +360,7 @@
   var TOKEN = metaToken ? metaToken.getAttribute('content') : '';
   // Si le token est vide ou n'a pas été remplacé par le backend, afficher un message d'erreur au lieu de rediriger
   if (!TOKEN || TOKEN === '{{AUTH_TOKEN}}') {
-    document.body.innerHTML = '<div style="padding:40px; text-align:center; font-family:sans-serif;"><h1>Session invalide</h1><p>Veuillez vous reconnecter depuis le dashboard.</p><p><a href="/">Retour</a></p></div>';
+    document.body.innerHTML = '<div style="padding:40px; text-align:center; font-family:sans-serif;"><h1>Session invalide</h1><p>Veuillez vous reconnecter depuis le dashboard.</p><p><a href="{{DASHBOARD_URL}}">Retour</a></p></div>';
     return;
   }
 
@@ -403,7 +403,7 @@
       if (res.status === 401) {
         if (!window._authErrorShown) {
           window._authErrorShown = true;
-          document.body.innerHTML = '<div style="padding:40px; text-align:center; font-family:sans-serif;"><h1>Session expirée</h1><p>Veuillez vous reconnecter depuis le dashboard.</p><p><a href="/">Retour</a></p></div>';
+          document.body.innerHTML = '<div style="padding:40px; text-align:center; font-family:sans-serif;"><h1>Session expirée</h1><p>Veuillez vous reconnecter depuis le dashboard.</p><p><a href="{{DASHBOARD_URL}}">Retour</a></p></div>';
         }
         return null;
       }
