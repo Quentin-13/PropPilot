@@ -383,7 +383,9 @@ else:
                             st.markdown("**⚠️ Points d'attention**")
                             for pt in (pts if isinstance(pts, list) else [str(pts)]):
                                 st.markdown(f"• {pt}")
-                    st.caption(f"Source : {source_label}")
+                    extracted_dt = last.get("extracted_at")
+                    extracted_str = extracted_dt.strftime("%d/%m/%Y %H:%M") if extracted_dt else "—"
+                    st.caption(f"Source : {source_label} · Analysé le {extracted_str}")
             except Exception:
                 pass
 

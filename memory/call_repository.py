@@ -14,6 +14,79 @@ from memory.database import get_connection
 
 logger = logging.getLogger(__name__)
 
+_SCORE_MAP = {"froid": 2, "tiede": 5, "chaud": 8}
+_VALID_PROJET = {"achat", "vente", "location", "inconnu"}
+
+
+def _apply_extraction_to_lead(lead_id: str, data, conn) -> None:
+    """Met à jour leads.* depuis une CallExtractionData. Règles :
+    - Ne jamais écraser par None/vide.
+    - Ne jamais rétrograder le score.
+    - Motivation : uniquement si leads.motivation est vide.
+    Doit être appelée dans la même transaction que l'INSERT extraction.
+    """
+    if not lead_id:
+        return
+    row = conn.execute(
+        "SELECT score, motivation FROM leads WHERE id = %s", (lead_id,)
+    ).fetchone()
+    if not row:
+        return
+
+    current_score = row["score"] or 0
+    current_motivation = row["motivation"] or ""
+    fields: dict = {}
+
+    if data.score_qualification:
+        new_score = _SCORE_MAP.get(data.score_qualification.lower(), 0)
+        if new_score > current_score:
+            fields["score"] = new_score
+
+    if data.type_projet:
+        proj = data.type_projet.lower()
+        fields["projet"] = proj if proj in _VALID_PROJET else "inconnu"
+
+    if data.zone_geographique:
+        fields["localisation"] = data.zone_geographique
+
+    if data.budget_max is not None:
+        fields["budget"] = str(data.budget_max)
+
+    if data.type_bien:
+        fields["type_bien"] = data.type_bien
+
+    if data.resume_appel:
+        fields["resume"] = data.resume_appel
+
+    if data.motivation and not current_motivation.strip():
+        fields["motivation"] = data.motivation
+
+    fields["last_extraction_at"] = datetime.utcnow()
+    fields["updated_at"] = datetime.utcnow()
+
+    cols = ", ".join(f"{k} = %s" for k in fields)
+    conn.execute(f"UPDATE leads SET {cols} WHERE id = %s", [*fields.values(), lead_id])
+    logger.info("[CallRepo] leads.* updated for lead_id=%s fields=%s", lead_id, list(fields))
+
+
+def apply_extraction_to_lead(lead_id: str, extraction: dict) -> None:
+    """Applique un dict d'extraction (issu de get_latest_extraction_for_lead)
+    sur leads.*. Ouvre sa propre connexion — utilisé par le backfill.
+    """
+    from lib.call_extraction_pipeline import CallExtractionData
+
+    data = CallExtractionData(
+        score_qualification=extraction.get("score_qualification") or "froid",
+        type_projet=extraction.get("type_projet"),
+        zone_geographique=extraction.get("zone_geographique"),
+        budget_max=extraction.get("budget_max"),
+        type_bien=extraction.get("type_bien"),
+        resume_appel=extraction.get("resume_appel"),
+        motivation=extraction.get("motivation"),
+    )
+    with get_connection() as conn:
+        _apply_extraction_to_lead(lead_id, data, conn)
+
 
 # ── calls ─────────────────────────────────────────────────────────────────────
 
@@ -180,6 +253,7 @@ def save_call_extraction(call_id: str, data) -> int:
             ),
         )
         extraction_id = row.fetchone()["id"]
+        _apply_extraction_to_lead(lead_id, data, conn)
         logger.info("[CallRepo] Extraction saved id=%d call_id=%s", extraction_id, call_id)
         return extraction_id
 
@@ -403,6 +477,7 @@ def save_sms_extraction(lead_id: str, client_id: str, data) -> int:
             ),
         )
         extraction_id = row.fetchone()["id"]
+        _apply_extraction_to_lead(lead_id, data, conn)
         logger.info(
             "[CallRepo] SMS extraction saved id=%d lead_id=%s client=%s",
             extraction_id, lead_id, client_id,

@@ -119,6 +119,8 @@ CREATE TABLE IF NOT EXISTS leads (
     mandat_date TIMESTAMP,
     resume TEXT DEFAULT '',
     notes_agent TEXT DEFAULT '',
+    type_bien TEXT DEFAULT '',
+    last_extraction_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
