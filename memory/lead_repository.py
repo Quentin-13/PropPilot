@@ -368,6 +368,40 @@ def get_leads_to_verify(client_id: str, limit: int = 100) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def get_pilot_kpis(client_id: str) -> dict:
+    """
+    4 KPI cards pour le dashboard pilot :
+    - a_rappeler : leads chauds (score≥18) en qualification/nurturing
+    - vendeurs_chauds : leads vendeur score≥18
+    - acheteurs_chauds : leads acheteur score≥18
+    - a_verifier : leads avec extraction failed ou score NULL
+    """
+    from lib.lead_extraction.schema import SCORE_SEUIL_CHAUD
+
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT
+              COUNT(*) FILTER (WHERE score >= %s AND statut IN ('qualifie','nurturing','rdv_booke')) AS a_rappeler,
+              COUNT(*) FILTER (WHERE lead_type = 'vendeur' AND score >= %s) AS vendeurs_chauds,
+              COUNT(*) FILTER (WHERE lead_type = 'acheteur' AND score >= %s) AS acheteurs_chauds,
+              COUNT(*) FILTER (WHERE extraction_status = 'failed' OR score IS NULL) AS a_verifier
+            FROM leads
+            WHERE client_id = %s
+            """,
+            (SCORE_SEUIL_CHAUD, SCORE_SEUIL_CHAUD, SCORE_SEUIL_CHAUD, client_id),
+        ).fetchone()
+
+    if not row:
+        return {"a_rappeler": 0, "vendeurs_chauds": 0, "acheteurs_chauds": 0, "a_verifier": 0}
+    return {
+        "a_rappeler": row[0] or 0,
+        "vendeurs_chauds": row[1] or 0,
+        "acheteurs_chauds": row[2] or 0,
+        "a_verifier": row[3] or 0,
+    }
+
+
 def count_leads_to_verify(client_id: str) -> int:
     """Nombre de leads en attente de vérification manuelle."""
     with get_connection() as conn:
