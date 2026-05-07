@@ -2,7 +2,8 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#09090b" />
   <title>PropPilot — La mémoire commerciale automatique de votre agence</title>
   <meta name="description" content="PropPilot capture chaque échange — appels et SMS — structure les données et enrichit votre CRM automatiquement. Aucun lead chaud ne se perd dans le silence. Beta privée — accès prioritaire ouvert." />
   <meta property="og:title" content="PropPilot — La mémoire commerciale automatique de votre agence" />
@@ -13,7 +14,8 @@
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" /></noscript>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -64,6 +66,7 @@
       background: var(--accent); color: #09090b; font-weight: 700;
       padding: 10px 20px; border-radius: 8px; text-decoration: none;
       font-size: 0.9rem; transition: opacity 0.2s;
+      display: inline-flex; align-items: center; min-height: 44px;
     }
     .nav-cta:hover { opacity: 0.85; }
     .nav-login {
@@ -71,6 +74,7 @@
       padding: 8px 16px; border-radius: 8px; text-decoration: none;
       border: 1px solid var(--border);
       transition: color 0.2s, border-color 0.2s, background 0.2s;
+      display: inline-flex; align-items: center; min-height: 44px;
     }
     .nav-login:hover { color: var(--text); border-color: #52525b; background: var(--surface-2); }
     @media (max-width: 580px) { .nav-cta { display: none; } }
@@ -135,8 +139,6 @@
       font-size: 0.65rem; font-weight: 600; color: var(--accent);
       background: var(--accent-dim); padding: 3px 8px; border-radius: 100px; margin-top: 10px;
     }
-    @media (max-width: 600px) { .mockup-pipeline { grid-template-columns: 1fr; } }
-
     /* ── Section 2 — Problème ── */
     #probleme { background: var(--surface); }
     .probleme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
@@ -170,7 +172,41 @@
     }
     .step-card h3 { margin-bottom: 12px; }
     .step-card p { font-size: 0.95rem; }
+    .modes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
     @media (max-width: 768px) { .steps-grid { grid-template-columns: 1fr; } }
+
+    /* ── Chantier 4 — Steps + modes mobile ── */
+    @media (max-width: 767px) {
+      .step-number {
+        width: 36px; height: 36px;
+        font-size: 0.9rem;
+        margin-bottom: 12px;
+      }
+      .step-card details > summary {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        color: var(--accent);
+        font-size: 0.88rem;
+        font-weight: 600;
+        list-style: none;
+        padding: 4px 0 2px;
+        user-select: none;
+      }
+      .step-card details > summary::-webkit-details-marker { display: none; }
+      .step-card details > summary::after {
+        content: '↓';
+        display: inline-block;
+        transition: transform 0.2s;
+      }
+      .step-card details[open] > summary::after { transform: rotate(180deg); }
+      .step-card details > p { margin-top: 8px; }
+      .modes-grid { grid-template-columns: 1fr; }
+    }
+    @media (min-width: 768px) {
+      .step-card details > summary { display: none; }
+    }
 
     /* ── Section 5 — Comparaison ── */
     #comparaison { text-align: center; }
@@ -185,6 +221,62 @@
     .compare-table tbody tr td:nth-child(2) { background: var(--surface-2); color: var(--muted); }
     .compare-table tbody tr td:nth-child(3) { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
     @media (max-width: 640px) { .compare-table { font-size: 0.85rem; } .compare-table thead tr th, .compare-table tbody tr td { padding: 12px 14px; } }
+
+    /* ── Chantier 3 — Compare cards mobile ── */
+    .compare-cards { display: none; }
+
+    @media (max-width: 767px) {
+      .compare-table-wrap { display: none; }
+      .compare-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .compare-card {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--surface);
+      }
+      .compare-card__label {
+        padding: 12px 16px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: var(--text);
+        border-bottom: 1px solid var(--border);
+        background: var(--surface-2);
+      }
+      .compare-card__row {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        padding: 10px 16px;
+        border-top: 1px solid var(--border);
+        font-size: 0.9rem;
+        line-height: 1.4;
+      }
+      .compare-card__row:first-of-type { border-top: none; }
+      .compare-card__badge {
+        flex-shrink: 0;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        padding: 2px 7px;
+        border-radius: 4px;
+        white-space: nowrap;
+      }
+      .compare-card__badge--sans {
+        background: rgba(239,68,68,0.15);
+        color: #fca5a5;
+      }
+      .compare-card__badge--avec {
+        background: rgba(163,230,53,0.15);
+        color: var(--accent);
+      }
+      .compare-card__value--sans { color: var(--muted); }
+      .compare-card__value--avec { color: var(--accent); font-weight: 600; }
+    }
 
     /* ── Section 6 — CRM ── */
     #crm { background: var(--surface); text-align: center; }
@@ -210,7 +302,7 @@
     .footer-links { display: flex; gap: 24px; flex-wrap: wrap; }
     .footer-links a { color: var(--muted); text-decoration: none; font-size: 0.85rem; transition: color 0.2s; }
     .footer-links a:hover { color: var(--text); }
-    .footer-copy { font-size: 0.85rem; color: #52525b; }
+    .footer-copy { font-size: 0.85rem; color: var(--muted); }
 
     /* ── Animations scroll ── */
     .fade-in { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
@@ -224,6 +316,113 @@
 
     /* ── Phrase de bascule (section problème) ── */
     .probleme-bascule { margin-top: 40px; text-align: center; font-size: 0.9rem; color: #71717a; max-width: 640px; margin-left: auto; margin-right: auto; }
+
+    /* ── Chantier 1 — Hero mobile-first ── */
+
+    /* H1 : version courte mobile par défaut, longue masquée */
+    .h1-desktop { display: none; }
+    .h1-mobile  { display: block; }
+
+    /* Subtitle : version courte mobile par défaut */
+    .hero-subtitle--mobile  { display: block; }
+    .hero-subtitle--desktop { display: none; }
+
+    /* CTA mobile : colonne pleine largeur */
+    .hero-actions {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+      justify-content: center;
+    }
+    .hero-actions .btn-primary {
+      min-height: 48px;
+      justify-content: center;
+    }
+    .hero-actions .btn-secondary { display: none; }
+
+    /* Lien texte secondaire — mobile uniquement */
+    .hero-link-secondary {
+      display: block;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-decoration: none;
+      padding: 4px 0;
+      transition: color 0.2s;
+    }
+    .hero-link-secondary:hover { color: var(--text); }
+
+    /* Pipeline mobile : 1 colonne + bordure lime gauche comme liaison visuelle */
+    .mockup-pipeline { grid-template-columns: 1fr; gap: 8px; }
+    .pipeline-step { border-left: 2px solid rgba(163,230,53,0.55); }
+
+    /* Animation stagger pipeline steps — mobile par défaut */
+    .pipeline-step {
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    .pipeline-step.step-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ── Desktop ≥ 601px ── */
+    @media (min-width: 601px) {
+      .h1-desktop { display: block; }
+      .h1-mobile  { display: none; }
+      .hero-subtitle--mobile  { display: none; }
+      .hero-subtitle--desktop { display: block; }
+      .hero-actions {
+        flex-direction: row;
+        align-items: center;
+        gap: 16px;
+      }
+      .hero-actions .btn-primary { min-height: unset; }
+      .hero-actions .btn-secondary { display: inline-flex; }
+      .hero-link-secondary { display: none; }
+      .mockup-pipeline { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+      /* Desktop : steps toujours visibles, pas d'animation stagger */
+      .pipeline-step {
+        opacity: 1;
+        transform: none;
+        transition: none;
+        border-left: 1px solid var(--border);
+      }
+    }
+
+    /* ── Chantier 2 — CTA sticky bottom mobile ── */
+    #cta-sticky {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: fixed;
+      bottom: 12px;
+      left: 16px;
+      right: 16px;
+      z-index: 100;
+      height: 52px;
+      background: var(--accent);
+      color: #09090b;
+      font-weight: 700;
+      font-size: 1rem;
+      border-radius: 8px;
+      text-decoration: none;
+      box-shadow: 0 4px 16px rgba(163,230,53,0.35);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      pointer-events: none;
+    }
+    #cta-sticky.cta-sticky--visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+    @media (min-width: 768px) {
+      #cta-sticky { display: none !important; }
+    }
 
     /* Cookie banner */
     #cookie-banner {
@@ -247,10 +446,11 @@
     #cookie-banner-ok {
       flex-shrink: 0;
       background: var(--accent); color: #09090b;
-      padding: 8px 16px; border-radius: 6px;
+      padding: 10px 20px; border-radius: 6px;
       font-weight: 600; font-size: 0.875rem;
       cursor: pointer; border: none; font-family: var(--font);
       transition: opacity 0.2s;
+      min-height: 44px; display: inline-flex; align-items: center;
     }
     #cookie-banner-ok:hover { opacity: 0.85; }
     @media (max-width: 640px) {
@@ -273,6 +473,8 @@
     </div>
   </nav>
 
+  <main id="main-content">
+
   <!-- SECTION 1 — HERO -->
   <section id="hero" aria-labelledby="hero-title">
     <div class="container">
@@ -282,19 +484,24 @@
           Beta privée — accès prioritaire ouvert
         </div>
         <h1 id="hero-title">
-          Combien de mandats perdez-vous parce que vos agents<br>n'ont pas le temps de <em>tout noter</em> ?
+          <span class="h1-mobile">Combien de mandats perdez-vous<br>chaque mois ?</span>
+          <span class="h1-desktop">Combien de mandats perdez-vous parce que vos agents<br>n'ont pas le temps de <em>tout noter</em> ?</span>
         </h1>
-        <p class="hero-subtitle">
+        <p class="hero-subtitle hero-subtitle--mobile">
+          Vos agents n'ont pas le temps de tout noter après chaque appel. Avec PropPilot, ils n'ont plus à le faire.
+        </p>
+        <p class="hero-subtitle hero-subtitle--desktop">
           PropPilot capture chaque échange — appels entrants, rappels sortants, SMS — structure automatiquement
           les informations, et tient vos fiches lead à jour en continu.
           Vos conseillers retrouvent le contexte complet d'un client en un coup d'œil. Aucun contact chaud ne se perd dans le silence.
         </p>
         <div class="hero-actions">
           <a href="https://calendly.com/contact-proppilot/appel-proppilot-20min" class="btn-primary" target="_blank" rel="noopener noreferrer">
-            Réserver une démo
+            Réserver une démo gratuite
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M8 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </a>
           <a href="#comment" class="btn-secondary">Voir comment ça marche</a>
+          <a href="#comment" class="hero-link-secondary">Voir comment ça marche →</a>
         </div>
       </div>
 
@@ -398,23 +605,32 @@
         <div class="step-card fade-in">
           <div class="step-number" aria-label="Étape 1">1</div>
           <h3>Setup en moins de 24h</h3>
-          <p>Vous recevez un numéro dédié à afficher sur SeLoger, LeBonCoin et votre site web.
-          Vos clients historiques continuent à utiliser votre numéro principal.
-          Aucun matériel, aucune installation.</p>
+          <details>
+            <summary>Voir le détail</summary>
+            <p>Vous recevez un numéro dédié à afficher sur SeLoger, LeBonCoin et votre site web.
+            Vos clients historiques continuent à utiliser votre numéro principal.
+            Aucun matériel, aucune installation.</p>
+          </details>
         </div>
         <div class="step-card fade-in">
           <div class="step-number" aria-label="Étape 2">2</div>
           <h3>Vos appels entrants sont captés automatiquement</h3>
-          <p>Chaque lead qui appelle votre numéro PropPilot est routé vers votre portable normalement.
-          Vous parlez librement, l'IA enregistre et transcrit en arrière-plan.
-          Vous gardez votre téléphone, vos habitudes, votre relation client.</p>
+          <details>
+            <summary>Voir le détail</summary>
+            <p>Chaque lead qui appelle votre numéro PropPilot est routé vers votre portable normalement.
+            Vous parlez librement, l'IA enregistre et transcrit en arrière-plan.
+            Vous gardez votre téléphone, vos habitudes, votre relation client.</p>
+          </details>
         </div>
         <div class="step-card fade-in">
           <div class="step-number" aria-label="Étape 3">3</div>
           <h3>Vos rappels sortants depuis le dashboard</h3>
-          <p>Pour rappeler un lead, un clic depuis votre dashboard PropPilot. Votre portable sonne,
-          vous décrochez, l'appel se lance. Vous bénéficiez du contexte complet du lead pendant
-          toute la conversation, et tout est capté automatiquement.</p>
+          <details>
+            <summary>Voir le détail</summary>
+            <p>Pour rappeler un lead, un clic depuis votre dashboard PropPilot. Votre portable sonne,
+            vous décrochez, l'appel se lance. Vous bénéficiez du contexte complet du lead pendant
+            toute la conversation, et tout est capté automatiquement.</p>
+          </details>
         </div>
       </div>
 
@@ -422,7 +638,7 @@
       <div style="margin-top:64px">
         <h3 style="text-align:center;margin-bottom:8px;font-size:clamp(1.1rem,2vw,1.5rem)">Aucun matériel, deux modes d'intégration au choix</h3>
         <p style="text-align:center;max-width:540px;margin:0 auto 40px">Démarrez par le plus simple, passez au second quand vous êtes prêt. Tout est sans engagement.</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+        <div class="modes-grid">
           <div class="card fade-in" style="border-color:rgba(163,230,53,0.4)">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
               <span style="background:var(--accent-dim);color:var(--accent);font-size:0.75rem;font-weight:700;padding:4px 10px;border-radius:100px;letter-spacing:0.06em">RECOMMANDÉ</span>
@@ -451,7 +667,8 @@
   <section id="comparaison" aria-labelledby="comparaison-title">
     <div class="container">
       <h2 id="comparaison-title" style="margin-bottom:48px">Ce qui change concrètement</h2>
-      <div class="fade-in" style="overflow-x:auto">
+      <!-- Desktop : table 3 colonnes -->
+      <div class="compare-table-wrap fade-in" style="overflow-x:auto">
         <table class="compare-table" role="table" aria-label="Comparaison avant et après PropPilot">
           <thead>
             <tr>
@@ -499,6 +716,45 @@
           </tbody>
         </table>
       </div>
+
+      <!-- Mobile : cards empilées -->
+      <div class="compare-cards fade-in" aria-label="Comparaison avant et après PropPilot">
+        <div class="compare-card">
+          <div class="compare-card__label">Saisie CRM après chaque appel</div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--sans">Sans</span><span class="compare-card__value--sans">Manuelle — 5 à 15 min/appel</span></div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--avec">Avec</span><span class="compare-card__value--avec">Automatique — 0 min</span></div>
+        </div>
+        <div class="compare-card">
+          <div class="compare-card__label">Historique client</div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--sans">Sans</span><span class="compare-card__value--sans">Incomplet, éparpillé, peu fiable</span></div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--avec">Avec</span><span class="compare-card__value--avec">Complet, structuré, enrichi en continu</span></div>
+        </div>
+        <div class="compare-card">
+          <div class="compare-card__label">Relances manquées</div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--sans">Sans</span><span class="compare-card__value--sans">Fréquentes — pas de rappels auto</span></div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--avec">Avec</span><span class="compare-card__value--avec">Éliminées — rappels planifiés automatiquement</span></div>
+        </div>
+        <div class="compare-card">
+          <div class="compare-card__label">Temps admin / agent / jour</div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--sans">Sans</span><span class="compare-card__value--sans">Plusieurs heures</span></div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--avec">Avec</span><span class="compare-card__value--avec">Quelques minutes</span></div>
+        </div>
+        <div class="compare-card">
+          <div class="compare-card__label">Qualité des données CRM</div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--sans">Sans</span><span class="compare-card__value--sans">Dépend de la rigueur de chaque agent</span></div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--avec">Avec</span><span class="compare-card__value--avec">Standardisée et homogène pour toute l'équipe</span></div>
+        </div>
+        <div class="compare-card">
+          <div class="compare-card__label">Onboarding d'un nouveau agent</div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--sans">Sans</span><span class="compare-card__value--sans">Accès à un historique lacunaire</span></div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--avec">Avec</span><span class="compare-card__value--avec">Contexte complet de chaque client disponible</span></div>
+        </div>
+        <div class="compare-card">
+          <div class="compare-card__label">Leads perdus par manque de suivi</div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--sans">Sans</span><span class="compare-card__value--sans">Une part significative des leads chauds</span></div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--avec">Avec</span><span class="compare-card__value--avec">Proche de 0 grâce aux relances automatiques</span></div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -512,6 +768,8 @@
       </p>
     </div>
   </section>
+
+  </main><!-- /#main-content -->
 
   <!-- FOOTER -->
   <footer role="contentinfo">
@@ -530,6 +788,9 @@
     </div>
   </footer>
 
+  <!-- CTA sticky mobile -->
+  <a id="cta-sticky" href="https://calendly.com/contact-proppilot/appel-proppilot-20min" target="_blank" rel="noopener noreferrer" aria-label="Réserver une démo gratuite">Réserver une démo</a>
+
   <!-- Cookie banner -->
   <div id="cookie-banner" role="region" aria-label="Consentement cookies">
     <div class="cookie-banner-inner">
@@ -542,7 +803,7 @@
   </div>
 
   <script>
-    // Animations scroll
+    // Animations scroll — éléments .fade-in
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -552,6 +813,65 @@
       });
     }, { threshold: 0.1 });
     document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+    // Pipeline steps — apparition en cascade (stagger)
+    (function () {
+      var steps = document.querySelectorAll('.pipeline-step');
+      var visual = document.querySelector('.hero-visual');
+      if (!visual || !steps.length) return;
+      var triggered = false;
+      var pipeObs = new IntersectionObserver(function (entries) {
+        if (entries[0].isIntersecting && !triggered) {
+          triggered = true;
+          steps.forEach(function (step, i) {
+            setTimeout(function () { step.classList.add('step-visible'); }, i * 180);
+          });
+          pipeObs.disconnect();
+        }
+      }, { threshold: 0.15 });
+      pipeObs.observe(visual);
+    })();
+
+    // Step details — ouvert sur desktop, collapsé sur mobile
+    (function () {
+      function syncStepDetails() {
+        var isDesktop = window.innerWidth >= 768;
+        document.querySelectorAll('.step-card details').forEach(function (d) {
+          if (isDesktop) d.setAttribute('open', '');
+          else d.removeAttribute('open');
+        });
+      }
+      syncStepDetails();
+      window.addEventListener('resize', syncStepDetails);
+    })();
+
+    // CTA sticky mobile — apparaît à 30%, disparaît au footer
+    (function () {
+      var btn = document.getElementById('cta-sticky');
+      var footer = document.querySelector('footer');
+      if (!btn) return;
+
+      function updateSticky() {
+        var scrolled = window.scrollY / (document.body.scrollHeight - window.innerHeight);
+        if (scrolled > 0.30) {
+          btn.classList.add('cta-sticky--visible');
+        } else {
+          btn.classList.remove('cta-sticky--visible');
+        }
+      }
+      window.addEventListener('scroll', updateSticky, { passive: true });
+
+      if (footer) {
+        var footerObs = new IntersectionObserver(function (entries) {
+          if (entries[0].isIntersecting) {
+            btn.classList.remove('cta-sticky--visible');
+          } else {
+            updateSticky();
+          }
+        }, { threshold: 0.1 });
+        footerObs.observe(footer);
+      }
+    })();
   </script>
 
   <script>
