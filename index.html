@@ -184,6 +184,62 @@
     .compare-table tbody tr td:nth-child(3) { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
     @media (max-width: 640px) { .compare-table { font-size: 0.85rem; } .compare-table thead tr th, .compare-table tbody tr td { padding: 12px 14px; } }
 
+    /* ── Chantier 3 — Compare cards mobile ── */
+    .compare-cards { display: none; }
+
+    @media (max-width: 767px) {
+      .compare-table-wrap { display: none; }
+      .compare-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .compare-card {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--surface);
+      }
+      .compare-card__label {
+        padding: 12px 16px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: var(--text);
+        border-bottom: 1px solid var(--border);
+        background: var(--surface-2);
+      }
+      .compare-card__row {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        padding: 10px 16px;
+        border-top: 1px solid var(--border);
+        font-size: 0.9rem;
+        line-height: 1.4;
+      }
+      .compare-card__row:first-of-type { border-top: none; }
+      .compare-card__badge {
+        flex-shrink: 0;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        padding: 2px 7px;
+        border-radius: 4px;
+        white-space: nowrap;
+      }
+      .compare-card__badge--sans {
+        background: rgba(239,68,68,0.15);
+        color: #fca5a5;
+      }
+      .compare-card__badge--avec {
+        background: rgba(163,230,53,0.15);
+        color: var(--accent);
+      }
+      .compare-card__value--sans { color: var(--muted); }
+      .compare-card__value--avec { color: var(--accent); font-weight: 600; }
+    }
+
     /* ── Section 6 — CRM ── */
     #crm { background: var(--surface); text-align: center; }
     #crm h2 { margin-bottom: 16px; }
@@ -561,7 +617,8 @@
   <section id="comparaison" aria-labelledby="comparaison-title">
     <div class="container">
       <h2 id="comparaison-title" style="margin-bottom:48px">Ce qui change concrètement</h2>
-      <div class="fade-in" style="overflow-x:auto">
+      <!-- Desktop : table 3 colonnes -->
+      <div class="compare-table-wrap fade-in" style="overflow-x:auto">
         <table class="compare-table" role="table" aria-label="Comparaison avant et après PropPilot">
           <thead>
             <tr>
@@ -608,6 +665,45 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Mobile : cards empilées -->
+      <div class="compare-cards fade-in" aria-label="Comparaison avant et après PropPilot">
+        <div class="compare-card">
+          <div class="compare-card__label">Saisie CRM après chaque appel</div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--sans">Sans</span><span class="compare-card__value--sans">Manuelle — 5 à 15 min/appel</span></div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--avec">Avec</span><span class="compare-card__value--avec">Automatique — 0 min</span></div>
+        </div>
+        <div class="compare-card">
+          <div class="compare-card__label">Historique client</div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--sans">Sans</span><span class="compare-card__value--sans">Incomplet, éparpillé, peu fiable</span></div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--avec">Avec</span><span class="compare-card__value--avec">Complet, structuré, enrichi en continu</span></div>
+        </div>
+        <div class="compare-card">
+          <div class="compare-card__label">Relances manquées</div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--sans">Sans</span><span class="compare-card__value--sans">Fréquentes — pas de rappels auto</span></div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--avec">Avec</span><span class="compare-card__value--avec">Éliminées — rappels planifiés automatiquement</span></div>
+        </div>
+        <div class="compare-card">
+          <div class="compare-card__label">Temps admin / agent / jour</div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--sans">Sans</span><span class="compare-card__value--sans">Plusieurs heures</span></div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--avec">Avec</span><span class="compare-card__value--avec">Quelques minutes</span></div>
+        </div>
+        <div class="compare-card">
+          <div class="compare-card__label">Qualité des données CRM</div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--sans">Sans</span><span class="compare-card__value--sans">Dépend de la rigueur de chaque agent</span></div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--avec">Avec</span><span class="compare-card__value--avec">Standardisée et homogène pour toute l'équipe</span></div>
+        </div>
+        <div class="compare-card">
+          <div class="compare-card__label">Onboarding d'un nouveau agent</div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--sans">Sans</span><span class="compare-card__value--sans">Accès à un historique lacunaire</span></div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--avec">Avec</span><span class="compare-card__value--avec">Contexte complet de chaque client disponible</span></div>
+        </div>
+        <div class="compare-card">
+          <div class="compare-card__label">Leads perdus par manque de suivi</div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--sans">Sans</span><span class="compare-card__value--sans">Une part significative des leads chauds</span></div>
+          <div class="compare-card__row"><span class="compare-card__badge compare-card__badge--avec">Avec</span><span class="compare-card__value--avec">Proche de 0 grâce aux relances automatiques</span></div>
+        </div>
       </div>
     </div>
   </section>
