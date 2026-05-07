@@ -135,8 +135,6 @@
       font-size: 0.65rem; font-weight: 600; color: var(--accent);
       background: var(--accent-dim); padding: 3px 8px; border-radius: 100px; margin-top: 10px;
     }
-    @media (max-width: 600px) { .mockup-pipeline { grid-template-columns: 1fr; } }
-
     /* ── Section 2 — Problème ── */
     #probleme { background: var(--surface); }
     .probleme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
@@ -225,6 +223,81 @@
     /* ── Phrase de bascule (section problème) ── */
     .probleme-bascule { margin-top: 40px; text-align: center; font-size: 0.9rem; color: #71717a; max-width: 640px; margin-left: auto; margin-right: auto; }
 
+    /* ── Chantier 1 — Hero mobile-first ── */
+
+    /* H1 : version courte mobile par défaut, longue masquée */
+    .h1-desktop { display: none; }
+    .h1-mobile  { display: block; }
+
+    /* Subtitle : version courte mobile par défaut */
+    .hero-subtitle--mobile  { display: block; }
+    .hero-subtitle--desktop { display: none; }
+
+    /* CTA mobile : colonne pleine largeur */
+    .hero-actions {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+      justify-content: center;
+    }
+    .hero-actions .btn-primary {
+      min-height: 48px;
+      justify-content: center;
+    }
+    .hero-actions .btn-secondary { display: none; }
+
+    /* Lien texte secondaire — mobile uniquement */
+    .hero-link-secondary {
+      display: block;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-decoration: none;
+      padding: 4px 0;
+      transition: color 0.2s;
+    }
+    .hero-link-secondary:hover { color: var(--text); }
+
+    /* Pipeline mobile : 1 colonne + bordure lime gauche comme liaison visuelle */
+    .mockup-pipeline { grid-template-columns: 1fr; gap: 8px; }
+    .pipeline-step { border-left: 2px solid rgba(163,230,53,0.55); }
+
+    /* Animation stagger pipeline steps — mobile par défaut */
+    .pipeline-step {
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    .pipeline-step.step-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ── Desktop ≥ 601px ── */
+    @media (min-width: 601px) {
+      .h1-desktop { display: block; }
+      .h1-mobile  { display: none; }
+      .hero-subtitle--mobile  { display: none; }
+      .hero-subtitle--desktop { display: block; }
+      .hero-actions {
+        flex-direction: row;
+        align-items: center;
+        gap: 16px;
+      }
+      .hero-actions .btn-primary { min-height: unset; }
+      .hero-actions .btn-secondary { display: inline-flex; }
+      .hero-link-secondary { display: none; }
+      .mockup-pipeline { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+      /* Desktop : steps toujours visibles, pas d'animation stagger */
+      .pipeline-step {
+        opacity: 1;
+        transform: none;
+        transition: none;
+        border-left: 1px solid var(--border);
+      }
+    }
+
     /* Cookie banner */
     #cookie-banner {
       display: none;
@@ -282,19 +355,24 @@
           Beta privée — accès prioritaire ouvert
         </div>
         <h1 id="hero-title">
-          Combien de mandats perdez-vous parce que vos agents<br>n'ont pas le temps de <em>tout noter</em> ?
+          <span class="h1-mobile">Combien de mandats perdez-vous<br>chaque mois ?</span>
+          <span class="h1-desktop">Combien de mandats perdez-vous parce que vos agents<br>n'ont pas le temps de <em>tout noter</em> ?</span>
         </h1>
-        <p class="hero-subtitle">
+        <p class="hero-subtitle hero-subtitle--mobile">
+          Vos agents n'ont pas le temps de tout noter après chaque appel. Avec PropPilot, ils n'ont plus à le faire.
+        </p>
+        <p class="hero-subtitle hero-subtitle--desktop">
           PropPilot capture chaque échange — appels entrants, rappels sortants, SMS — structure automatiquement
           les informations, et tient vos fiches lead à jour en continu.
           Vos conseillers retrouvent le contexte complet d'un client en un coup d'œil. Aucun contact chaud ne se perd dans le silence.
         </p>
         <div class="hero-actions">
           <a href="https://calendly.com/contact-proppilot/appel-proppilot-20min" class="btn-primary" target="_blank" rel="noopener noreferrer">
-            Réserver une démo
+            Réserver une démo gratuite
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M8 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </a>
           <a href="#comment" class="btn-secondary">Voir comment ça marche</a>
+          <a href="#comment" class="hero-link-secondary">Voir comment ça marche →</a>
         </div>
       </div>
 
@@ -542,7 +620,7 @@
   </div>
 
   <script>
-    // Animations scroll
+    // Animations scroll — éléments .fade-in
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -552,6 +630,24 @@
       });
     }, { threshold: 0.1 });
     document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+    // Pipeline steps — apparition en cascade (stagger)
+    (function () {
+      var steps = document.querySelectorAll('.pipeline-step');
+      var visual = document.querySelector('.hero-visual');
+      if (!visual || !steps.length) return;
+      var triggered = false;
+      var pipeObs = new IntersectionObserver(function (entries) {
+        if (entries[0].isIntersecting && !triggered) {
+          triggered = true;
+          steps.forEach(function (step, i) {
+            setTimeout(function () { step.classList.add('step-visible'); }, i * 180);
+          });
+          pipeObs.disconnect();
+        }
+      }, { threshold: 0.15 });
+      pipeObs.observe(visual);
+    })();
   </script>
 
   <script>
