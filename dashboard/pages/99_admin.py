@@ -31,16 +31,11 @@ st.set_page_config(
 # ─── Garde super-admin ────────────────────────────────────────────────────────
 
 from dashboard.auth_ui import require_auth
+from dashboard.lib.admin_auth import is_super_admin
 require_auth(require_active_plan=False)
 
-_ADMIN_EMAILS = [
-    e.strip().lower()
-    for e in os.environ.get("SUPER_ADMIN_EMAILS", "contact@proppilot.fr").split(",")
-    if e.strip()
-]
-
 _current_email = (st.session_state.get("email") or "").strip().lower()
-if _current_email not in _ADMIN_EMAILS:
+if not is_super_admin(_current_email):
     st.error("⛔ Accès refusé. Cette page est réservée aux super-administrateurs.")
     st.stop()
 

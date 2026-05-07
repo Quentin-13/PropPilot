@@ -19,6 +19,7 @@ import streamlit as st
 
 from config.settings import get_settings
 from dashboard.auth_ui import require_auth, render_sidebar_logout
+from dashboard.lib.admin_auth import is_super_admin
 
 settings = get_settings()
 
@@ -30,6 +31,10 @@ st.set_page_config(
 
 require_auth(write_pending_cookie=True)
 render_sidebar_logout()
+
+# Super-admin ne doit pas voir les pages client
+if is_super_admin(st.session_state.get("email", "")):
+    st.switch_page("pages/99_admin.py")
 
 client_id = st.session_state.get("user_id", settings.agency_client_id)
 

@@ -139,10 +139,15 @@ h1, h2, h3 { color: white !important; }
 
 # ─── Auth ──────────────────────────────────────────────────────────────────────
 from dashboard.auth_ui import render_sidebar_logout, require_auth
+from dashboard.lib.admin_auth import is_super_admin
 
 require_auth()
 
-# Redirect admin → tableau de bord propriétaire
+# Redirect super-admin → dashboard admin dédié
+if is_super_admin(st.session_state.get("email", "")):
+    st.switch_page("pages/99_admin.py")
+
+# Redirect admin agence → tableau de bord propriétaire
 if st.session_state.get("is_admin", False):
     st.switch_page("pages/00_proprietaire.py")
 
