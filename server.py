@@ -36,6 +36,7 @@ from tools.security import (
 )
 from webhooks.twilio_voice import router as voice_router
 from api.calls import router as calls_router
+from api.admin_health import router as admin_health_router, run_health_alert_job
 
 logger = logging.getLogger(__name__)
 
@@ -176,6 +177,12 @@ async def lifespan(app: FastAPI):
                 id="sms_extraction_batch",
                 replace_existing=True,
             )
+            scheduler.add_job(
+                run_health_alert_job,
+                IntervalTrigger(minutes=15),
+                id="health_alert",
+                replace_existing=True,
+            )
             scheduler.start()
             logger.info(
                 "APScheduler démarré — rapport hebdo lundi 8h + extraction SMS toutes 4 min"
@@ -241,6 +248,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # ── Sprint A — capture d'appels ───────────────────────────────────────────────
 app.include_router(voice_router)
 app.include_router(calls_router)
+app.include_router(admin_health_router)
 
 
 @app.middleware("http")
