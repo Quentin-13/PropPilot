@@ -263,6 +263,60 @@ class TestAmbiguLeads:
         assert result.score_total >= SCORE_SEUIL_CHAUD
 
 
+# ── régression urgence implicite ─────────────────────────────────────────────
+
+class TestUrgenceImplicite:
+    """
+    Régression : le LLM sous-cote l'urgence quand le motif est fort
+    sans mot temporel explicite.
+    Bug observé en prod : SMS divorce + budget + zone → 5/24 froid
+    au lieu de chaud attendu.
+    """
+
+    def test_divorce_explicite_doit_etre_chaud(self):
+        """SMS prod réel : divorce + 'très urgent' → score_urgence=3 → CHAUD."""
+        result = LeadExtractionResult.from_dict({
+            "lead_type": "acheteur",
+            "score_urgence": 3,
+            "score_capacite_fin": None,
+            "score_engagement": None,
+            "score_motivation": 3,
+            "projet": "achat",
+            "localisation": "Toulouse",
+            "budget": "300000",
+            "motivation": "divorce",
+        })
+        assert result.score_total >= SCORE_SEUIL_CHAUD, (
+            f"Lead divorce + très urgent doit être chaud, score: {result.score_total}"
+        )
+
+    def test_succession_implicite_doit_etre_chaud(self):
+        """Vendeur succession sans mot 'urgent' → urgence=3 par contexte."""
+        result = LeadExtractionResult.from_dict({
+            "lead_type": "vendeur",
+            "score_urgence": 3,
+            "score_maturite": 2,
+            "score_qualite_bien": None,
+            "score_motivation": 3,
+            "projet": "vente",
+            "motivation": "succession",
+        })
+        assert result.score_total >= SCORE_SEUIL_CHAUD
+
+    def test_mutation_avec_deadline_doit_etre_chaud(self):
+        """Acheteur mutation pro avec date précise → urgence=3."""
+        result = LeadExtractionResult.from_dict({
+            "lead_type": "acheteur",
+            "score_urgence": 3,
+            "score_capacite_fin": None,
+            "score_engagement": None,
+            "score_motivation": 3,
+            "projet": "achat",
+            "motivation": "mutation_pro",
+        })
+        assert result.score_total >= SCORE_SEUIL_CHAUD
+
+
 # ── invariants de robustesse ──────────────────────────────────────────────────
 
 class TestRobustesse:
@@ -300,3 +354,88 @@ class TestRobustesse:
             cost_usd=0.0,
         )
         assert data.score_qualification == score_to_label(data.score_total)
+
+
+# ── E2E intégration : SMS prod réel avec LLM mocké ───────────────────────────
+
+_SMS_PROD_DIVORCE = (
+    "Bonjour, je cherche une maison de minimum 90m2 sur Toulouse et alentours "
+    "proche, j'ai 300k de budget. Très urgent, je suis actuellement en divorce"
+)
+
+_LLM_RESPONSE_DIVORCE = {
+    "lead_type": "acheteur",
+    "score_urgence": 3,
+    "score_capacite_fin": None,
+    "score_engagement": None,
+    "score_maturite": None,
+    "score_qualite_bien": None,
+    "score_motivation": 3,
+    "is_ambiguous": False,
+    "linked_lead_hint": None,
+    "projet": "achat",
+    "localisation": "Toulouse et alentours",
+    "budget": "300000",
+    "timeline": None,
+    "financement": None,
+    "motivation": "divorce",
+    "prochaine_action": "rdv",
+    "resume": "Prospect en divorce cherche maison 90m² minimum sur Toulouse, budget 300k€. Situation très urgente.",
+}
+
+
+class TestSmsProdRegressionDivorce:
+    """
+    E2E : SMS prod réel (divorce + 'très urgent') avec LLM mocké.
+    Vérifie que le pipeline complet sort CHAUD (≥18/24).
+
+    Bug reproduit : avant le fix, le LLM retournait score_urgence=0 ou 1
+    malgré 'très urgent' + 'divorce' → score 5/24 → froid.
+    """
+
+    def test_sms_prod_divorce_sort_chaud(self, monkeypatch):
+        import json
+        from datetime import datetime
+        from unittest.mock import MagicMock, patch
+
+        monkeypatch.setenv("TESTING", "true")
+        monkeypatch.setenv("MOCK_MODE", "never")
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+        from config.settings import get_settings
+        get_settings.cache_clear()
+
+        mock_content = MagicMock()
+        mock_content.text = json.dumps(_LLM_RESPONSE_DIVORCE)
+        mock_response = MagicMock()
+        mock_response.content = [mock_content]
+        mock_response.usage.input_tokens = 600
+        mock_response.usage.output_tokens = 120
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = mock_response
+
+        messages = [
+            {
+                "role": "user",
+                "contenu": _SMS_PROD_DIVORCE,
+                "created_at": datetime(2026, 5, 7, 9, 0),
+            }
+        ]
+
+        with patch("anthropic.Anthropic", return_value=mock_client), \
+             patch("memory.cost_logger.log_api_action"):
+            from lib.sms_extraction_pipeline import SmsExtractionPipeline
+            pipeline = SmsExtractionPipeline.__new__(SmsExtractionPipeline)
+            pipeline._mock = False
+            pipeline._settings = MagicMock(
+                claude_model="claude-sonnet-4-6",
+                anthropic_api_key="test-key",
+            )
+            result = pipeline.extract(lead_id="lead-divorce-prod", messages=messages)
+
+        assert result is not None, "Le pipeline ne doit pas retourner None"
+        assert result.score_total >= SCORE_SEUIL_CHAUD, (
+            f"SMS prod divorce doit être CHAUD (≥{SCORE_SEUIL_CHAUD}), "
+            f"score obtenu: {result.score_total}"
+        )
+
+        get_settings.cache_clear()

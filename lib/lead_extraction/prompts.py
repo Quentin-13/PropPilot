@@ -71,6 +71,30 @@ score_motivation (poids ×1)
   0 : floue ou inconnue
 
 ────────────────────────────────────────────────────────────────
+RÈGLE ABSOLUE — score_urgence (priorité maximale)
+────────────────────────────────────────────────────────────────
+Si la transcription contient EXPLICITEMENT le mot "urgent", "urgence",
+"rapidement", "vite", "dès que possible", "ASAP", "au plus vite"
+→ score_urgence = 3, sans exception.
+
+Si la motivation contient l'un de ces motifs forts, score_urgence = 3
+MÊME SANS mot temporel explicite, car ces situations impliquent par nature
+une contrainte temporelle :
+- divorce / séparation
+- succession / héritage / décès
+- mutation professionnelle
+- naissance / agrandissement famille en cours
+- vente forcée / saisie / contrainte bancaire
+- compromis déjà signé ailleurs (pour un acheteur)
+- bail qui se termine (pour un acheteur/locataire)
+
+Si le prospect dit "je dois", "il faut que je", "je suis obligé de"
++ une action immobilière → score_urgence ≥ 2.
+
+N'attends PAS un délai chiffré pour scorer l'urgence.
+L'urgence se déduit du contexte de vie du prospect, pas seulement du calendrier.
+
+────────────────────────────────────────────────────────────────
 RÈGLE CRITIQUE — redistribution des axes inconnus
 ────────────────────────────────────────────────────────────────
 Si une info est VRAIMENT absente (non déductible du texte), note l'axe null.
@@ -170,6 +194,58 @@ Scoring attendu :
 - linked_lead_hint : "Acheteur T4+ Lyon, budget ~340k€ après vente Grenoble"
 - Vendeur : score_urgence=3, score_maturite=3, score_qualite_bien=2, score_motivation=2
 - score_total vendeur ≈ CHAUD (offre acceptée = urgence maximale)
+
+────────────────────────────────────────────────────
+[EXEMPLE 7 — ACHETEUR URGENT PAR CONTEXTE : divorce explicite]
+Texte : "Bonjour, je cherche une maison de minimum 90m2 sur Toulouse et alentours
+proche, j'ai 300k de budget. Très urgent, je suis actuellement en divorce"
+
+Scoring attendu :
+- lead_type : acheteur
+- score_urgence : 3  ← "très urgent" + divorce = motif fort → urgence maximale
+- score_capacite_fin : null  (financement non précisé)
+- score_engagement : null  (premier contact)
+- score_motivation : 3  (divorce = vie forte)
+- budget_min : 300000
+- budget_max : 300000
+- zone_geographique : "Toulouse et alentours"
+- type_bien : "maison"
+- surface_min : 90
+- motivation : "divorce"
+- score_total → redistribution sur urgence(3)×3 + motivation(3)×1 = 12/12 → normalisé 24 → CHAUD
+- resume : "Prospect en divorce cherche maison 90m² minimum sur Toulouse, budget 300k€. Situation très urgente."
+
+────────────────────────────────────────────────────
+[EXEMPLE 8 — VENDEUR URGENT PAR CONTEXTE : succession sans mot "urgent"]
+Texte : "On a hérité de la maison de notre père qui est décédé il y a 2 mois,
+à Bordeaux Caudéran. Ma sœur et moi on doit la vendre pour régler la succession."
+
+Scoring attendu :
+- lead_type : vendeur
+- score_urgence : 3  ← succession = motif fort → score_urgence = 3 même sans délai chiffré
+- score_maturite : 2  ("on doit la vendre" = décision prise)
+- score_qualite_bien : null  (pas de détails sur le bien)
+- score_motivation : 3  (héritage/succession = vie forte)
+- motivation : "succession"
+- score_total → redistribution sur urgence(3)×3 + maturite(2)×3 + motivation(3)×1 = 9+6+3=18/21 → normalisé ≥18 → CHAUD
+- resume : "Frère et sœur héritiers d'une maison à Bordeaux Caudéran, succession en cours, vente nécessaire."
+
+────────────────────────────────────────────────────
+[EXEMPLE 9 — ACHETEUR URGENT PAR MOT TEMPOREL : mutation avec deadline]
+Texte : "Je suis muté à Lyon à partir du 1er septembre, il faut absolument que
+je trouve un T3 avant la rentrée scolaire pour les enfants."
+
+Scoring attendu :
+- lead_type : acheteur
+- score_urgence : 3  ← "il faut absolument" + deadline 1er septembre = urgence maximale
+- score_capacite_fin : null
+- score_engagement : null
+- score_motivation : 3  (mutation professionnelle = vie forte)
+- type_bien : "T3"
+- zone_geographique : "Lyon"
+- motivation : "mutation_pro"
+- score_total → redistribution → CHAUD
+- resume : "Mutation pro à Lyon le 1er septembre, recherche T3 avant la rentrée pour les enfants."
 ════════════════════════════════════════════════════
 """
 
