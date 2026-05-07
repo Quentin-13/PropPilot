@@ -298,6 +298,38 @@
       }
     }
 
+    /* ── Chantier 2 — CTA sticky bottom mobile ── */
+    #cta-sticky {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: fixed;
+      bottom: 12px;
+      left: 16px;
+      right: 16px;
+      z-index: 100;
+      height: 52px;
+      background: var(--accent);
+      color: #09090b;
+      font-weight: 700;
+      font-size: 1rem;
+      border-radius: 8px;
+      text-decoration: none;
+      box-shadow: 0 4px 16px rgba(163,230,53,0.35);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      pointer-events: none;
+    }
+    #cta-sticky.cta-sticky--visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+    @media (min-width: 768px) {
+      #cta-sticky { display: none !important; }
+    }
+
     /* Cookie banner */
     #cookie-banner {
       display: none;
@@ -608,6 +640,9 @@
     </div>
   </footer>
 
+  <!-- CTA sticky mobile -->
+  <a id="cta-sticky" href="https://calendly.com/contact-proppilot/appel-proppilot-20min" target="_blank" rel="noopener noreferrer" aria-label="Réserver une démo gratuite">Réserver une démo</a>
+
   <!-- Cookie banner -->
   <div id="cookie-banner" role="region" aria-label="Consentement cookies">
     <div class="cookie-banner-inner">
@@ -647,6 +682,34 @@
         }
       }, { threshold: 0.15 });
       pipeObs.observe(visual);
+    })();
+
+    // CTA sticky mobile — apparaît à 30%, disparaît au footer
+    (function () {
+      var btn = document.getElementById('cta-sticky');
+      var footer = document.querySelector('footer');
+      if (!btn) return;
+
+      function updateSticky() {
+        var scrolled = window.scrollY / (document.body.scrollHeight - window.innerHeight);
+        if (scrolled > 0.30) {
+          btn.classList.add('cta-sticky--visible');
+        } else {
+          btn.classList.remove('cta-sticky--visible');
+        }
+      }
+      window.addEventListener('scroll', updateSticky, { passive: true });
+
+      if (footer) {
+        var footerObs = new IntersectionObserver(function (entries) {
+          if (entries[0].isIntersecting) {
+            btn.classList.remove('cta-sticky--visible');
+          } else {
+            updateSticky();
+          }
+        }, { threshold: 0.1 });
+        footerObs.observe(footer);
+      }
     })();
   </script>
 
