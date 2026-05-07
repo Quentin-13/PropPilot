@@ -206,11 +206,21 @@ def get_call_by_id(call_id: str) -> Optional[dict]:
 
 # ── conversation_extractions ──────────────────────────────────────────────────
 
+def _mark_lead_extraction_failed(lead_id: Optional[str], conn) -> None:
+    """Marque leads.extraction_status='failed' sans toucher aux autres champs."""
+    if not lead_id:
+        return
+    conn.execute(
+        "UPDATE leads SET extraction_status = 'failed', updated_at = %s WHERE id = %s",
+        (datetime.utcnow(), lead_id),
+    )
+    logger.warning("[CallRepo] extraction_status=failed pour lead_id=%s", lead_id)
+
+
 def save_call_extraction(call_id: str, data) -> int:
     """
     Sauvegarde une CallExtractionData en DB (source='call').
-    data est un CallExtractionData depuis lib/call_extraction_pipeline.
-
+    Si extraction_status='failed', stocke le fait sans écraser les données du lead.
     Retourne l'id SERIAL de l'extraction créée.
     """
     from lib.call_extraction_pipeline import CallExtractionData
@@ -224,6 +234,8 @@ def save_call_extraction(call_id: str, data) -> int:
         ).fetchone()
     lead_id = call_row["lead_id"] if call_row else None
 
+    extraction_status = getattr(data, "extraction_status", "ok") or "ok"
+
     with get_connection() as conn:
         row = conn.execute(
             """
@@ -235,6 +247,7 @@ def save_call_extraction(call_id: str, data) -> int:
                 motivation, score_qualification,
                 prochaine_action_suggeree, resume_appel, points_attention,
                 extraction_model, extraction_prompt_version,
+                extraction_status,
                 extracted_at
             ) VALUES (
                 'call', %s, %s,
@@ -244,6 +257,7 @@ def save_call_extraction(call_id: str, data) -> int:
                 %s, %s,
                 %s, %s, %s,
                 %s, %s,
+                %s,
                 NOW()
             ) RETURNING id
             """,
@@ -258,11 +272,19 @@ def save_call_extraction(call_id: str, data) -> int:
                 data.prochaine_action_suggeree, data.resume_appel,
                 json.dumps(data.points_attention, ensure_ascii=False),
                 data.extraction_model, data.extraction_prompt_version,
+                extraction_status,
             ),
         )
         extraction_id = row.fetchone()["id"]
-        _apply_extraction_to_lead(lead_id, data, conn)
-        logger.info("[CallRepo] Extraction saved id=%d call_id=%s", extraction_id, call_id)
+        if extraction_status == "failed":
+            # Ne jamais écraser les données existantes sur échec d'extraction
+            _mark_lead_extraction_failed(lead_id, conn)
+        else:
+            _apply_extraction_to_lead(lead_id, data, conn)
+        logger.info(
+            "[CallRepo] Extraction saved id=%d call_id=%s status=%s",
+            extraction_id, call_id, extraction_status,
+        )
         return extraction_id
 
 
@@ -440,13 +462,14 @@ def get_latest_extraction_for_lead(lead_id: str) -> Optional[dict]:
 def save_sms_extraction(lead_id: str, client_id: str, data) -> int:
     """
     Sauvegarde une extraction SMS en DB (source='sms').
-    data est un CallExtractionData depuis lib/sms_extraction_pipeline.
-
+    Si extraction_status='failed', stocke le fait sans écraser les données du lead.
     Retourne l'id SERIAL de l'extraction créée.
     """
     from lib.call_extraction_pipeline import CallExtractionData
 
     assert isinstance(data, CallExtractionData)
+
+    extraction_status = getattr(data, "extraction_status", "ok") or "ok"
 
     with get_connection() as conn:
         row = conn.execute(
@@ -459,6 +482,7 @@ def save_sms_extraction(lead_id: str, client_id: str, data) -> int:
                 motivation, score_qualification,
                 prochaine_action_suggeree, resume_appel, points_attention,
                 extraction_model, extraction_prompt_version,
+                extraction_status,
                 extracted_at
             ) VALUES (
                 'sms', %s,
@@ -468,6 +492,7 @@ def save_sms_extraction(lead_id: str, client_id: str, data) -> int:
                 %s, %s,
                 %s, %s, %s,
                 %s, %s,
+                %s,
                 NOW()
             ) RETURNING id
             """,
@@ -482,13 +507,17 @@ def save_sms_extraction(lead_id: str, client_id: str, data) -> int:
                 data.prochaine_action_suggeree, data.resume_appel,
                 json.dumps(data.points_attention, ensure_ascii=False),
                 data.extraction_model, data.extraction_prompt_version,
+                extraction_status,
             ),
         )
         extraction_id = row.fetchone()["id"]
-        _apply_extraction_to_lead(lead_id, data, conn)
+        if extraction_status == "failed":
+            _mark_lead_extraction_failed(lead_id, conn)
+        else:
+            _apply_extraction_to_lead(lead_id, data, conn)
         logger.info(
-            "[CallRepo] SMS extraction saved id=%d lead_id=%s client=%s",
-            extraction_id, lead_id, client_id,
+            "[CallRepo] SMS extraction saved id=%d lead_id=%s client=%s status=%s",
+            extraction_id, lead_id, client_id, extraction_status,
         )
         return extraction_id
 

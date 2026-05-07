@@ -114,7 +114,8 @@ class CallExtractionData:
     extraction_model: str = "claude-sonnet-4-5"
     extraction_prompt_version: str = EXTRACTION_PROMPT_VERSION
     cost_usd: float = 0.0
-    source: str = "claude"  # "claude" | "mock"
+    source: str = "claude"          # "claude" | "mock"
+    extraction_status: str = "ok"   # "ok" | "failed" | "mock"
 
     @classmethod
     def mock(cls) -> "CallExtractionData":
@@ -233,26 +234,24 @@ class CallExtractionPipeline:
     def extract(self, call_id: str, transcript: str) -> CallExtractionData:
         """
         Extrait les données structurées d'une transcription.
-
-        Args:
-            call_id: ID de l'appel (pour corrélation dans les logs)
-            transcript: Texte de la transcription Whisper
-
-        Returns:
-            CallExtractionData prêt à être stocké en DB
+        Retry automatique (3 tentatives, backoff 1s/3s/9s).
+        Validation Pydantic stricte du JSON.
+        Retourne extraction_status="failed" si toutes les tentatives échouent.
         """
         if self._mock or not transcript.strip():
             logger.info("[MOCK] CallExtractionPipeline.extract call_id=%s", call_id)
             return CallExtractionData.mock()
 
+        import anthropic
+        from memory.cost_logger import log_api_action
+        from lib.lead_extraction.retry import run_with_retry
+
         model = self._settings.claude_model
         prompt = _build_call_prompt(transcript)
+        client = anthropic.Anthropic(api_key=self._settings.anthropic_api_key)
+        _usage = [None]
 
-        try:
-            import anthropic
-            from memory.cost_logger import log_api_action
-
-            client = anthropic.Anthropic(api_key=self._settings.anthropic_api_key)
+        def _call_once():
             response = client.messages.create(
                 model=model,
                 max_tokens=1024,
@@ -266,38 +265,38 @@ class CallExtractionPipeline:
                 }],
                 messages=[{"role": "user", "content": prompt}],
             )
-
+            _usage[0] = response.usage
             raw = response.content[0].text.strip()
             if "```json" in raw:
                 raw = raw.split("```json")[1].split("```")[0].strip()
             elif "```" in raw:
                 raw = raw.split("```")[1].split("```")[0].strip()
+            return json.loads(raw), raw
 
-            data = json.loads(raw)
+        parsed, extraction_status = run_with_retry(
+            _call_once, lead_id=call_id, source="call"
+        )
 
-            cost = (
-                response.usage.input_tokens * CLAUDE_COST_INPUT_PER_TOKEN
-                + response.usage.output_tokens * CLAUDE_COST_OUTPUT_PER_TOKEN
-            )
+        if extraction_status == "failed":
+            failed = CallExtractionData(extraction_status="failed", source="claude")
+            return failed
 
-            log_api_action(
-                client_id=call_id,
-                action_type="call_extraction",
-                provider="anthropic",
-                model=model,
-                tokens_input=response.usage.input_tokens,
-                tokens_output=response.usage.output_tokens,
-            )
-
-            result = CallExtractionData.from_json(data, model=model, cost_usd=round(cost, 6))
-            logger.info(
-                "[Claude] Extraction OK call_id=%s score=%s cost=$%.4f",
-                call_id, result.score_qualification, cost,
-            )
-            return result
-
-        except Exception as exc:
-            logger.error("[Claude] Extraction erreur call_id=%s: %s — mock fallback", call_id, exc)
-            mock = CallExtractionData.mock()
-            mock.source = "mock_fallback"
-            return mock
+        usage = _usage[0]
+        cost = (
+            usage.input_tokens * CLAUDE_COST_INPUT_PER_TOKEN
+            + usage.output_tokens * CLAUDE_COST_OUTPUT_PER_TOKEN
+        )
+        log_api_action(
+            client_id=call_id,
+            action_type="call_extraction",
+            provider="anthropic",
+            model=model,
+            tokens_input=usage.input_tokens,
+            tokens_output=usage.output_tokens,
+        )
+        result = CallExtractionData.from_json(parsed, model=model, cost_usd=round(cost, 6))
+        logger.info(
+            "[Claude] Extraction OK call_id=%s score=%s cost=$%.4f",
+            call_id, result.score_qualification, cost,
+        )
+        return result

@@ -334,6 +334,46 @@ def get_weekly_stats(client_id: str, days: int = 7) -> dict:
     }
 
 
+def get_leads_to_verify(client_id: str, limit: int = 100) -> list[dict]:
+    """
+    Leads nécessitant une vérification manuelle :
+    - extraction_status = 'failed' (extraction LLM ratée après 3 tentatives)
+    - score IS NULL (ne devrait pas arriver, sécurité)
+
+    Retourne des dicts (pas des Lead dataclasses) pour inclure
+    les champs optionnels comme extraction_status.
+    """
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, client_id, prenom, nom, telephone, score,
+                   statut, projet, created_at, updated_at,
+                   extraction_status, resume
+            FROM leads
+            WHERE client_id = %s
+              AND (extraction_status = 'failed' OR score IS NULL)
+            ORDER BY updated_at DESC
+            LIMIT %s
+            """,
+            (client_id, limit),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def count_leads_to_verify(client_id: str) -> int:
+    """Nombre de leads en attente de vérification manuelle."""
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT COUNT(*) FROM leads
+            WHERE client_id = %s
+              AND (extraction_status = 'failed' OR score IS NULL)
+            """,
+            (client_id,),
+        ).fetchone()
+    return row[0] if row else 0
+
+
 def _table_exists(conn, table_name: str) -> bool:
     """Vérifie qu'une table existe dans la base."""
     try:

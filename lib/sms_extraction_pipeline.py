@@ -131,15 +131,17 @@ class SmsExtractionPipeline:
             mock.source = "mock"
             return mock
 
+        import anthropic
+        from memory.cost_logger import log_api_action
+        from lib.lead_extraction.retry import run_with_retry
+
         thread = _format_thread(messages)
         model = self._settings.claude_model
         prompt = _build_sms_prompt(thread)
+        client = anthropic.Anthropic(api_key=self._settings.anthropic_api_key)
+        _usage = [None]
 
-        try:
-            import anthropic
-            from memory.cost_logger import log_api_action
-
-            client = anthropic.Anthropic(api_key=self._settings.anthropic_api_key)
+        def _call_once():
             response = client.messages.create(
                 model=model,
                 max_tokens=1024,
@@ -153,40 +155,40 @@ class SmsExtractionPipeline:
                 }],
                 messages=[{"role": "user", "content": prompt}],
             )
-
+            _usage[0] = response.usage
             raw = response.content[0].text.strip()
             if "```json" in raw:
                 raw = raw.split("```json")[1].split("```")[0].strip()
             elif "```" in raw:
                 raw = raw.split("```")[1].split("```")[0].strip()
+            return json.loads(raw), raw
 
-            data = json.loads(raw)
+        parsed, extraction_status = run_with_retry(
+            _call_once, lead_id=lead_id, source="sms"
+        )
 
-            cost = (
-                response.usage.input_tokens * _CLAUDE_COST_INPUT_PER_TOKEN
-                + response.usage.output_tokens * _CLAUDE_COST_OUTPUT_PER_TOKEN
-            )
+        if extraction_status == "failed":
+            failed = CallExtractionData(extraction_status="failed", source="claude")
+            failed.extraction_prompt_version = SMS_EXTRACTION_PROMPT_VERSION
+            return failed
 
-            log_api_action(
-                client_id=lead_id,
-                action_type="sms_extraction",
-                provider="anthropic",
-                model=model,
-                tokens_input=response.usage.input_tokens,
-                tokens_output=response.usage.output_tokens,
-            )
-
-            result = CallExtractionData.from_json(data, model=model, cost_usd=round(cost, 6))
-            result.extraction_prompt_version = SMS_EXTRACTION_PROMPT_VERSION
-            logger.info(
-                "[SMS] Extraction OK lead_id=%s score=%s cost=$%.4f",
-                lead_id, result.score_qualification, cost,
-            )
-            return result
-
-        except Exception as exc:
-            logger.error("[SMS] Extraction erreur lead_id=%s: %s — mock fallback", lead_id, exc)
-            mock = CallExtractionData.mock()
-            mock.extraction_prompt_version = SMS_EXTRACTION_PROMPT_VERSION
-            mock.source = "mock_fallback"
-            return mock
+        usage = _usage[0]
+        cost = (
+            usage.input_tokens * _CLAUDE_COST_INPUT_PER_TOKEN
+            + usage.output_tokens * _CLAUDE_COST_OUTPUT_PER_TOKEN
+        )
+        log_api_action(
+            client_id=lead_id,
+            action_type="sms_extraction",
+            provider="anthropic",
+            model=model,
+            tokens_input=usage.input_tokens,
+            tokens_output=usage.output_tokens,
+        )
+        result = CallExtractionData.from_json(parsed, model=model, cost_usd=round(cost, 6))
+        result.extraction_prompt_version = SMS_EXTRACTION_PROMPT_VERSION
+        logger.info(
+            "[SMS] Extraction OK lead_id=%s score=%s cost=$%.4f",
+            lead_id, result.score_qualification, cost,
+        )
+        return result
