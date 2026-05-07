@@ -81,10 +81,18 @@ def create_lead(lead: Lead) -> Lead:
     return lead
 
 
-def get_lead(lead_id: str) -> Optional[Lead]:
-    """Récupère un lead par son ID."""
+def get_lead(lead_id: str, client_id: Optional[str] = None) -> Optional[Lead]:
+    """Récupère un lead par son ID. Si client_id est fourni, vérifie l'appartenance."""
     with get_connection() as conn:
-        row = conn.execute("SELECT * FROM leads WHERE id = ?", (lead_id,)).fetchone()
+        if client_id:
+            row = conn.execute(
+                "SELECT * FROM leads WHERE id = %s AND client_id = %s",
+                (lead_id, client_id),
+            ).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT * FROM leads WHERE id = %s", (lead_id,)
+            ).fetchone()
     return _row_to_lead(dict(row)) if row else None
 
 

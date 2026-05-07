@@ -88,11 +88,11 @@ async def initiate_outbound_call(body: OutboundCallRequest, request: Request):
     if not user_id:
         raise HTTPException(status_code=401, detail="Authentification requise")
 
-    # Récupérer le numéro du lead
+    # Récupérer le numéro du lead — vérifie l'appartenance au client
     lead_phone = body.lead_phone
     if not lead_phone and body.lead_id:
         try:
-            lead = get_lead(body.lead_id)
+            lead = get_lead(body.lead_id, client_id=user_id)
             if lead:
                 lead_phone = lead.telephone
         except Exception as exc:
@@ -231,6 +231,7 @@ async def get_call(call_id: str, request: Request):
     call = get_call_by_id(call_id)
     if not call:
         raise HTTPException(status_code=404, detail="Appel introuvable")
+    _check_call_ownership(call, request.state.user_id)
     return call
 
 
@@ -238,7 +239,12 @@ async def get_call(call_id: str, request: Request):
 async def get_call_extraction(call_id: str, request: Request):
     """Extraction structurée d'un appel."""
     _require_auth(request)
-    from memory.call_repository import get_extraction_by_call
+    from memory.call_repository import get_call_by_id, get_extraction_by_call
+
+    call = get_call_by_id(call_id)
+    if not call:
+        raise HTTPException(status_code=404, detail="Appel introuvable")
+    _check_call_ownership(call, request.state.user_id)
 
     extraction = get_extraction_by_call(call_id)
     if not extraction:
@@ -275,3 +281,10 @@ async def list_calls(request: Request, limit: int = 20, offset: int = 0):
 def _require_auth(request: Request) -> None:
     if not getattr(request.state, "user_id", None):
         raise HTTPException(status_code=401, detail="Authentification requise")
+
+
+def _check_call_ownership(call: dict, user_id: str) -> None:
+    """Lève 403 si l'appel n'appartient pas à l'agence authentifiée."""
+    call_owner = call.get("client_id") or call.get("agency_id")
+    if call_owner and call_owner != user_id:
+        raise HTTPException(status_code=403, detail="Accès refusé")
