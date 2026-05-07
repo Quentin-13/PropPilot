@@ -168,7 +168,41 @@
     }
     .step-card h3 { margin-bottom: 12px; }
     .step-card p { font-size: 0.95rem; }
+    .modes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
     @media (max-width: 768px) { .steps-grid { grid-template-columns: 1fr; } }
+
+    /* ── Chantier 4 — Steps + modes mobile ── */
+    @media (max-width: 767px) {
+      .step-number {
+        width: 36px; height: 36px;
+        font-size: 0.9rem;
+        margin-bottom: 12px;
+      }
+      .step-card details > summary {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        color: var(--accent);
+        font-size: 0.88rem;
+        font-weight: 600;
+        list-style: none;
+        padding: 4px 0 2px;
+        user-select: none;
+      }
+      .step-card details > summary::-webkit-details-marker { display: none; }
+      .step-card details > summary::after {
+        content: '↓';
+        display: inline-block;
+        transition: transform 0.2s;
+      }
+      .step-card details[open] > summary::after { transform: rotate(180deg); }
+      .step-card details > p { margin-top: 8px; }
+      .modes-grid { grid-template-columns: 1fr; }
+    }
+    @media (min-width: 768px) {
+      .step-card details > summary { display: none; }
+    }
 
     /* ── Section 5 — Comparaison ── */
     #comparaison { text-align: center; }
@@ -564,23 +598,32 @@
         <div class="step-card fade-in">
           <div class="step-number" aria-label="Étape 1">1</div>
           <h3>Setup en moins de 24h</h3>
-          <p>Vous recevez un numéro dédié à afficher sur SeLoger, LeBonCoin et votre site web.
-          Vos clients historiques continuent à utiliser votre numéro principal.
-          Aucun matériel, aucune installation.</p>
+          <details>
+            <summary>Voir le détail</summary>
+            <p>Vous recevez un numéro dédié à afficher sur SeLoger, LeBonCoin et votre site web.
+            Vos clients historiques continuent à utiliser votre numéro principal.
+            Aucun matériel, aucune installation.</p>
+          </details>
         </div>
         <div class="step-card fade-in">
           <div class="step-number" aria-label="Étape 2">2</div>
           <h3>Vos appels entrants sont captés automatiquement</h3>
-          <p>Chaque lead qui appelle votre numéro PropPilot est routé vers votre portable normalement.
-          Vous parlez librement, l'IA enregistre et transcrit en arrière-plan.
-          Vous gardez votre téléphone, vos habitudes, votre relation client.</p>
+          <details>
+            <summary>Voir le détail</summary>
+            <p>Chaque lead qui appelle votre numéro PropPilot est routé vers votre portable normalement.
+            Vous parlez librement, l'IA enregistre et transcrit en arrière-plan.
+            Vous gardez votre téléphone, vos habitudes, votre relation client.</p>
+          </details>
         </div>
         <div class="step-card fade-in">
           <div class="step-number" aria-label="Étape 3">3</div>
           <h3>Vos rappels sortants depuis le dashboard</h3>
-          <p>Pour rappeler un lead, un clic depuis votre dashboard PropPilot. Votre portable sonne,
-          vous décrochez, l'appel se lance. Vous bénéficiez du contexte complet du lead pendant
-          toute la conversation, et tout est capté automatiquement.</p>
+          <details>
+            <summary>Voir le détail</summary>
+            <p>Pour rappeler un lead, un clic depuis votre dashboard PropPilot. Votre portable sonne,
+            vous décrochez, l'appel se lance. Vous bénéficiez du contexte complet du lead pendant
+            toute la conversation, et tout est capté automatiquement.</p>
+          </details>
         </div>
       </div>
 
@@ -588,7 +631,7 @@
       <div style="margin-top:64px">
         <h3 style="text-align:center;margin-bottom:8px;font-size:clamp(1.1rem,2vw,1.5rem)">Aucun matériel, deux modes d'intégration au choix</h3>
         <p style="text-align:center;max-width:540px;margin:0 auto 40px">Démarrez par le plus simple, passez au second quand vous êtes prêt. Tout est sans engagement.</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+        <div class="modes-grid">
           <div class="card fade-in" style="border-color:rgba(163,230,53,0.4)">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
               <span style="background:var(--accent-dim);color:var(--accent);font-size:0.75rem;font-weight:700;padding:4px 10px;border-radius:100px;letter-spacing:0.06em">RECOMMANDÉ</span>
@@ -778,6 +821,19 @@
         }
       }, { threshold: 0.15 });
       pipeObs.observe(visual);
+    })();
+
+    // Step details — ouvert sur desktop, collapsé sur mobile
+    (function () {
+      function syncStepDetails() {
+        var isDesktop = window.innerWidth >= 768;
+        document.querySelectorAll('.step-card details').forEach(function (d) {
+          if (isDesktop) d.setAttribute('open', '');
+          else d.removeAttribute('open');
+        });
+      }
+      syncStepDetails();
+      window.addEventListener('resize', syncStepDetails);
     })();
 
     // CTA sticky mobile — apparaît à 30%, disparaît au footer
