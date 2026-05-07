@@ -1,10 +1,7 @@
 """
-Fonctions réutilisables d'extraction et de scoring leads.
-Source originale : agents/lead_qualifier.py méthodes _compute_score() et _apply_score_and_route().
-
-Usage futur (sprint Capture Appels) :
-    from lib.lead_extraction.scoring import extract_lead_info
-    result = extract_lead_info(whisper_transcript, anthropic_client, client_id="agency_001")
+Extraction et scoring leads via Claude.
+Deux grilles distinctes : acheteur/locataire et vendeur.
+Score normalisé 0-24 avec redistribution des poids si info absente.
 """
 from __future__ import annotations
 
@@ -13,7 +10,13 @@ import logging
 from typing import Optional
 
 from lib.lead_extraction.prompts import EXTRACTION_PROMPT
-from lib.lead_extraction.schema import LeadExtractionResult, score_to_action
+from lib.lead_extraction.schema import (
+    LeadExtractionResult,
+    SCORE_SEUIL_CHAUD,
+    SCORE_SEUIL_TIEDE,
+    compute_score,
+    score_to_action,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -27,14 +30,8 @@ def extract_lead_info(
     """
     Extrait des informations structurées depuis un texte libre via Claude.
 
-    Args:
-        text: Texte à analyser (transcription Whisper, conversation SMS, etc.)
-        anthropic_client: Instance anthropic.Anthropic (ou None pour mock)
-        client_id: ID du client pour le log de coût
-        model: Modèle Claude à utiliser
-
-    Returns:
-        LeadExtractionResult avec les données extraites et le score
+    Returns LeadExtractionResult avec score normalisé 0-24.
+    Fallback mock si pas de client Anthropic.
     """
     if not anthropic_client:
         logger.info("[LeadExtraction] Pas de client Anthropic — mock")
@@ -47,7 +44,7 @@ def extract_lead_info(
 
         response = anthropic_client.messages.create(
             model=model,
-            max_tokens=600,
+            max_tokens=800,
             messages=[{"role": "user", "content": prompt}],
         )
         raw = response.content[0].text.strip()
@@ -61,7 +58,6 @@ def extract_lead_info(
             tokens_output=response.usage.output_tokens,
         )
 
-        # Strip markdown fences if present
         if "```json" in raw:
             raw = raw.split("```json")[1].split("```")[0].strip()
         elif "```" in raw:
@@ -75,31 +71,18 @@ def extract_lead_info(
         return LeadExtractionResult.mock()
 
 
-def compute_score_from_fields(
-    score_urgence: int,
-    score_budget: int,
-    score_motivation: int,
-) -> int:
-    """
-    Calcul pur du score total sans LLM.
-    Utile pour recalculer le score quand les sous-scores sont déjà connus.
-    """
-    total = score_urgence + score_budget + score_motivation
-    return min(total, 10)
-
-
 def apply_extraction_to_lead(lead, result: LeadExtractionResult):
     """
     Applique les champs d'un LeadExtractionResult sur un objet Lead.
     Retourne le lead modifié (sans le sauvegarder en DB).
+    Ne rétrograde jamais le score existant.
     """
     from memory.models import ProjetType, LeadStatus, NurturingSequence
     from datetime import datetime, timedelta
 
-    lead.score = result.score_total
-    lead.score_urgence = result.score_urgence
-    lead.score_budget = result.score_budget
-    lead.score_motivation = result.score_motivation
+    if result.score_total > (lead.score or 0):
+        lead.score = result.score_total
+
     lead.resume = result.resume
 
     if result.projet:
@@ -119,12 +102,11 @@ def apply_extraction_to_lead(lead, result: LeadExtractionResult):
     if result.motivation:
         lead.motivation = result.motivation
 
-    # Routage par score
-    action = result.prochaine_action
-    if action == "rdv" or result.score_total >= 7:
+    # Routage par score (seuils sur 24)
+    if result.score_total >= SCORE_SEUIL_CHAUD:
         lead.statut = LeadStatus.QUALIFIE
         lead.nurturing_sequence = None
-    elif result.score_total >= 4:
+    elif result.score_total >= SCORE_SEUIL_TIEDE:
         lead.statut = LeadStatus.NURTURING
         lead.nurturing_sequence = (
             NurturingSequence.VENDEUR_CHAUD

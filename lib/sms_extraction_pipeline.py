@@ -24,55 +24,54 @@ SMS_EXTRACTION_PROMPT_VERSION = "sms-v1"
 _CLAUDE_COST_INPUT_PER_TOKEN = 3e-6
 _CLAUDE_COST_OUTPUT_PER_TOKEN = 15e-6
 
-SMS_EXTRACTION_PROMPT = """Tu es un expert en qualification immobilière française.
-Analyse l'échange SMS suivant entre un conseiller (agence) et un prospect.
-
-CONVERSATION SMS :
-{thread}
-
-RÈGLES :
-- Si une information n'est pas mentionnée explicitement, retourne null
-- Ne déduis pas ce qui n'est pas dit
-- budget_min et budget_max sont des entiers en euros (ex: 350000)
-- surface_min et surface_max sont des entiers en m²
-- score_qualification : "chaud" (projet concret < 3 mois + financement OK), "tiede" (projet < 6 mois OU financement flou), "froid" (sinon)
-- criteres, timing, financement sont des objets JSON
-
-Retourne UNIQUEMENT un JSON valide, sans texte autour :
-{{
-  "type_projet": "<achat|vente|location|investissement|null>",
-  "budget_min": <entier ou null>,
-  "budget_max": <entier ou null>,
-  "zone_geographique": "<ville/quartier/secteur ou null>",
-  "type_bien": "<T1|T2|T3|T4|T5+|maison|villa|local|autre|null>",
-  "surface_min": <entier ou null>,
-  "surface_max": <entier ou null>,
-  "criteres": {{
-    "parking": <true|false|null>,
-    "jardin": <true|false|null>,
-    "ascenseur": <true|false|null>,
-    "balcon": <true|false|null>,
-    "terrasse": <true|false|null>,
-    "garage": <true|false|null>,
-    "cave": <true|false|null>,
-    "autres": []
-  }},
-  "timing": {{
-    "urgence": "<< 3 mois|3-6 mois|6-12 mois|> 12 mois|non précisé>",
-    "echeance_souhaitee": "<description libre ou null>"
-  }},
-  "financement": {{
-    "type": "<accord_bancaire|apport_fort|apport_faible|sans_apport|vente_en_cours|null>",
-    "detail": "<description libre ou null>"
-  }},
-  "motivation": "<premier_achat|investissement_locatif|demenagement|agrandissement_famille|divorce|mutation_pro|retraite|autre|null>",
-  "score_qualification": "<chaud|tiede|froid>",
-  "prochaine_action_suggeree": "<description libre : rappeler dans X jours, envoyer biens, proposer estimation, etc. ou null>",
-  "resume_appel": "<résumé de l'échange en 2-3 phrases en langage naturel>",
-  "points_attention": [
-    "<objection ou signal d'achat ou blocage détecté, une entrée par élément>"
-  ]
-}}"""
+def _build_sms_prompt(thread: str) -> str:
+    from lib.lead_extraction.prompts import SCORING_INSTRUCTIONS, _FEW_SHOT_EXAMPLES
+    return (
+        "Tu es un expert en qualification immobilière française.\n"
+        "Analyse l'échange SMS suivant entre un conseiller (agence) et un prospect.\n\n"
+        "CONVERSATION SMS :\n"
+        + thread
+        + "\n\nRÈGLES GÉNÉRALES :\n"
+        "- Si une information n'est pas mentionnée explicitement, retourne null\n"
+        "- Ne déduis pas ce qui n'est pas dit\n"
+        "- budget_min et budget_max sont des entiers en euros (ex: 350000)\n"
+        "- surface_min et surface_max sont des entiers en m²\n"
+        "- criteres, timing, financement sont des objets JSON\n"
+        + SCORING_INSTRUCTIONS
+        + _FEW_SHOT_EXAMPLES
+        + "\nRetourne UNIQUEMENT un JSON valide, sans texte autour :\n"
+        "{{\n"
+        '  "lead_type": "<acheteur|vendeur|locataire>",\n'
+        '  "score_urgence": <0-3 ou null>,\n'
+        '  "score_capacite_fin": <0-3 ou null — acheteur/locataire>,\n'
+        '  "score_engagement": <0-3 ou null — acheteur/locataire>,\n'
+        '  "score_maturite": <0-3 ou null — vendeur>,\n'
+        '  "score_qualite_bien": <0-3 ou null — vendeur>,\n'
+        '  "score_motivation": <0-3 ou null>,\n'
+        '  "is_ambiguous": <true|false>,\n'
+        '  "linked_lead_hint": "<description ou null>",\n'
+        '  "type_projet": "<achat|vente|location|investissement|null>",\n'
+        '  "budget_min": <entier ou null>,\n'
+        '  "budget_max": <entier ou null>,\n'
+        '  "zone_geographique": "<ville/quartier/secteur ou null>",\n'
+        '  "type_bien": "<T1|T2|T3|T4|T5+|maison|villa|local|autre|null>",\n'
+        '  "surface_min": <entier ou null>,\n'
+        '  "surface_max": <entier ou null>,\n'
+        '  "criteres": {{"parking": <true|false|null>, "jardin": <true|false|null>, '
+        '"ascenseur": <true|false|null>, "balcon": <true|false|null>, '
+        '"terrasse": <true|false|null>, "garage": <true|false|null>, '
+        '"cave": <true|false|null>, "autres": []}},\n'
+        '  "timing": {{"urgence": "<< 3 mois|3-6 mois|6-12 mois|> 12 mois|non précisé>", '
+        '"echeance_souhaitee": "<ou null>"}},\n'
+        '  "financement": {{"type": "<accord_bancaire|apport_fort|apport_faible|sans_apport|vente_en_cours|null>", '
+        '"detail": "<ou null>"}},\n'
+        '  "motivation": "<premier_achat|investissement_locatif|demenagement|agrandissement_famille|divorce|mutation_pro|retraite|autre|null>",\n'
+        '  "score_qualification": "<chaud|tiede|froid>",\n'
+        '  "prochaine_action_suggeree": "<description libre ou null>",\n'
+        '  "resume_appel": "<résumé en 2-3 phrases>",\n'
+        '  "points_attention": ["<signal ou blocage détecté>"]\n'
+        "}}"
+    )
 
 
 def _format_thread(messages: list[dict]) -> str:
@@ -134,7 +133,7 @@ class SmsExtractionPipeline:
 
         thread = _format_thread(messages)
         model = self._settings.claude_model
-        prompt = SMS_EXTRACTION_PROMPT.format(thread=thread)
+        prompt = _build_sms_prompt(thread)
 
         try:
             import anthropic

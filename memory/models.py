@@ -84,18 +84,18 @@ class Lead:
 
     @property
     def score_label(self) -> str:
-        if self.score >= 7:
+        if self.score >= 18:
             return "Chaud 🔴"
-        elif self.score >= 4:
+        elif self.score >= 11:
             return "Tiède 🟠"
         else:
             return "Froid 🔵"
 
     @property
     def score_color(self) -> str:
-        if self.score >= 7:
+        if self.score >= 18:
             return "red"
-        elif self.score >= 4:
+        elif self.score >= 11:
             return "orange"
         else:
             return "blue"

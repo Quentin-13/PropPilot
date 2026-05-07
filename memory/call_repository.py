@@ -14,7 +14,8 @@ from memory.database import get_connection
 
 logger = logging.getLogger(__name__)
 
-_SCORE_MAP = {"froid": 2, "tiede": 5, "chaud": 8}
+# Midpoints de chaque plage sur l'échelle 0-24 (chaud:18-24, tiede:11-17, froid:0-10)
+_SCORE_MAP = {"froid": 5, "tiede": 14, "chaud": 21}
 _VALID_PROJET = {"achat", "vente", "location", "inconnu"}
 
 
@@ -37,10 +38,17 @@ def _apply_extraction_to_lead(lead_id: str, data, conn) -> None:
     current_motivation = row["motivation"] or ""
     fields: dict = {}
 
-    if data.score_qualification:
-        new_score = _SCORE_MAP.get(data.score_qualification.lower(), 0)
-        if new_score > current_score:
-            fields["score"] = new_score
+    # Préférer le score numérique si disponible, sinon mapper le label texte
+    new_score = getattr(data, "score_total", 0) or _SCORE_MAP.get(
+        (data.score_qualification or "").lower(), 0
+    )
+    if new_score > current_score:
+        fields["score"] = new_score
+
+    # Mettre à jour lead_type depuis le nouveau champ
+    lead_type = getattr(data, "lead_type", None)
+    if lead_type in ("acheteur", "vendeur", "locataire"):
+        fields["lead_type"] = lead_type
 
     if data.type_projet:
         proj = data.type_projet.lower()

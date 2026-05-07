@@ -409,9 +409,9 @@ if leads_count > 0 and leads:
 
     def _score_badge(score: int | None) -> str:
         s = score or 0
-        if s >= 7:
+        if s >= 18:
             return f'<span class="badge-hot">{s}</span>'
-        if s >= 4:
+        if s >= 11:
             return f'<span class="badge-warm">{s}</span>'
         return f'<span class="badge-cold">{s}</span>'
 

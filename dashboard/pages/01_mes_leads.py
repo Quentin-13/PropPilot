@@ -110,7 +110,7 @@ else:
     # Conversion en DataFrame
     rows = []
     for lead in leads:
-        score_emoji = "🔴" if lead.score >= 7 else "🟠" if lead.score >= 4 else "🔵"
+        score_emoji = "🔴" if lead.score >= 18 else "🟠" if lead.score >= 11 else "🔵"
         rows.append({
             "ID": lead.id[:8],
             "_lead_id": lead.id,
@@ -155,7 +155,7 @@ else:
             detail_col1, detail_col2, detail_col3 = st.columns(3)
 
             with detail_col1:
-                st.markdown(f"**Score :** {selected_lead.score}/10 ({selected_lead.score_label})")
+                st.markdown(f"**Score :** {selected_lead.score}/24 ({selected_lead.score_label})")
                 st.markdown(f"**Statut :** {selected_lead.statut.value}")
                 st.markdown(f"**Projet :** {selected_lead.projet.value}")
                 st.markdown(f"**Canal :** {selected_lead.source.value}")
