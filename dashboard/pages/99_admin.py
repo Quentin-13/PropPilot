@@ -123,12 +123,13 @@ _SCORE_TIEDE = 11
 # ══════════════════════════════════════════════════════════════════════════════
 
 def admin_get_clients() -> list[dict]:
-    """Tous les clients/users avec leur plan et statut."""
+    """Tous les clients/users avec leur plan, statut et flag is_internal."""
     try:
         with get_connection() as conn:
             rows = conn.execute("""
                 SELECT id, email, agency_name, plan, plan_active,
-                       subscription_status, created_at
+                       subscription_status, created_at,
+                       COALESCE(is_internal, FALSE) AS is_internal
                 FROM users
                 ORDER BY created_at DESC
             """).fetchall()
@@ -137,14 +138,21 @@ def admin_get_clients() -> list[dict]:
         return []
 
 
+def _external_clients(clients: list[dict]) -> list[dict]:
+    """Filtre les comptes internes — utilisé pour tous les calculs KPI."""
+    return [c for c in clients if not c.get("is_internal", False)]
+
+
 def admin_get_mrr() -> dict:
     """
     MRR calculé depuis users.plan × tarif fixe.
     Sources : table users, colonnes plan + plan_active.
+    Comptes is_internal=TRUE exclus du calcul.
     """
     clients = admin_get_clients()
-    paying = [c for c in clients if c.get("plan_active") and c.get("subscription_status") == "active"]
-    pilots = [c for c in clients if c.get("plan_active") and c.get("subscription_status") != "active"]
+    ext = _external_clients(clients)
+    paying = [c for c in ext if c.get("plan_active") and c.get("subscription_status") == "active"]
+    pilots = [c for c in ext if c.get("plan_active") and c.get("subscription_status") != "active"]
     mrr = sum(_PLAN_MRR.get(c.get("plan", "Starter"), 790) for c in paying)
     return {
         "mrr": mrr,
@@ -156,12 +164,13 @@ def admin_get_mrr() -> dict:
 
 def admin_get_churn(days: int = 30) -> dict:
     """
-    Churn : clients avec plan_active=False mis à jour dans les N derniers jours.
+    Churn : clients externes avec plan_active=False.
+    Comptes is_internal=TRUE exclus du calcul.
     Note : users n'a pas de colonne updated_at ni churned_at — on compte
     les plan_active=False comme churned, sans date précise.
     TODO: ajouter colonne churned_at à users pour un churn mensuel exact.
     """
-    clients = admin_get_clients()
+    clients = _external_clients(admin_get_clients())
     churned = [c for c in clients if not c.get("plan_active")]
     paying_count = sum(1 for c in clients if c.get("plan_active"))
     total = paying_count + len(churned)
@@ -561,8 +570,11 @@ with tab_costs:
         rev = _PLAN_MRR.get(c.get("plan", "Starter"), 790)
         cost = cost_map.get(c["id"], 0.0)
         margin = rev - cost - _INFRA_COST / max(len(all_c), 1)
+        agency = c.get("agency_name", "—")
+        if c.get("is_internal"):
+            agency = f"🛠 {agency}"
         rows_margin.append({
-            "Agence": c.get("agency_name", "—"),
+            "Agence": agency,
             "MRR (€)": rev,
             "Coût tokens (€)": round(cost, 3),
             "Marge (€)": round(margin, 2),
@@ -770,7 +782,11 @@ with tab_client:
         st.info("Aucun client en base.")
         st.stop()
 
-    options = {f"{c.get('agency_name', '—')} ({c.get('email', '')})": c["id"] for c in all_c}
+    def _client_label(c: dict) -> str:
+        badge = " 🛠 Interne" if c.get("is_internal") else ""
+        return f"{c.get('agency_name', '—')} ({c.get('email', '')}){badge}"
+
+    options = {_client_label(c): c["id"] for c in all_c}
     selected_label = st.selectbox("Sélectionner un client", list(options.keys()))
     selected_cid = options[selected_label]
     selected_client = next((c for c in all_c if c["id"] == selected_cid), {})
@@ -794,7 +810,11 @@ with tab_client:
     marge_client = mrr_client - cost_tokens_client - _INFRA_COST / max(len(all_c), 1)
 
     # ── Vue 360° ──────────────────────────────────────────────────────────────
-    st.markdown(f"### {selected_client.get('agency_name', '—')}")
+    internal_badge = " <span style='background:#3b82f6;color:white;font-size:0.7rem;padding:2px 8px;border-radius:8px;vertical-align:middle;'>🛠 Compte interne</span>" if selected_client.get("is_internal") else ""
+    st.markdown(
+        f"### {selected_client.get('agency_name', '—')}{internal_badge}",
+        unsafe_allow_html=True,
+    )
     ci1, ci2, ci3, ci4 = st.columns(4)
     with ci1:
         st.metric("Plan", plan)

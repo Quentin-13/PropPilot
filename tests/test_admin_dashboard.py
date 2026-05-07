@@ -229,3 +229,73 @@ class TestPlanMrrMapping:
         plan_mrr = {"Indépendant": 390, "Starter": 790, "Pro": 1490, "Elite": 2990}
         vals = [plan_mrr["Indépendant"], plan_mrr["Starter"], plan_mrr["Pro"], plan_mrr["Elite"]]
         assert vals == sorted(vals)
+
+
+# ── is_internal — exclusion des KPI et visibilité ──────────────────────────────
+
+class TestIsInternalClients:
+    """
+    Vérifie que les comptes is_internal=True sont exclus des KPI
+    mais restent présents dans la liste complète des clients.
+    """
+
+    _PLAN_MRR = {"Indépendant": 390, "Starter": 790, "Pro": 1490, "Elite": 2990}
+
+    def _make_clients(self):
+        return [
+            {
+                "id": "ext1", "email": "agence@ext.fr", "agency_name": "Ext Agency",
+                "plan": "Starter", "plan_active": True, "subscription_status": "active",
+                "is_internal": False, "created_at": None,
+            },
+            {
+                "id": "int1", "email": "contact@proppilot.fr", "agency_name": "PropPilot Admin",
+                "plan": "Pro", "plan_active": True, "subscription_status": "active",
+                "is_internal": True, "created_at": None,
+            },
+            {
+                "id": "int2", "email": "contact.maisondusommeil@gmail.com", "agency_name": "Maison",
+                "plan": "Starter", "plan_active": True, "subscription_status": "active",
+                "is_internal": True, "created_at": None,
+            },
+        ]
+
+    def test_compte_interne_exclu_du_mrr(self):
+        """Un client is_internal=True avec plan_active=True ne doit PAS être compté dans le MRR."""
+        clients = self._make_clients()
+        external = [c for c in clients if not c.get("is_internal", False)]
+        paying = [c for c in external if c.get("plan_active") and c.get("subscription_status") == "active"]
+        mrr = sum(self._PLAN_MRR.get(c["plan"], 790) for c in paying)
+        # Seul ext1 (Starter 790€) doit compter — int1 et int2 sont exclus
+        assert mrr == 790
+        assert len(paying) == 1
+        assert paying[0]["id"] == "ext1"
+
+    def test_compte_interne_exclu_du_churn(self):
+        """Les comptes internes ne doivent pas biaiser le taux de churn."""
+        clients = self._make_clients()
+        external = [c for c in clients if not c.get("is_internal", False)]
+        churned = [c for c in external if not c.get("plan_active")]
+        paying_count = sum(1 for c in external if c.get("plan_active"))
+        total = paying_count + len(churned)
+        churn_rate = len(churned) / total if total > 0 else 0
+        assert churn_rate == 0.0  # ext1 est actif, aucun churné externe
+        assert paying_count == 1
+
+    def test_compte_interne_visible_dans_all_clients(self):
+        """admin_get_clients() doit retourner TOUS les clients, internes inclus."""
+        clients = self._make_clients()
+        # Tous présents
+        assert len(clients) == 3
+        internal = [c for c in clients if c.get("is_internal")]
+        assert len(internal) == 2
+        emails = {c["email"] for c in internal}
+        assert "contact@proppilot.fr" in emails
+        assert "contact.maisondusommeil@gmail.com" in emails
+
+    def test_filtre_external_clients_helper(self):
+        """_external_clients() isole correctement les non-internes."""
+        clients = self._make_clients()
+        external = [c for c in clients if not c.get("is_internal", False)]
+        assert len(external) == 1
+        assert external[0]["id"] == "ext1"
