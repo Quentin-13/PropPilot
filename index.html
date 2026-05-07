@@ -2,7 +2,8 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#09090b" />
   <title>PropPilot — La mémoire commerciale automatique de votre agence</title>
   <meta name="description" content="PropPilot capture chaque échange — appels et SMS — structure les données et enrichit votre CRM automatiquement. Aucun lead chaud ne se perd dans le silence. Beta privée — accès prioritaire ouvert." />
   <meta property="og:title" content="PropPilot — La mémoire commerciale automatique de votre agence" />
@@ -13,7 +14,8 @@
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" /></noscript>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -64,6 +66,7 @@
       background: var(--accent); color: #09090b; font-weight: 700;
       padding: 10px 20px; border-radius: 8px; text-decoration: none;
       font-size: 0.9rem; transition: opacity 0.2s;
+      display: inline-flex; align-items: center; min-height: 44px;
     }
     .nav-cta:hover { opacity: 0.85; }
     .nav-login {
@@ -71,6 +74,7 @@
       padding: 8px 16px; border-radius: 8px; text-decoration: none;
       border: 1px solid var(--border);
       transition: color 0.2s, border-color 0.2s, background 0.2s;
+      display: inline-flex; align-items: center; min-height: 44px;
     }
     .nav-login:hover { color: var(--text); border-color: #52525b; background: var(--surface-2); }
     @media (max-width: 580px) { .nav-cta { display: none; } }
@@ -298,7 +302,7 @@
     .footer-links { display: flex; gap: 24px; flex-wrap: wrap; }
     .footer-links a { color: var(--muted); text-decoration: none; font-size: 0.85rem; transition: color 0.2s; }
     .footer-links a:hover { color: var(--text); }
-    .footer-copy { font-size: 0.85rem; color: #52525b; }
+    .footer-copy { font-size: 0.85rem; color: var(--muted); }
 
     /* ── Animations scroll ── */
     .fade-in { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
@@ -442,10 +446,11 @@
     #cookie-banner-ok {
       flex-shrink: 0;
       background: var(--accent); color: #09090b;
-      padding: 8px 16px; border-radius: 6px;
+      padding: 10px 20px; border-radius: 6px;
       font-weight: 600; font-size: 0.875rem;
       cursor: pointer; border: none; font-family: var(--font);
       transition: opacity 0.2s;
+      min-height: 44px; display: inline-flex; align-items: center;
     }
     #cookie-banner-ok:hover { opacity: 0.85; }
     @media (max-width: 640px) {
@@ -467,6 +472,8 @@
       </div>
     </div>
   </nav>
+
+  <main id="main-content">
 
   <!-- SECTION 1 — HERO -->
   <section id="hero" aria-labelledby="hero-title">
@@ -761,6 +768,8 @@
       </p>
     </div>
   </section>
+
+  </main><!-- /#main-content -->
 
   <!-- FOOTER -->
   <footer role="contentinfo">
