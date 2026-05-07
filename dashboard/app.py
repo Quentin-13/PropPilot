@@ -156,7 +156,7 @@ agency_name = st.session_state.get("agency_name", "") or "votre agence"
 plan_active = st.session_state.get("plan_active", True)
 
 # ─── Chargement données ────────────────────────────────────────────────────────
-from memory.lead_repository import get_pipeline_stats, get_leads_by_client
+from memory.lead_repository import get_pipeline_stats, get_leads_by_client, count_leads_to_verify
 from memory.usage_tracker import get_usage_summary
 from datetime import datetime
 
@@ -168,6 +168,11 @@ stats  = get_pipeline_stats(client_id)
 usage  = get_usage_summary(client_id, tier)
 leads  = get_leads_by_client(client_id, limit=5)
 leads_count = stats.get("total", 0)
+
+try:
+    _leads_to_verify = count_leads_to_verify(client_id)
+except Exception:
+    _leads_to_verify = 0
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # BLOC 1 — Header
@@ -219,6 +224,14 @@ st.markdown(f"""
   </div>
 </div>
 """, unsafe_allow_html=True)
+
+# ── Bandeau "À vérifier" (extraction failed) ─────────────────────────────────
+if _leads_to_verify > 0:
+    st.warning(
+        f"⚠️ **{_leads_to_verify} lead{'s' if _leads_to_verify > 1 else ''} à vérifier manuellement** "
+        f"— extraction IA échouée. Consultez la page **Mes Leads** pour les traiter.",
+        icon=None,
+    )
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # BLOC 2 — Démarrage (affiché quand pas encore de leads)
@@ -409,9 +422,9 @@ if leads_count > 0 and leads:
 
     def _score_badge(score: int | None) -> str:
         s = score or 0
-        if s >= 7:
+        if s >= 18:
             return f'<span class="badge-hot">{s}</span>'
-        if s >= 4:
+        if s >= 11:
             return f'<span class="badge-warm">{s}</span>'
         return f'<span class="badge-cold">{s}</span>'
 

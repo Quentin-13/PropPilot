@@ -32,6 +32,7 @@ def _make_response(data: dict) -> MagicMock:
 
 
 _VALID_EXTRACTION = {
+    "lead_type": "acheteur",
     "type_projet": "achat",
     "budget_min": None,
     "budget_max": 350000,
@@ -151,11 +152,12 @@ def test_extract_handles_invalid_json(monkeypatch):
     messages = _make_messages("Bonjour, je cherche un appartement")
 
     with patch("anthropic.Anthropic", return_value=mock_client), \
-         patch("memory.cost_logger.log_api_action"):
+         patch("memory.cost_logger.log_api_action"), \
+         patch("lib.lead_extraction.retry.time.sleep"):
         result = pipeline.extract(lead_id="lead-002", messages=messages)
 
     assert result is not None
-    assert result.source == "mock_fallback"
+    assert result.extraction_status == "failed"
 
 
 def test_format_thread_ordering():

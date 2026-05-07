@@ -85,6 +85,7 @@ def test_real_extraction_calls_claude(monkeypatch):
     get_settings.cache_clear()
 
     expected_json = json.dumps({
+        "lead_type": "vendeur",
         "type_projet": "vente",
         "budget_min": None,
         "budget_max": None,

@@ -8,17 +8,21 @@ Usage :
 """
 from lib.lead_extraction.schema import (
     LeadExtractionResult,
-    SCORE_SEUIL_RDV,
-    SCORE_SEUIL_NURTURING_COURT,
+    SCORE_MAX,
+    SCORE_SEUIL_CHAUD,
+    SCORE_SEUIL_TIEDE,
+    compute_score,
     score_to_action,
 )
-from lib.lead_extraction.scoring import extract_lead_info, compute_score_from_fields
+from lib.lead_extraction.scoring import extract_lead_info, apply_extraction_to_lead
 
 __all__ = [
     "LeadExtractionResult",
-    "SCORE_SEUIL_RDV",
-    "SCORE_SEUIL_NURTURING_COURT",
+    "SCORE_MAX",
+    "SCORE_SEUIL_CHAUD",
+    "SCORE_SEUIL_TIEDE",
+    "compute_score",
     "score_to_action",
     "extract_lead_info",
-    "compute_score_from_fields",
+    "apply_extraction_to_lead",
 ]

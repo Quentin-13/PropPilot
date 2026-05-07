@@ -18,6 +18,7 @@ from dashboard.utils.datetime_helpers import fmt_paris_datetime
 from memory.lead_repository import (
     get_leads_by_client,
     get_pipeline_stats,
+    get_pilot_kpis,
     update_lead,
     add_conversation_message,
 )
@@ -38,47 +39,64 @@ agency_name = st.session_state.get("agency_name", settings.agency_name)
 st.title("👥 Mes leads")
 st.markdown(f"**{agency_name}** · Forfait {tier}")
 
-# ─── KPIs Pipeline ──────────────────────────────────────────────────────────
+# ─── KPIs Pilot ─────────────────────────────────────────────────────────────
 
-stats = get_pipeline_stats(client_id)
+try:
+    kpis = get_pilot_kpis(client_id)
+except Exception:
+    kpis = {"a_rappeler": 0, "vendeurs_chauds": 0, "acheteurs_chauds": 0, "a_verifier": 0}
 
-col1, col2, col3, col4, col5 = st.columns(5)
-with col1:
-    st.metric("Entrants", stats.get("entrant", 0))
-with col2:
-    st.metric("En qualification", stats.get("en_qualification", 0))
-with col3:
-    st.metric("Qualifiés", stats.get("qualifie", 0))
-with col4:
-    st.metric("RDV bookés", stats.get("rdv_booke", 0))
-with col5:
-    st.metric("Mandats", stats.get("mandat", 0))
+kpi_col1, kpi_col2, kpi_col3, kpi_col4 = st.columns(4)
+
+_kpi_cards = [
+    (kpi_col1, "🔥 À rappeler",        kpis["a_rappeler"],      "#ef4444", "leads chauds en cours"),
+    (kpi_col2, "🏠 Vendeurs chauds",   kpis["vendeurs_chauds"], "#f59e0b", "score ≥ 18/24"),
+    (kpi_col3, "🔑 Acheteurs chauds",  kpis["acheteurs_chauds"], "#3b82f6", "score ≥ 18/24"),
+    (kpi_col4, "⚠️ À vérifier",        kpis["a_verifier"],      "#6b7280", "extraction échouée"),
+]
+for col, label, value, color, subtitle in _kpi_cards:
+    with col:
+        st.markdown(f"""
+        <div style="background:#1e2130;border-radius:10px;padding:16px 20px;
+                    border-left:4px solid {color};">
+          <div style="font-size:0.82rem;color:#8892a4;margin-bottom:6px;">{label}</div>
+          <div style="font-size:2rem;font-weight:800;color:white;">{value}</div>
+          <div style="font-size:0.75rem;color:#64748b;margin-top:2px;">{subtitle}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
 st.markdown("---")
 
 # ─── Filtres ────────────────────────────────────────────────────────────────
 
 st.markdown("### Filtres")
-col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+col_f1, col_f2, col_f3, col_f4, col_f5 = st.columns(5)
 
 with col_f1:
+    filter_type = st.selectbox(
+        "Type de lead",
+        options=["Tous", "acheteur", "vendeur", "locataire"],
+        key="filter_type",
+    )
+
+with col_f2:
     filter_statut = st.selectbox(
         "Statut",
         options=["Tous"] + [s.value for s in LeadStatus],
         key="filter_statut",
     )
 
-with col_f2:
-    filter_score_min = st.slider("Score minimum", 0, 10, 0, key="filter_score_min")
-
 with col_f3:
+    filter_score_min = st.slider("Score minimum (/24)", 0, 24, 0, key="filter_score_min")
+
+with col_f4:
     filter_source = st.selectbox(
         "Source",
         options=["Toutes", "sms", "whatsapp", "email", "web", "seloger", "leboncoin", "manuel"],
         key="filter_source",
     )
 
-with col_f4:
+with col_f5:
     filter_projet = st.selectbox(
         "Projet",
         options=["Tous", "achat", "vente", "location", "estimation", "inconnu"],
@@ -94,7 +112,9 @@ leads = get_leads_by_client(
     limit=200,
 )
 
-# Filtrage source et projet côté Python
+# Filtrage côté Python (type, source, projet)
+if filter_type != "Tous":
+    leads = [l for l in leads if getattr(l, "lead_type", "acheteur") == filter_type]
 if filter_source != "Toutes":
     leads = [l for l in leads if l.source.value == filter_source]
 if filter_projet != "Tous":
@@ -108,15 +128,19 @@ if not leads:
     st.info("Aucun lead trouvé. Les leads apparaissent ici dès que vos premiers contacts seront reçus via votre numéro PropPilot.")
 else:
     # Conversion en DataFrame
+    _TYPE_ICONS = {"vendeur": "🏠", "acheteur": "🔑", "locataire": "🏢"}
     rows = []
     for lead in leads:
-        score_emoji = "🔴" if lead.score >= 7 else "🟠" if lead.score >= 4 else "🔵"
+        score_emoji = "🔴" if lead.score >= 18 else "🟠" if lead.score >= 11 else "🔵"
+        lead_type = getattr(lead, "lead_type", "acheteur") or "acheteur"
+        type_icon = _TYPE_ICONS.get(lead_type, "🔑")
         rows.append({
             "ID": lead.id[:8],
             "_lead_id": lead.id,
+            "Type": f"{type_icon} {lead_type.capitalize()}",
             "Nom": lead.nom_complet,
             "Téléphone": lead.telephone,
-            "Score": f"{score_emoji} {lead.score}/10",
+            "Score": f"{score_emoji} {lead.score}/24",
             "_score_raw": lead.score,
             "Projet": lead.projet.value.capitalize(),
             "Budget": lead.budget or "—",
@@ -128,7 +152,7 @@ else:
         })
 
     df = pd.DataFrame(rows)
-    display_cols = ["Nom", "Score", "Projet", "Budget", "Localisation", "Statut", "Source", "Prochain suivi", "Créé le"]
+    display_cols = ["Type", "Nom", "Score", "Projet", "Budget", "Localisation", "Statut", "Source", "Prochain suivi", "Créé le"]
 
     # Sélection lead pour actions
     selected_indices = st.dataframe(
@@ -155,7 +179,7 @@ else:
             detail_col1, detail_col2, detail_col3 = st.columns(3)
 
             with detail_col1:
-                st.markdown(f"**Score :** {selected_lead.score}/10 ({selected_lead.score_label})")
+                st.markdown(f"**Score :** {selected_lead.score}/24 ({selected_lead.score_label})")
                 st.markdown(f"**Statut :** {selected_lead.statut.value}")
                 st.markdown(f"**Projet :** {selected_lead.projet.value}")
                 st.markdown(f"**Canal :** {selected_lead.source.value}")
@@ -177,7 +201,7 @@ else:
 
             # Actions rapides
             st.markdown("#### Actions rapides")
-            action_col1, action_col2, action_col3, action_col4, action_col5 = st.columns(5)
+            action_col1, action_col2, action_col3, action_col4, action_col5, action_col6 = st.columns(6)
 
             with action_col1:
                 if st.button("📱 Envoyer SMS", key=f"sms_{lead_id}"):
@@ -260,6 +284,17 @@ else:
                     st.rerun()
 
             with action_col5:
+                if st.button("☎️ Rappelé", key=f"rappele_{lead_id}",
+                             help="Marque ce lead comme rappelé (statut → qualifié)"):
+                    if selected_lead.statut.value in ("entrant", "nurturing"):
+                        selected_lead.statut = LeadStatus.QUALIFIE
+                        update_lead(selected_lead)
+                        st.success("Lead marqué comme rappelé (qualifié)")
+                        st.rerun()
+                    else:
+                        st.info(f"Statut actuel : {selected_lead.statut.value}")
+
+            with action_col6:
                 if st.button("❌ Perdu", key=f"perdu_{lead_id}"):
                     selected_lead.statut = LeadStatus.PERDU
                     update_lead(selected_lead)

@@ -68,33 +68,33 @@ def _mock_ctx(conn):
 def test_apply_updates_score_when_higher():
     """Score mis à jour si la nouvelle valeur est plus haute."""
     from lib.call_extraction_pipeline import CallExtractionData
-    from memory.call_repository import _apply_extraction_to_lead
+    from memory.call_repository import _apply_extraction_to_lead, _SCORE_MAP
 
     conn = _make_conn(score=2)
-    data = CallExtractionData(score_qualification="chaud")  # chaud → 8
+    data = CallExtractionData(score_qualification="chaud")  # chaud → midpoint plage chaud
 
     _apply_extraction_to_lead("lead-001", data, conn)
 
     updates = _update_calls(conn)
     assert len(updates) == 1
     params = updates[0][0][1]
-    assert 8 in params
+    assert _SCORE_MAP["chaud"] in params
 
 
 def test_apply_does_not_downgrade_score():
-    """Score non rétrogradé : si score actuel=7 et extraction=froid(2), on garde 7."""
+    """Score non rétrogradé : si score actuel=21 et extraction=froid, on garde 21."""
     from lib.call_extraction_pipeline import CallExtractionData
-    from memory.call_repository import _apply_extraction_to_lead
+    from memory.call_repository import _apply_extraction_to_lead, _SCORE_MAP
 
-    conn = _make_conn(score=7)
-    data = CallExtractionData(score_qualification="froid")  # froid → 2 < 7
+    conn = _make_conn(score=21)  # score chaud actuel
+    data = CallExtractionData(score_qualification="froid")  # froid → 5 < 21
 
     _apply_extraction_to_lead("lead-001", data, conn)
 
     updates = _update_calls(conn)
     assert len(updates) == 1
     params = updates[0][0][1]
-    assert 2 not in params  # le nouveau score ne doit pas être 2
+    assert _SCORE_MAP["froid"] not in params  # le score froid ne doit pas apparaître
 
 
 def test_apply_skips_none_fields():

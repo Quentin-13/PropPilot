@@ -123,6 +123,7 @@ class Settings(BaseSettings):
 
     # Admin
     admin_password: str = Field(default="changeme", alias="ADMIN_PASSWORD")
+    admin_phone: Optional[str] = Field(default=None, alias="ADMIN_PHONE")
 
     # Mode
     debug: bool = Field(default=False, alias="DEBUG")
