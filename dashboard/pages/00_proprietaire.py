@@ -59,8 +59,13 @@ h1, h2, h3 { color: white !important; }
 
 # ─── Sécurité ─────────────────────────────────────────────────────────────────
 from dashboard.auth_ui import require_auth, render_sidebar_logout
+from dashboard.lib.admin_auth import is_super_admin
 require_auth(require_active_plan=False, write_pending_cookie=True)
 render_sidebar_logout()
+
+# Super-admin → redirige vers la page admin dédiée
+if is_super_admin(st.session_state.get("email", "")):
+    st.switch_page("pages/99_admin.py")
 
 if not st.session_state.get("is_admin", False):
     st.error("🚫 Accès non autorisé — réservé à l'administrateur PropPilot.")
