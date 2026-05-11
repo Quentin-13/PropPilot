@@ -399,13 +399,24 @@ def admin_get_mrr_history(months: int = 6) -> list[dict]:
 # En-tête
 # ══════════════════════════════════════════════════════════════════════════════
 
-st.markdown(
-    "<h1 style='color:white;margin-bottom:4px;'>🔐 Admin PropPilot</h1>"
-    f"<p style='color:#52525b;font-size:0.85rem;margin-bottom:24px;'>"
-    f"Connecté en tant que <strong style='color:#a3e635;'>{_current_email}</strong> · "
-    f"{datetime.now().strftime('%d/%m/%Y %H:%M')}</p>",
-    unsafe_allow_html=True,
-)
+_hcol1, _hcol2 = st.columns([5, 1])
+with _hcol1:
+    st.markdown(
+        "<h1 style='color:white;margin-bottom:4px;'>🔐 Admin PropPilot</h1>"
+        f"<p style='color:#52525b;font-size:0.85rem;margin-bottom:24px;'>"
+        f"Connecté en tant que <strong style='color:#a3e635;'>{_current_email}</strong> · "
+        f"{datetime.now().strftime('%d/%m/%Y %H:%M')}</p>",
+        unsafe_allow_html=True,
+    )
+with _hcol2:
+    st.markdown("<div style='padding-top:12px;'>", unsafe_allow_html=True)
+    if st.button("🚪 Déconnexion", key="_admin_logout", use_container_width=True):
+        from dashboard.auth_cookies import clear_session as _admin_cookie_clear
+        _admin_cookie_clear()
+        for _k in ["authenticated", "token", "user_id", "agency_name", "plan", "plan_active", "is_admin", "email"]:
+            st.session_state.pop(_k, None)
+        st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Onglets
