@@ -89,6 +89,26 @@ def _send_weekly_reports_job() -> None:
             logger.error(f"[CRON] Rapport hebdo non envoyé à {row['email']} : {e}")
 
 
+def _trigger_post_extraction_hooks(lead_id: str, client_id: str) -> None:
+    """
+    Hooks post-extraction : next_action + push CRM.
+    Erreurs silencieuses — ne bloque jamais le pipeline.
+    """
+    try:
+        from lib.lead_extraction.next_action import compute_next_action
+        compute_next_action(lead_id)
+    except Exception as e:
+        logger.warning("[PostExtraction] next_action lead_id=%s: %s", lead_id, e)
+
+    try:
+        from lib.crm_connectors.factory import build_lead_data_from_db, push_lead_to_crm
+        lead_data = build_lead_data_from_db(lead_id)
+        if lead_data:
+            push_lead_to_crm(client_id=client_id, lead_data=lead_data)
+    except Exception as e:
+        logger.warning("[PostExtraction] CRM push lead_id=%s: %s", lead_id, e)
+
+
 def _run_sms_extraction_batch() -> None:
     """
     Batch SMS — extrait les données structurées des threads actifs (toutes les 4 min).
@@ -136,6 +156,7 @@ def _run_sms_extraction_batch() -> None:
                     "[SMS Batch] OK lead_id=%s score=%s",
                     lead_id, data.score_qualification,
                 )
+                _trigger_post_extraction_hooks(lead_id=lead_id, client_id=client_id)
         except Exception as e:
             logger.error("[SMS Batch] lead_id=%s: %s", lead_id, e)
 
