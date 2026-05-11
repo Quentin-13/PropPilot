@@ -127,13 +127,36 @@ st.markdown(f"**{len(leads)} leads** correspondant aux filtres")
 if not leads:
     st.info("Aucun lead trouvé. Les leads apparaissent ici dès que vos premiers contacts seront reçus via votre numéro PropPilot.")
 else:
+    # Chargement des next_action depuis la DB
+    _next_actions: dict[str, dict] = {}
+    try:
+        from memory.database import get_connection as _gc_na
+        _lead_ids = [l.id for l in leads]
+        if _lead_ids:
+            _placeholders = ",".join(["?"] * len(_lead_ids))
+            with _gc_na() as _conn_na:
+                _na_rows = _conn_na.execute(
+                    f"SELECT id, next_action_label, next_action_priority, next_action_reason, next_action_deadline "
+                    f"FROM leads WHERE id IN ({_placeholders})",
+                    _lead_ids,
+                ).fetchall()
+            for _r in _na_rows:
+                _next_actions[_r["id"]] = dict(_r)
+    except Exception:
+        pass
+
     # Conversion en DataFrame
     _TYPE_ICONS = {"vendeur": "🏠", "acheteur": "🔑", "locataire": "🏢"}
+    _PRIORITY_ICONS = {"haute": "🔴", "moyenne": "🟡", "basse": "🔵"}
     rows = []
     for lead in leads:
         score_emoji = "🔴" if lead.score >= 18 else "🟠" if lead.score >= 11 else "🔵"
         lead_type = getattr(lead, "lead_type", "acheteur") or "acheteur"
         type_icon = _TYPE_ICONS.get(lead_type, "🔑")
+        na = _next_actions.get(lead.id, {})
+        na_label = na.get("next_action_label") or "—"
+        na_priority = na.get("next_action_priority") or "basse"
+        na_icon = _PRIORITY_ICONS.get(na_priority, "⚪")
         rows.append({
             "ID": lead.id[:8],
             "_lead_id": lead.id,
@@ -142,17 +165,27 @@ else:
             "Téléphone": lead.telephone,
             "Score": f"{score_emoji} {lead.score}/24",
             "_score_raw": lead.score,
+            "_priority": na_priority,
+            "_deadline": na.get("next_action_deadline"),
             "Projet": lead.projet.value.capitalize(),
             "Budget": lead.budget or "—",
             "Localisation": lead.localisation or "—",
             "Statut": lead.statut.value.replace("_", " ").capitalize(),
             "Source": lead.source.value.capitalize(),
+            "Action recommandée": f"{na_icon} {na_label}",
             "Prochain suivi": fmt_paris_datetime(lead.prochain_followup, "%d/%m %H:%M"),
             "Créé le": fmt_paris_datetime(lead.created_at, "%d/%m/%Y"),
         })
 
+    # Tri par priorité haute en premier, puis deadline croissante
+    _PRIORITY_ORDER = {"haute": 0, "moyenne": 1, "basse": 2}
+    rows.sort(key=lambda r: (
+        _PRIORITY_ORDER.get(r["_priority"], 2),
+        r["_deadline"] or datetime.max,
+    ))
+
     df = pd.DataFrame(rows)
-    display_cols = ["Type", "Nom", "Score", "Projet", "Budget", "Localisation", "Statut", "Source", "Prochain suivi", "Créé le"]
+    display_cols = ["Type", "Nom", "Score", "Action recommandée", "Projet", "Budget", "Localisation", "Statut", "Source", "Prochain suivi", "Créé le"]
 
     # Sélection lead pour actions
     selected_indices = st.dataframe(
@@ -175,6 +208,36 @@ else:
         if selected_lead:
             st.markdown("---")
             st.markdown(f"### Détail — {selected_lead.nom_complet}")
+
+            # ── Action recommandée (bloc prioritaire) ─────────────────────────
+            _na = _next_actions.get(selected_lead.id, {})
+            _na_label = _na.get("next_action_label")
+            if _na_label:
+                _na_prio = _na.get("next_action_priority") or "moyenne"
+                _na_reason = _na.get("next_action_reason") or ""
+                _na_deadline = _na.get("next_action_deadline")
+                _prio_colors = {"haute": "#ef4444", "moyenne": "#f59e0b", "basse": "#3b82f6"}
+                _prio_color = _prio_colors.get(_na_prio, "#6b7280")
+                _deadline_str = ""
+                if _na_deadline:
+                    _dl = _na_deadline
+                    if isinstance(_dl, str):
+                        try:
+                            _dl = datetime.fromisoformat(_dl)
+                        except Exception:
+                            _dl = None
+                    if _dl:
+                        _deadline_str = f" · Avant le {_dl.strftime('%d/%m/%Y %H:%M')}"
+                st.markdown(
+                    f'<div style="background:#1e2130;border-radius:8px;padding:14px 18px;'
+                    f'border-left:4px solid {_prio_color};margin-bottom:12px;">'
+                    f'<div style="color:#94a3b8;font-size:0.78rem;margin-bottom:4px;">'
+                    f'ACTION RECOMMANDÉE · Priorité {_na_prio.upper()}{_deadline_str}</div>'
+                    f'<div style="color:white;font-weight:600;font-size:1rem;">{_na_label}</div>'
+                    + (f'<div style="color:#94a3b8;font-size:0.82rem;margin-top:6px;">{_na_reason}</div>' if _na_reason else "")
+                    + '</div>',
+                    unsafe_allow_html=True,
+                )
 
             detail_col1, detail_col2, detail_col3 = st.columns(3)
 
