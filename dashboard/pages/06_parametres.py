@@ -553,6 +553,220 @@ try:
 except Exception:
     st.caption("Configurez et enregistrez une connexion CRM pour activer les options de sync.")
 
+# ─── Push CRM (PropPilot → CRM) ───────────────────────────────────────────────
+
+st.markdown("---")
+st.markdown("## 📤 Connecteur CRM — Export automatique des leads")
+st.markdown(
+    "À chaque lead qualifié, PropPilot le pousse automatiquement vers votre CRM. "
+    "Sens unique : PropPilot → CRM (pas de sync inverse)."
+)
+
+# Lire config push CRM actuelle
+_crm_push_current = {"crm_type": "none", "crm_config": {}}
+try:
+    from memory.database import get_connection as _gc2
+    with _gc2() as _conn2:
+        _row_crm = _conn2.execute(
+            "SELECT crm_type, crm_config, crm_last_sync_at, crm_last_error FROM users WHERE id = %s",
+            (client_id,),
+        ).fetchone()
+    if _row_crm:
+        import json as _json
+        _crm_push_current["crm_type"] = _row_crm.get("crm_type") or "none"
+        _raw_cfg = _row_crm.get("crm_config")
+        if isinstance(_raw_cfg, dict):
+            _crm_push_current["crm_config"] = _raw_cfg
+        elif isinstance(_raw_cfg, str) and _raw_cfg:
+            _crm_push_current["crm_config"] = _json.loads(_raw_cfg)
+        _crm_push_current["crm_last_sync_at"] = _row_crm.get("crm_last_sync_at")
+        _crm_push_current["crm_last_error"] = _row_crm.get("crm_last_error")
+except Exception:
+    pass
+
+_CRM_PUSH_OPTIONS = ["Aucun", "Apimo", "Email parsing (Netty, Hektor, Modelo, etc.)"]
+_CRM_PUSH_KEYS = ["none", "apimo", "email"]
+_current_type = _crm_push_current.get("crm_type", "none")
+_current_idx = _CRM_PUSH_KEYS.index(_current_type) if _current_type in _CRM_PUSH_KEYS else 0
+
+_selected_push_label = st.selectbox(
+    "Quel connecteur activer ?",
+    options=_CRM_PUSH_OPTIONS,
+    index=_current_idx,
+    key="crm_push_select",
+)
+_selected_push_type = _CRM_PUSH_KEYS[_CRM_PUSH_OPTIONS.index(_selected_push_label)]
+
+_cfg = _crm_push_current.get("crm_config", {})
+
+if _selected_push_type == "apimo":
+    st.markdown("### Configuration Apimo")
+    st.caption("Les credentials Apimo sont fournis par votre administrateur Apimo dans Paramètres > API.")
+
+    with st.form("crm_push_apimo_form"):
+        _apimo_provider = st.text_input(
+            "Provider ID Apimo",
+            value=_cfg.get("provider_id", ""),
+            placeholder="ex: 12345",
+            help="Identifiant numérique de votre agence dans Apimo",
+        )
+        _apimo_token = st.text_input(
+            "API Token Apimo",
+            value=_cfg.get("api_token", ""),
+            type="password",
+            placeholder="Votre token Apimo",
+        )
+        _col_test, _col_save = st.columns(2)
+        with _col_test:
+            _test_apimo = st.form_submit_button("🔌 Tester la connexion")
+        with _col_save:
+            _save_apimo = st.form_submit_button("💾 Enregistrer", type="primary")
+
+    if _test_apimo:
+        with st.spinner("Test Apimo..."):
+            try:
+                from lib.crm_connectors.apimo import ApimoConnector
+                _conn_test = ApimoConnector(
+                    provider_id=_apimo_provider or "test",
+                    api_token=_apimo_token or "test_mock",
+                )
+                _result = _conn_test.test_connection()
+                if _result.get("success"):
+                    st.success(f"✅ {_result['message']}")
+                else:
+                    st.error(f"❌ {_result['message']}")
+            except Exception as _e:
+                st.error(f"Erreur : {_e}")
+
+    if _save_apimo:
+        if not _apimo_provider or not _apimo_token:
+            st.warning("Provider ID et API Token requis.")
+        else:
+            try:
+                from lib.crm_connectors.factory import save_crm_push_config
+                save_crm_push_config(
+                    client_id=client_id,
+                    crm_type="apimo",
+                    config={"provider_id": _apimo_provider, "api_token": _apimo_token},
+                )
+                st.success("✅ Connecteur Apimo enregistré — les leads seront pushés automatiquement.")
+            except Exception as _e:
+                st.error(f"Erreur : {_e}")
+
+elif _selected_push_type == "email":
+    st.markdown("### Configuration Email parsing")
+    st.caption(
+        "PropPilot envoie un email plain text à votre CRM à chaque nouveau lead qualifié. "
+        "Compatible avec tous les CRM dotés d'une boîte mail d'import."
+    )
+
+    with st.form("crm_push_email_form"):
+        _email_target = st.text_input(
+            "Email cible du CRM",
+            value=_cfg.get("target_email", ""),
+            placeholder="import@moncrm.fr",
+            help="Adresse email où votre CRM reçoit les leads (consultez la doc de votre CRM)",
+        )
+        _email_crm_label = st.selectbox(
+            "Quel CRM utilisez-vous ?",
+            options=["Netty", "Hektor (La Boîte Immo)", "Modelo Office", "Périclès", "Krea", "Autre"],
+            index=["Netty", "Hektor (La Boîte Immo)", "Modelo Office", "Périclès", "Krea", "Autre"].index(
+                _cfg.get("crm_label", "Autre")
+            ) if _cfg.get("crm_label") in ["Netty", "Hektor (La Boîte Immo)", "Modelo Office", "Périclès", "Krea", "Autre"] else 5,
+            help="Informatif seulement — n'impacte pas le comportement",
+        )
+        _col_test2, _col_save2 = st.columns(2)
+        with _col_test2:
+            _test_email = st.form_submit_button("📧 Envoyer un email test")
+        with _col_save2:
+            _save_email = st.form_submit_button("💾 Enregistrer", type="primary")
+
+    if _test_email:
+        if not _email_target:
+            st.warning("Entrez une adresse email cible.")
+        else:
+            with st.spinner("Envoi email test..."):
+                try:
+                    from lib.crm_connectors.email_parsing import EmailParsingConnector
+                    _test_connector = EmailParsingConnector(
+                        target_email=_email_target,
+                        crm_label=_email_crm_label,
+                    )
+                    _test_lead = {
+                        "id": "test-lead-001",
+                        "client_id": client_id,
+                        "prenom": "Marie",
+                        "nom": "Dupont (test)",
+                        "telephone": "+33600000001",
+                        "email": "marie.dupont@test.fr",
+                        "type_projet": "achat",
+                        "budget_min": 300000,
+                        "budget_max": 400000,
+                        "zone": "Lyon 6ème",
+                        "type_bien": "T3",
+                        "surface_min": 65,
+                        "surface_max": 80,
+                        "motivation": "mutation_pro",
+                        "score_label": "chaud",
+                        "resume": "Lead test PropPilot — acheteur T3 Lyon 6, mutation pro.",
+                        "next_action_label": "Rappeler sous 2h pour proposer un RDV",
+                        "next_action_reason": "Lead chaud, premier contact.",
+                    }
+                    _ok = _test_connector.push_lead(_test_lead)
+                    if _ok:
+                        st.success(f"✅ Email test envoyé à {_email_target}")
+                    else:
+                        st.error("❌ Envoi échoué — vérifiez les logs.")
+                except Exception as _e:
+                    st.error(f"Erreur : {_e}")
+
+    if _save_email:
+        if not _email_target:
+            st.warning("L'adresse email cible est requise.")
+        else:
+            try:
+                from lib.crm_connectors.factory import save_crm_push_config
+                save_crm_push_config(
+                    client_id=client_id,
+                    crm_type="email",
+                    config={"target_email": _email_target, "crm_label": _email_crm_label},
+                )
+                st.success(f"✅ Connecteur Email enregistré — leads envoyés vers {_email_target}.")
+            except Exception as _e:
+                st.error(f"Erreur : {_e}")
+
+else:
+    if _current_type != "none":
+        if st.button("🚫 Désactiver le connecteur CRM push", type="secondary"):
+            try:
+                from lib.crm_connectors.factory import save_crm_push_config
+                save_crm_push_config(client_id=client_id, crm_type="none", config={})
+                st.success("Connecteur désactivé.")
+                st.rerun()
+            except Exception as _e:
+                st.error(f"Erreur : {_e}")
+
+# ── Statut push CRM ────────────────────────────────────────────────────────────
+if _selected_push_type != "none" or _current_type != "none":
+    st.markdown("#### Statut du connecteur")
+    try:
+        from lib.crm_connectors.factory import get_push_stats_7d
+        _stats = get_push_stats_7d(client_id)
+        _st_col1, _st_col2, _st_col3 = st.columns(3)
+        with _st_col1:
+            _last_sync = _crm_push_current.get("crm_last_sync_at")
+            _sync_str = _last_sync.strftime("%d/%m %H:%M") if _last_sync else "Jamais"
+            st.metric("Dernière sync OK", _sync_str)
+        with _st_col2:
+            st.metric("Leads pushés (7j)", _stats.get("success", 0))
+        with _st_col3:
+            _last_err = _crm_push_current.get("crm_last_error")
+            st.metric("Erreurs (7j)", _stats.get("error", 0))
+        if _last_err:
+            st.warning(f"⚠️ Dernière erreur : {_last_err[:200]}")
+    except Exception:
+        st.caption("Statistiques indisponibles.")
+
 # ─── Mon numéro de téléphone (click-to-call) ──────────────────────────────────
 
 st.markdown("---")
