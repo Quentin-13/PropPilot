@@ -219,7 +219,7 @@ with col_right:
         lead_name = f"{lead_prenom} {lead_nom}".strip() or lead.get("telephone") or selected_id[:8]
         lead_tel = lead.get("telephone") or "—"
         lead_score = lead.get("score")
-        score_str = f"{lead_score}/10" if lead_score is not None else "—"
+        score_str = f"{lead_score}/24" if lead_score is not None else "—"
 
         st.markdown(
             f'<div style="background:#1e2130;border-radius:8px;padding:12px 16px;margin-bottom:12px;">'

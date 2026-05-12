@@ -35,7 +35,7 @@ def _make_conn(score: int = 0, motivation: str = "") -> MagicMock:
         cur = MagicMock()
         sql_s = sql.strip()
         if "FROM calls" in sql_s:
-            cur.fetchone.return_value = {"lead_id": "lead-001"}
+            cur.fetchone.return_value = {"lead_id": "lead-001", "client_id": "client-001"}
         elif "FROM leads" in sql_s:
             cur.fetchone.return_value = {"score": score, "motivation": motivation}
         elif "INSERT INTO conversation_extractions" in sql_s:

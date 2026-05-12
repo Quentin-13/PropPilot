@@ -227,12 +227,26 @@ def save_call_extraction(call_id: str, data) -> int:
 
     assert isinstance(data, CallExtractionData)
 
-    # Résoudre lead_id depuis la table calls
+    # Résoudre lead_id et client_id depuis calls + leads (fallback COALESCE)
     with get_connection() as conn:
         call_row = conn.execute(
-            "SELECT lead_id FROM calls WHERE id = %s LIMIT 1", (call_id,)
+            """
+            SELECT c.lead_id, COALESCE(c.client_id, l.client_id) AS client_id
+            FROM calls c
+            LEFT JOIN leads l ON l.id = c.lead_id
+            WHERE c.id = %s
+            LIMIT 1
+            """,
+            (call_id,),
         ).fetchone()
     lead_id = call_row["lead_id"] if call_row else None
+    call_client_id = (call_row["client_id"] if call_row else None)
+    if not call_client_id:
+        logger.warning(
+            "[CallRepo] save_call_extraction: client_id introuvable pour call_id=%s — insertion NULL",
+            call_id,
+        )
+    call_client_id = call_client_id or None
 
     extraction_status = getattr(data, "extraction_status", "ok") or "ok"
 
@@ -240,7 +254,7 @@ def save_call_extraction(call_id: str, data) -> int:
         row = conn.execute(
             """
             INSERT INTO conversation_extractions (
-                source, call_id, lead_id,
+                source, call_id, lead_id, client_id,
                 type_projet, budget_min, budget_max, zone_geographique,
                 type_bien, surface_min, surface_max,
                 criteres, timing, financement,
@@ -250,7 +264,7 @@ def save_call_extraction(call_id: str, data) -> int:
                 extraction_status,
                 extracted_at
             ) VALUES (
-                'call', %s, %s,
+                'call', %s, %s, %s,
                 %s, %s, %s, %s,
                 %s, %s, %s,
                 %s, %s, %s,
@@ -262,7 +276,7 @@ def save_call_extraction(call_id: str, data) -> int:
             ) RETURNING id
             """,
             (
-                call_id, lead_id,
+                call_id, lead_id, call_client_id,
                 data.type_projet, data.budget_min, data.budget_max, data.zone_geographique,
                 data.type_bien, data.surface_min, data.surface_max,
                 json.dumps(data.criteres, ensure_ascii=False),
@@ -409,17 +423,23 @@ def get_calls_by_lead(lead_id: str) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def get_extractions_by_lead(lead_id: str) -> list[dict]:
-    """Retourne toutes les extractions d'appels pour un lead (source='call')."""
+def get_extractions_by_lead(lead_id: str, client_id: Optional[str] = None) -> list[dict]:
+    """Retourne toutes les extractions pour un lead (source='call').
+
+    Si client_id est fourni, filtre dessus pour garantir l'isolation multi-tenant.
+    """
+    sql = """
+        SELECT * FROM conversation_extractions
+        WHERE lead_id = %s AND source = 'call'
+    """
+    params: list = [lead_id]
+    if client_id:
+        sql += " AND client_id = %s"
+        params.append(client_id)
+    sql += " ORDER BY extracted_at DESC"
+
     with get_connection() as conn:
-        rows = conn.execute(
-            """
-            SELECT * FROM conversation_extractions
-            WHERE lead_id = %s AND source = 'call'
-            ORDER BY extracted_at DESC
-            """,
-            (lead_id,),
-        ).fetchall()
+        rows = conn.execute(sql, params).fetchall()
     result = []
     for row in rows:
         d = dict(row)
@@ -475,7 +495,7 @@ def save_sms_extraction(lead_id: str, client_id: str, data) -> int:
         row = conn.execute(
             """
             INSERT INTO conversation_extractions (
-                source, lead_id,
+                source, lead_id, client_id,
                 type_projet, budget_min, budget_max, zone_geographique,
                 type_bien, surface_min, surface_max,
                 criteres, timing, financement,
@@ -485,7 +505,7 @@ def save_sms_extraction(lead_id: str, client_id: str, data) -> int:
                 extraction_status,
                 extracted_at
             ) VALUES (
-                'sms', %s,
+                'sms', %s, %s,
                 %s, %s, %s, %s,
                 %s, %s, %s,
                 %s, %s, %s,
@@ -497,7 +517,7 @@ def save_sms_extraction(lead_id: str, client_id: str, data) -> int:
             ) RETURNING id
             """,
             (
-                lead_id,
+                lead_id, client_id,
                 data.type_projet, data.budget_min, data.budget_max, data.zone_geographique,
                 data.type_bien, data.surface_min, data.surface_max,
                 json.dumps(data.criteres, ensure_ascii=False),

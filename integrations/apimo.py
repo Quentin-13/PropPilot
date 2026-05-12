@@ -67,7 +67,7 @@ class ApimoClient:
             "last_name": lead.nom or "",
             "phone": lead.telephone or "",
             "email": lead.email or "",
-            "comment": f"Lead IA — Score {lead.score}/10 — {lead.projet.value} — {lead.localisation}",
+            "comment": f"Lead IA — Score {lead.score}/24 — {lead.projet.value} — {lead.localisation}",
             "origin": "web",
         }
 
@@ -107,7 +107,7 @@ class ApimoClient:
             apimo_contact_id=apimo_id,
             note=(
                 f"[IA Qualification]\n"
-                f"Score : {lead.score}/10\n"
+                f"Score : {lead.score}/24\n"
                 f"Projet : {lead.projet.value}\n"
                 f"Budget : {lead.budget or 'non précisé'}\n"
                 f"Timeline : {lead.timeline or 'non précisé'}\n"

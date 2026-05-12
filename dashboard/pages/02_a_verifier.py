@@ -104,7 +104,7 @@ for lead_dict in leads_raw:
                 else:
                     st.caption("Aucun message SMS enregistré.")
 
-                extractions = get_extractions_by_lead(lead_id)
+                extractions = get_extractions_by_lead(lead_id, client_id=client_id)
                 for ext in extractions[:2]:
                     raw_resume = ext.get("resume_appel") or ""
                     if raw_resume:

@@ -59,7 +59,7 @@ PROFIL DU CONTACT :
 - Localisation : {localisation}
 - Budget : {budget}
 - Délai : {timeline}
-- Score : {score}/10
+- Score : {score}/24
 - Séquence : {sequence_name}
 - Canal : {canal} (SMS/Email/WhatsApp)
 - Dernier contact : il y a {jours_dernier_contact} jours

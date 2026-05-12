@@ -95,7 +95,7 @@ def simulate_hot_lead() -> dict:
         score = final_state.get("score", 0)
         status = final_state.get("status", "")
         if score:
-            log(f"Score : {score}/10 | Status : {status}", "step")
+            log(f"Score : {score}/24 | Status : {status}", "step")
 
         if status == "rdv_proposed":
             log("RDV proposé ! Flux terminé.", "success")
@@ -110,7 +110,7 @@ def simulate_hot_lead() -> dict:
         lead = get_lead(lead_id)
         if lead:
             log(f"Lead créé : {lead.id[:12]}", "success")
-            log(f"Score final : {lead.score}/10", "success")
+            log(f"Score final : {lead.score}/24", "success")
             log(f"Statut : {lead.statut.value}", "success")
             log(f"Projet : {lead.projet.value} à {lead.localisation}", "info")
 
@@ -185,7 +185,7 @@ def simulate_warm_lead() -> dict:
             canal="sms",
             lead_id=lead_id,
         )
-        log(f"Requalification → Score : {requalif.get('score', 0)}/10", "success")
+        log(f"Requalification → Score : {requalif.get('score', 0)}/24", "success")
 
     if lead_id:
         from memory.lead_repository import get_lead
@@ -245,7 +245,7 @@ def simulate_cold_lead() -> dict:
         from memory.lead_repository import get_lead
         lead = get_lead(lead_id)
         if lead:
-            log(f"Score : {lead.score}/10 (nurturing long terme)", "info")
+            log(f"Score : {lead.score}/24 (nurturing long terme)", "info")
             log(f"Séquence : {lead.nurturing_sequence.value if lead.nurturing_sequence else 'aucune'}", "info")
 
     return {"scenario": "cold", "lead_id": lead_id, "score": final_state.get("score", 0) if final_state else 0}
@@ -449,7 +449,7 @@ def main():
             sc = r.get("scenario", "?")
             lead = r.get("lead_id", "—")[:8] if r.get("lead_id") else "—"
             score = r.get("score", 0)
-            log(f"Scénario {sc} : Lead {lead} | Score {score}/10", "info")
+            log(f"Scénario {sc} : Lead {lead} | Score {score}/24", "info")
 
     print(f"\n{'═' * 65}")
     print(f"  ✅ Simulation terminée")

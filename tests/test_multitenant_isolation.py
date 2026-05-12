@@ -152,3 +152,74 @@ class TestCallsEndpointIsolation:
         with patch("memory.call_repository.get_call_by_id", return_value=None):
             resp = calls_client.get("/api/calls/call-missing")
         assert resp.status_code == 404
+
+
+# ── get_extractions_by_lead : isolation client_id ────────────────────────────
+
+class TestExtractionsByLeadIsolation:
+    """Prouve que le filtre client_id empêche la lecture cross-tenant."""
+
+    def _make_conn(self, stored_client_id: str):
+        """
+        Simule une DB avec une extraction appartenant à `stored_client_id`.
+        Si la requête filtre par un client_id différent, fetchall retourne [].
+        """
+        extraction_row = {
+            "id": 1, "source": "call", "lead_id": "lead-abc",
+            "client_id": stored_client_id,
+            "resume_appel": "Secret résumé",
+            "score_qualification": "chaud",
+            "criteres": "{}", "timing": "{}", "financement": "{}", "points_attention": "[]",
+            "extracted_at": "2026-05-01T10:00:00Z",
+        }
+
+        def _execute(sql, params=None):
+            cur = MagicMock()
+            if params and stored_client_id in params:
+                # La requête filtre par le bon client_id → retourne la ligne
+                cur.fetchall.return_value = [extraction_row]
+            elif params and stored_client_id not in params and len(params) > 1:
+                # La requête filtre par un client_id étranger → retourne []
+                cur.fetchall.return_value = []
+            else:
+                # Pas de filtre client_id (backward compat) → retourne la ligne
+                cur.fetchall.return_value = [extraction_row]
+            return cur
+
+        conn = MagicMock()
+        conn.execute.side_effect = _execute
+        ctx = MagicMock()
+        ctx.__enter__.return_value = conn
+        ctx.__exit__.return_value = False
+        return ctx
+
+    def test_own_client_sees_extraction(self):
+        """Le client propriétaire voit bien ses extractions."""
+        from memory.call_repository import get_extractions_by_lead
+
+        with patch("memory.call_repository.get_connection",
+                   return_value=self._make_conn("agence-001")):
+            result = get_extractions_by_lead("lead-abc", client_id="agence-001")
+
+        assert len(result) == 1
+        assert result[0]["resume_appel"] == "Secret résumé"
+
+    def test_foreign_client_sees_nothing(self):
+        """Un client étranger ne voit pas les extractions d'un autre client."""
+        from memory.call_repository import get_extractions_by_lead
+
+        with patch("memory.call_repository.get_connection",
+                   return_value=self._make_conn("agence-001")):
+            result = get_extractions_by_lead("lead-abc", client_id="agence-002")
+
+        assert result == []
+
+    def test_no_client_id_returns_all(self):
+        """Sans client_id (usage interne/admin), la fonction retourne les extractions."""
+        from memory.call_repository import get_extractions_by_lead
+
+        with patch("memory.call_repository.get_connection",
+                   return_value=self._make_conn("agence-001")):
+            result = get_extractions_by_lead("lead-abc")
+
+        assert len(result) == 1
