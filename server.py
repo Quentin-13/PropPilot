@@ -686,49 +686,11 @@ async def portal_webhook(portal_name: str, request: Request):
 @rate_limit(max_calls=30, window_seconds=60)
 async def twilio_voice_inbound(request: Request, background_tasks: BackgroundTasks):
     """
-    Appel entrant sur le 07.
-    Joue le message vocal de l'agence (personnalisé avec nom + agence).
-    L'appel sera enregistré et transcrit dans le sprint Capture Appels.
+    DEPRECATED — alias vers /webhooks/twilio/voice/incoming (pipeline complet).
+    Route legacy conservée pour rétro-compatibilité. Configurer Twilio sur /incoming.
     """
-    if not await validate_twilio_signature(request):
-        raise HTTPException(status_code=403, detail="Signature invalide")
-
-    form = await request.form()
-    from_number = sanitize_phone_number(form.get("From", ""))
-    to_number = form.get("To", "")
-
-    logger.info("[Twilio voice] Appel entrant — %s → %s", from_number, to_number)
-
-    # Lookup client par numéro 06/07
-    agent_name = "votre conseiller"
-    agency_name = "l'agence"
-
-    try:
-        from memory.database import get_connection
-        with get_connection() as conn:
-            row = conn.execute(
-                "SELECT agency_name, first_name FROM users "
-                "WHERE twilio_sms_number = %s AND plan_active = TRUE LIMIT 1",
-                (to_number,),
-            ).fetchone()
-            if row:
-                agency_name = row["agency_name"] or agency_name
-                agent_name = row["first_name"] or agent_name
-            else:
-                logger.warning(
-                    "[Twilio voice] Numéro 'To' inconnu : %s — appel ignoré",
-                    to_number,
-                )
-    except Exception as e:
-        logger.warning("[Twilio voice] DB lookup: %s", e)
-
-    # TwiML — message vocal entrant
-    from tools.twilio_tool import TwilioTool
-    twiml = TwilioTool().generate_inbound_twiml(
-        agent_name=agent_name,
-        agency_name=agency_name,
-    )
-    return Response(content=twiml, media_type="application/xml")
+    from webhooks.twilio_voice import voice_incoming
+    return await voice_incoming(request, background_tasks)
 
 
 @app.post("/twiml/inbound", tags=["twiml"], response_class=Response)

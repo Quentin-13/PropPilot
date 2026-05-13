@@ -150,6 +150,9 @@ async def voice_incoming(request: Request, background_tasks: BackgroundTasks):
         except Exception as exc:
             logger.warning("[Voice] DB lookup for agent phone failed: %s", exc)
 
+    # client_id = propriétaire du numéro Twilio (agency_id depuis phone_config, sinon user_id du fallback)
+    client_id: str | None = agency_id or agent_id
+
     # Créer le call en DB (idempotent sur call_sid)
     background_tasks.add_task(
         _persist_incoming_call,
@@ -158,6 +161,7 @@ async def voice_incoming(request: Request, background_tasks: BackgroundTasks):
         to_number=to_number,
         agency_id=agency_id,
         agent_id=agent_id,
+        client_id=client_id,
         call_status=call_status,
     )
 
@@ -297,11 +301,32 @@ def _persist_incoming_call(
     to_number: str,
     agency_id: str | None,
     agent_id: str | None,
+    client_id: str | None,
     call_status: str,
 ) -> None:
-    """Crée l'enregistrement call en DB (exécuté en background)."""
+    """Crée (ou retrouve) le lead depuis from_number, puis l'enregistrement call en DB."""
     try:
         from memory.call_repository import create_call
+        from memory.lead_repository import create_lead, get_lead_by_phone
+        from memory.models import Canal, Lead, LeadStatus
+
+        lead_id: str | None = None
+        if client_id and from_number:
+            existing = get_lead_by_phone(from_number, client_id)
+            if existing:
+                lead_id = existing.id
+                logger.info("[Voice] Lead retrouvé lead_id=%s from=%s", lead_id, from_number)
+            else:
+                new_lead = Lead(
+                    client_id=client_id,
+                    telephone=from_number,
+                    source=Canal.APPEL,
+                    statut=LeadStatus.ENTRANT,
+                )
+                created = create_lead(new_lead)
+                lead_id = created.id
+                logger.info("[Voice] Lead créé lead_id=%s from=%s", lead_id, from_number)
+
         create_call(
             call_sid=call_sid,
             direction="inbound",
@@ -311,6 +336,8 @@ def _persist_incoming_call(
             twilio_number=to_number,
             agency_id=agency_id,
             agent_id=agent_id,
+            client_id=client_id or "",
+            lead_id=lead_id,
             started_at=datetime.utcnow(),
         )
     except Exception as exc:

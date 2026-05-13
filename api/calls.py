@@ -139,6 +139,7 @@ async def initiate_outbound_call(body: OutboundCallRequest, request: Request):
             twilio_number=caller_id or "",
             lead_id=body.lead_id,
             agent_id=body.agent_id,
+            client_id=user_id,
             started_at=datetime.utcnow(),
         )
         return OutboundCallResponse(
@@ -179,6 +180,7 @@ async def initiate_outbound_call(body: OutboundCallRequest, request: Request):
             twilio_number=caller_id,
             lead_id=body.lead_id,
             agent_id=body.agent_id,
+            client_id=user_id,
             started_at=datetime.utcnow(),
         )
 
@@ -262,18 +264,16 @@ async def list_calls(request: Request, limit: int = 20, offset: int = 0):
     with get_connection() as conn:
         rows = conn.execute(
             """
-            SELECT id, call_sid, direction, mode, from_number, to_number,
-                   started_at, ended_at, duration_seconds,
-                   status, score_qualification
+            SELECT c.id, c.call_sid, c.direction, c.mode, c.from_number, c.to_number,
+                   c.started_at, c.ended_at, c.duration_seconds,
+                   c.status, ce.score_qualification
             FROM calls c
             LEFT JOIN conversation_extractions ce ON ce.call_id = c.id AND ce.source = 'call'
-            WHERE c.agent_id = %s OR c.agency_id = (
-                SELECT agency_name FROM users WHERE id = %s LIMIT 1
-            )
+            WHERE c.client_id = %s
             ORDER BY c.created_at DESC
             LIMIT %s OFFSET %s
             """,
-            (user_id, user_id, limit, offset),
+            (user_id, limit, offset),
         ).fetchall()
     return [dict(r) for r in rows]
 

@@ -308,3 +308,91 @@ def test_outbound_with_auth_mock_mode():
     assert data["status"] == "initiated"
     assert "[MOCK]" in data["message"]
     _clear_settings()
+
+
+# ── _persist_incoming_call : lead lookup/creation ─────────────────────────────
+
+def test_persist_incoming_call_creates_lead_when_unknown():
+    """Nouvel appelant → lead créé avec source=appel et lié au call."""
+    from unittest.mock import call as mock_call
+    from webhooks.twilio_voice import _persist_incoming_call
+
+    mock_new_lead = MagicMock()
+    mock_new_lead.id = "lead-new-001"
+
+    with patch("memory.lead_repository.get_lead_by_phone", return_value=None) as mock_lookup, \
+         patch("memory.lead_repository.create_lead", return_value=mock_new_lead) as mock_create, \
+         patch("memory.call_repository.create_call", return_value="call-new-001") as mock_create_call:
+
+        _persist_incoming_call(
+            call_sid="CA_TEST_01",
+            from_number="+33600000099",
+            to_number="+33757596114",
+            agency_id="agency-001",
+            agent_id="agent-001",
+            client_id="agency-001",
+            call_status="ringing",
+        )
+
+    mock_lookup.assert_called_once_with("+33600000099", "agency-001")
+    mock_create.assert_called_once()
+    created_lead = mock_create.call_args[0][0]
+    assert created_lead.telephone == "+33600000099"
+    assert created_lead.client_id == "agency-001"
+    assert created_lead.source.value == "appel"
+
+    create_call_kwargs = mock_create_call.call_args[1]
+    assert create_call_kwargs["lead_id"] == "lead-new-001"
+    assert create_call_kwargs["client_id"] == "agency-001"
+
+
+def test_persist_incoming_call_reuses_existing_lead():
+    """Appelant connu → lead retrouvé, pas de création, call lié au lead existant."""
+    from webhooks.twilio_voice import _persist_incoming_call
+
+    mock_existing = MagicMock()
+    mock_existing.id = "lead-existing-42"
+
+    with patch("memory.lead_repository.get_lead_by_phone", return_value=mock_existing), \
+         patch("memory.lead_repository.create_lead") as mock_create, \
+         patch("memory.call_repository.create_call", return_value="call-002") as mock_create_call:
+
+        _persist_incoming_call(
+            call_sid="CA_TEST_02",
+            from_number="+33611223344",
+            to_number="+33757596114",
+            agency_id="agency-001",
+            agent_id=None,
+            client_id="agency-001",
+            call_status="ringing",
+        )
+
+    mock_create.assert_not_called()
+    create_call_kwargs = mock_create_call.call_args[1]
+    assert create_call_kwargs["lead_id"] == "lead-existing-42"
+    assert create_call_kwargs["client_id"] == "agency-001"
+
+
+def test_persist_incoming_call_no_client_id_skips_lead():
+    """Sans client_id identifié → pas de lead créé, call enregistré sans lead_id."""
+    from webhooks.twilio_voice import _persist_incoming_call
+
+    with patch("memory.lead_repository.get_lead_by_phone") as mock_lookup, \
+         patch("memory.lead_repository.create_lead") as mock_create, \
+         patch("memory.call_repository.create_call", return_value="call-003") as mock_create_call:
+
+        _persist_incoming_call(
+            call_sid="CA_TEST_03",
+            from_number="+33600000001",
+            to_number="+33757596114",
+            agency_id=None,
+            agent_id=None,
+            client_id=None,
+            call_status="ringing",
+        )
+
+    mock_lookup.assert_not_called()
+    mock_create.assert_not_called()
+    create_call_kwargs = mock_create_call.call_args[1]
+    assert create_call_kwargs["lead_id"] is None
+    assert create_call_kwargs["client_id"] == ""
