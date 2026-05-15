@@ -111,14 +111,15 @@ def _trigger_post_extraction_hooks(lead_id: str, client_id: str) -> None:
 
 def _run_sms_extraction_batch() -> None:
     """
-    Batch SMS — extrait les données structurées des threads actifs (toutes les 4 min).
+    Batch SMS — fallback extraction consolidée toutes les 4 min.
 
-    Analyse les threads ayant reçu un SMS entrant dans les 30 dernières minutes.
-    Skip si la dernière extraction SMS est plus récente que le dernier message.
+    Traite les threads ayant reçu un SMS entrant dans les 30 dernières minutes.
+    Utilise build_lead_conversation_transcript pour inclure SMS ET appels.
+    Skip si la dernière extraction est plus récente que le dernier SMS entrant.
     """
-    from memory.sms_repository import get_active_sms_leads, get_sms_thread_messages
-    from memory.call_repository import get_latest_extraction_for_lead, save_sms_extraction
-    from lib.sms_extraction_pipeline import SmsExtractionPipeline
+    from memory.sms_repository import get_active_sms_leads
+    from memory.call_repository import get_latest_extraction_for_lead
+    from lib.lead_extraction.consolidated_extraction import extract_and_update_lead
 
     try:
         active = get_active_sms_leads(since_minutes=30)
@@ -130,14 +131,13 @@ def _run_sms_extraction_batch() -> None:
         return
 
     logger.info("[SMS Batch] %d thread(s) SMS actif(s)", len(active))
-    pipeline = SmsExtractionPipeline()
 
     for item in active:
         lead_id = item["lead_id"]
         client_id = item["client_id"]
         last_sms_at = item["last_sms_at"]
 
-        # Skip si l'extraction SMS est déjà à jour
+        # Skip si l'extraction est déjà à jour (déclenchée en temps réel sur webhook)
         try:
             last_ext = get_latest_extraction_for_lead(lead_id)
             if last_ext and last_ext.get("source") == "sms":
@@ -148,10 +148,8 @@ def _run_sms_extraction_batch() -> None:
             pass
 
         try:
-            messages = get_sms_thread_messages(lead_id, client_id)
-            data = pipeline.extract(lead_id=lead_id, messages=messages)
+            data = extract_and_update_lead(lead_id=lead_id, client_id=client_id)
             if data:
-                save_sms_extraction(lead_id=lead_id, client_id=client_id, data=data)
                 logger.info(
                     "[SMS Batch] OK lead_id=%s score=%s",
                     lead_id, data.score_qualification,
@@ -757,7 +755,7 @@ async def twilio_sms_incoming(request: Request, background_tasks: BackgroundTask
             media_type="application/xml",
         )
 
-    # Stockage en background (non bloquant)
+    # Stockage + extraction consolidée en background (non bloquant)
     _cid = client_id
 
     def _store():
@@ -770,6 +768,17 @@ async def twilio_sms_incoming(request: Request, background_tasks: BackgroundTask
         )
         if not result["stored"]:
             logger.error("[Twilio SMS] Échec stockage pour %s", from_number)
+            return
+        lead_id = result.get("lead_id")
+        if not lead_id:
+            return
+        # Re-extraction consolidée immédiate (SMS + appels) — sans attendre le batch
+        try:
+            from lib.lead_extraction.consolidated_extraction import extract_and_update_lead
+            extract_and_update_lead(lead_id=lead_id, client_id=_cid)
+            _trigger_post_extraction_hooks(lead_id=lead_id, client_id=_cid)
+        except Exception as e:
+            logger.error("[Twilio SMS] Extraction lead_id=%s: %s", lead_id, e)
 
     background_tasks.add_task(_store)
 

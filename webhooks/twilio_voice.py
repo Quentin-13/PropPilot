@@ -486,23 +486,30 @@ def _retry_transcription(call_id: str, remote_key: str, attempt: int) -> None:
 
 
 def _run_extraction(call_id: str, transcript: str) -> None:
-    """Lance l'extraction structurée et sauvegarde en DB."""
+    """Lance l'extraction structurée, puis la re-extraction consolidée (SMS + appel)."""
     from lib.call_extraction_pipeline import CallExtractionPipeline
     from memory.call_repository import save_call_extraction, update_call_status, get_call_by_id
 
     try:
+        # 1. Extraction depuis la transcription de cet appel
         data = CallExtractionPipeline().extract(call_id=call_id, transcript=transcript)
         save_call_extraction(call_id, data)
         update_call_status(call_id, "extracted", cost_claude=data.cost_usd)
         logger.info("[Voice] Extraction OK call_id=%s score=%s", call_id, data.score_qualification)
 
-        # Hooks post-extraction : next_action + push CRM
         try:
             call_row = get_call_by_id(call_id)
             if call_row:
                 lead_id = call_row.get("lead_id")
                 client_id = call_row.get("client_id") or call_row.get("agency_id", "")
                 if lead_id and client_id:
+                    # 2. Re-extraction consolidée (SMS + appels) pour enrichir le lead
+                    try:
+                        from lib.lead_extraction.consolidated_extraction import extract_and_update_lead
+                        extract_and_update_lead(lead_id=lead_id, client_id=client_id)
+                    except Exception as ce:
+                        logger.warning("[Voice] Consolidated extraction lead_id=%s: %s", lead_id, ce)
+                    # 3. Hooks post-extraction (une seule fois, après toutes les extractions)
                     _trigger_call_post_extraction_hooks(lead_id=lead_id, client_id=client_id)
         except Exception as hook_exc:
             logger.warning("[Voice] post-extraction hooks call_id=%s: %s", call_id, hook_exc)

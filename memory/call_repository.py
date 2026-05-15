@@ -19,11 +19,13 @@ _SCORE_MAP = {"froid": 5, "tiede": 14, "chaud": 21}
 _VALID_PROJET = {"achat", "vente", "location", "inconnu"}
 
 
-def _apply_extraction_to_lead(lead_id: str, data, conn) -> None:
+def _apply_extraction_to_lead(lead_id: str, data, conn, overwrite_score: bool = False) -> None:
     """Met à jour leads.* depuis une CallExtractionData. Règles :
     - Ne jamais écraser par None/vide.
-    - Ne jamais rétrograder le score.
     - Motivation : uniquement si leads.motivation est vide.
+    - overwrite_score=False (défaut) : score mis à jour uniquement à la hausse.
+    - overwrite_score=True (extraction consolidée) : score remplacé même à la baisse,
+      pour refléter l'état actuel du lead d'après tout l'historique.
     Doit être appelée dans la même transaction que l'INSERT extraction.
     """
     if not lead_id:
@@ -42,7 +44,11 @@ def _apply_extraction_to_lead(lead_id: str, data, conn) -> None:
     new_score = getattr(data, "score_total", 0) or _SCORE_MAP.get(
         (data.score_qualification or "").lower(), 0
     )
-    if new_score > current_score:
+    if overwrite_score and new_score > 0:
+        # Extraction consolidée : le score reflète l'état actuel, peut baisser
+        fields["score"] = new_score
+    elif new_score > current_score:
+        # Extraction partielle (SMS seul ou appel seul) : ne jamais rétrograder
         fields["score"] = new_score
 
     # Mettre à jour lead_type depuis le nouveau champ
@@ -479,9 +485,15 @@ def get_latest_extraction_for_lead(lead_id: str) -> Optional[dict]:
     return d
 
 
-def save_sms_extraction(lead_id: str, client_id: str, data) -> int:
+def save_sms_extraction(lead_id: str, client_id: str, data, overwrite_score: bool = False) -> int:
     """
     Sauvegarde une extraction SMS en DB (source='sms').
+    Utilisé aussi par l'extraction consolidée (compatibilité schéma).
+
+    overwrite_score=True : l'extraction consolidée peut faire baisser le score
+    (reflète l'état actuel du lead d'après tout l'historique).
+    overwrite_score=False (défaut) : score mis à jour uniquement à la hausse.
+
     Si extraction_status='failed', stocke le fait sans écraser les données du lead.
     Retourne l'id SERIAL de l'extraction créée.
     """
@@ -534,7 +546,7 @@ def save_sms_extraction(lead_id: str, client_id: str, data) -> int:
         if extraction_status == "failed":
             _mark_lead_extraction_failed(lead_id, conn)
         else:
-            _apply_extraction_to_lead(lead_id, data, conn)
+            _apply_extraction_to_lead(lead_id, data, conn, overwrite_score=overwrite_score)
         logger.info(
             "[CallRepo] SMS extraction saved id=%d lead_id=%s client=%s status=%s",
             extraction_id, lead_id, client_id, extraction_status,
