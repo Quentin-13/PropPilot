@@ -1,8 +1,9 @@
 """
-Page Settings — Onboarding Wizard + Configuration Agence.
+Page Paramètres — Configuration de l'agence et préférences.
 """
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -10,339 +11,145 @@ ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
 import streamlit as st
-import json
 
 from config.settings import get_settings
 
 settings = get_settings()
 
-st.set_page_config(page_title="Configuration — PropPilot", layout="wide", page_icon="⚙️")
+st.set_page_config(page_title="Mes paramètres — PropPilot", layout="wide", page_icon="⚙️")
 
 from dashboard.auth_ui import require_auth, render_sidebar_logout, require_non_demo
 require_auth()
 require_non_demo()
 render_sidebar_logout()
 
-client_id = st.session_state.get("user_id", settings.agency_client_id)
-tier = st.session_state.get("plan", settings.agency_tier)
+client_id  = st.session_state.get("user_id",    settings.agency_client_id)
+tier       = st.session_state.get("plan",        settings.agency_tier)
 agency_name = st.session_state.get("agency_name", settings.agency_name)
+user_email  = st.session_state.get("email", "")
 
-st.title("⚙️ Configuration de votre PropPilot")
-st.markdown(f"**{agency_name}** · Forfait {tier}")
+# ─── Lecture DB ───────────────────────────────────────────────────────────────
 
-# ─── Wizard steps ─────────────────────────────────────────────────────────────
+current_first_name = ""
+current_phone      = ""
+try:
+    from memory.database import get_connection
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT first_name, phone FROM users WHERE id = %s LIMIT 1",
+            (client_id,),
+        ).fetchone()
+    if row:
+        current_first_name = row.get("first_name") or ""
+        current_phone      = row.get("phone") or ""
+except Exception:
+    pass
 
-if "wizard_step" not in st.session_state:
-    st.session_state.wizard_step = 1
+# ─── En-tête ──────────────────────────────────────────────────────────────────
 
-STEPS = [
-    ("🏢", "Identité agence"),
-    ("📱", "Numéro de téléphone"),
-    ("📅", "Google Calendar"),
-    ("💳", "Forfait & Billing"),
-    ("🚀", "Premier lead test"),
-]
+st.title("Mes paramètres")
+st.caption("Configurez les informations de votre agence et vos préférences.")
 
-# Progress bar étapes
-st.markdown("### Progression de la configuration")
-cols = st.columns(len(STEPS))
-for i, (icon, label) in enumerate(STEPS):
-    step_num = i + 1
-    with cols[i]:
-        if step_num < st.session_state.wizard_step:
-            st.markdown(f"<div style='text-align:center;color:#27ae60;'>✅<br><small>{label}</small></div>", unsafe_allow_html=True)
-        elif step_num == st.session_state.wizard_step:
-            st.markdown(f"<div style='text-align:center;color:#1a3a5c;font-weight:bold;'>{icon}<br><small><b>{label}</b></small></div>", unsafe_allow_html=True)
-        else:
-            st.markdown(f"<div style='text-align:center;color:#aaa;'>{icon}<br><small>{label}</small></div>", unsafe_allow_html=True)
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 1 — Identité de l'agence
+# ══════════════════════════════════════════════════════════════════════════════
 
-st.markdown("---")
+st.markdown("### Identité de l'agence")
 
-# ─── ÉTAPE 1 : Identité agence ────────────────────────────────────────────────
-
-if st.session_state.wizard_step == 1:
-    st.markdown("## Étape 1 — Identité de votre agence")
-
-    # Récupérer first_name depuis la DB
-    current_first_name = ""
-    try:
-        from memory.database import get_connection
-        with get_connection() as conn:
-            row = conn.execute(
-                "SELECT first_name FROM users WHERE id = %s LIMIT 1",
-                (client_id,),
-            ).fetchone()
-            if row and row[0]:
-                current_first_name = row[0]
-    except Exception:
-        pass
-
-    with st.form("step1_form"):
-        agency_name = st.text_input("Nom de l'agence *", value=agency_name)
+with st.form("identity_form"):
+    col_a, col_b = st.columns(2)
+    with col_a:
+        new_agency_name = st.text_input(
+            "Nom de l'agence *",
+            value=agency_name,
+            placeholder="ex: Agence Martin & Associés",
+        )
+        contact_email = st.text_input(
+            "Email de contact",
+            value=user_email,
+            placeholder="contact@monagence.fr",
+            disabled=True,
+            help="L'email est associé à votre compte. Contactez-nous pour le modifier.",
+        )
+    with col_b:
         first_name = st.text_input(
-            "Votre prénom",
+            "Responsable principal",
             value=current_first_name,
-            placeholder="ex : Thomas",
-            help="Utilisé dans le message vocal quand un prospect appelle votre 07. Laissez vide → 'votre conseiller'.",
+            placeholder="ex: Thomas",
+            help="Utilisé dans les messages vocaux quand un prospect appelle votre numéro.",
         )
-        col_a, col_b = st.columns(2)
-        with col_a:
-            commission_rate = st.number_input(
-                "Taux de commission (%)",
-                min_value=1.0, max_value=10.0,
-                value=settings.agency_commission_rate * 100,
-                step=0.5,
-                help="Taux de commission moyen pour estimer le CA généré",
-            )
-        with col_b:
-            avg_price = st.number_input(
-                "Prix moyen de vente (€)",
-                min_value=50000, max_value=5000000,
-                value=int(settings.agency_average_price),
-                step=10000,
-                help="Prix moyen de vos transactions pour le calcul ROI",
-            )
-
-        conseiller_prenom = st.text_input("Prénom du conseiller IA", value="Léa", help="Prénom utilisé dans les messages automatiques")
-        conseiller_titre = st.text_input("Titre du conseiller IA", value="conseillère immobilier")
-
-        submitted = st.form_submit_button("Suivant →", type="primary")
-        if submitted:
-            if not agency_name:
-                st.error("Le nom de l'agence est requis")
-            else:
-                # Sauvegarder first_name en DB
-                try:
-                    from memory.database import get_connection
-                    with get_connection() as conn:
-                        conn.execute(
-                            "UPDATE users SET first_name = %s WHERE id = %s",
-                            (first_name.strip(), client_id),
-                        )
-                except Exception as e:
-                    st.warning(f"Impossible de sauvegarder le prénom : {e}")
-                # Mise à jour du session state
-                st.session_state.config_agency_name = agency_name
-                st.session_state.config_commission_rate = commission_rate / 100
-                st.session_state.config_avg_price = avg_price
-                st.session_state.config_conseiller_prenom = conseiller_prenom
-                st.session_state.wizard_step = 2
-                st.rerun()
-
-# ─── ÉTAPE 2 : Numéro Twilio ──────────────────────────────────────────────────
-
-elif st.session_state.wizard_step == 2:
-    st.markdown("## Étape 2 — Numéro SMS / Téléphone")
-
-    st.info("""
-    **Votre numéro de téléphonie dédié**
-    PropPilot vous fournit un numéro français dédié pour recevoir les SMS et appels de vos prospects.
-    Vos leads contactent ce numéro — l'IA répond instantanément, 24h/24.
-    """)
-
-    with st.form("step2_form"):
-        col_b1, col_b2 = st.columns(2)
-        with col_b1:
-            twilio_sid = st.text_input(
-                "Identifiant de compte",
-                value=settings.twilio_account_sid or "",
-                type="password",
-                placeholder="ACxxxxxxxxxxxxxxxxx",
-            )
-        with col_b2:
-            twilio_token = st.text_input(
-                "Clé d'authentification",
-                value="",
-                type="password",
-                placeholder="xxxxxxxxxxxxxxxx",
-            )
-
-        phone_number = st.text_input(
-            "Votre numéro de téléphone (format E.164)",
-            value=settings.twilio_sms_number or "",
-            placeholder="+336XXXXXXXX",
-            help="Votre numéro dédié — reçoit les appels ET les SMS prospects",
+        phone_input = st.text_input(
+            "Votre numéro de téléphone",
+            value=current_phone,
+            placeholder="+33612345678",
+            help="Format international obligatoire. Utilisé pour le click-to-call depuis le dashboard.",
         )
 
-        test_number = st.text_input(
-            "Votre numéro pour tester (optionnel)",
-            placeholder="+33600000000",
-        )
+    identity_save = st.form_submit_button("Enregistrer", type="primary")
 
-        col_prev, col_test, col_next = st.columns([1, 1, 1])
-
-        with col_prev:
-            if st.form_submit_button("← Précédent"):
-                st.session_state.wizard_step = 1
-                st.rerun()
-
-        with col_test:
-            test_clicked = st.form_submit_button("📱 Tester SMS")
-
-        with col_next:
-            next_clicked = st.form_submit_button("Suivant →", type="primary")
-
-    if test_clicked:
-        from tools.twilio_tool import TwilioTool
-        twilio = TwilioTool()
-        if test_number:
-            result = twilio.send_sms(
-                to=test_number,
-                body=f"🏠 Bonjour ! Votre agence IA {agency_name} est bien configurée. Ce message confirme que les SMS fonctionnent.",
-            )
-            if result["success"]:
-                mock_txt = " (mode démo)" if result.get("mock") else ""
-                st.success(f"✅ SMS envoyé{mock_txt} vers {test_number}")
-            else:
-                st.error(f"❌ Erreur : {result.get('error')}")
+if identity_save:
+    if not new_agency_name.strip():
+        st.error("Le nom de l'agence est requis.")
+    else:
+        phone_clean = (phone_input or "").strip()
+        if phone_clean and not re.fullmatch(r"\+[1-9]\d{6,14}", phone_clean):
+            st.error("Numéro invalide. Utilisez le format E.164 : +33612345678")
         else:
-            st.warning("Entrez un numéro de test")
-
-    if next_clicked:
-        st.session_state.wizard_step = 3
-        st.rerun()
-
-# ─── ÉTAPE 3 : Google Calendar ────────────────────────────────────────────────
-
-elif st.session_state.wizard_step == 3:
-    st.markdown("## Étape 3 — Google Calendar")
-
-    st.info("""
-    **Booking RDV automatique**
-    L'agent vocal propose des créneaux en temps réel pendant les appels.
-    Configurez votre Google Calendar pour activer cette fonctionnalité.
-
-    [Créer un compte de service Google →](https://console.cloud.google.com/iam-admin/serviceaccounts)
-    """)
-
-    with st.form("step3_form"):
-        calendar_id = st.text_input(
-            "ID Google Calendar",
-            value=settings.google_calendar_id,
-            placeholder="primary ou xxxxx@group.calendar.google.com",
-        )
-
-        service_account = st.text_area(
-            "Clé JSON compte de service (optionnel)",
-            height=100,
-            placeholder='{"type": "service_account", ...}',
-        )
-
-        st.markdown("**Créneaux disponibles par défaut :**")
-        col_s1, col_s2 = st.columns(2)
-        with col_s1:
-            heures_debut = st.selectbox("Heure début", ["09:00", "10:00"], index=0)
-        with col_s2:
-            heures_fin = st.selectbox("Heure fin", ["18:00", "19:00", "20:00"], index=0)
-
-        col_prev, col_test_cal, col_next = st.columns([1, 1, 1])
-        with col_prev:
-            if st.form_submit_button("← Précédent"):
-                st.session_state.wizard_step = 2
-                st.rerun()
-        with col_test_cal:
-            cal_test = st.form_submit_button("📅 Tester créneau")
-        with col_next:
-            cal_next = st.form_submit_button("Suivant →", type="primary")
-
-    if cal_test:
-        st.success("[MOCK] Créneau test créé : Mardi 10h00 — 10h30 (Google Calendar non connecté en mode démo)")
-
-    if cal_next:
-        st.session_state.wizard_step = 4
-        st.rerun()
-
-# ─── ÉTAPE 4 : Forfait & Billing ──────────────────────────────────────────────
-
-elif st.session_state.wizard_step == 4:
-    st.markdown("## Étape 4 — Abonnement")
-
-    st.markdown(
-        "Votre forfait est configuré sur mesure selon votre volume de leads."
-    )
-    st.markdown("### Vous souhaitez ajuster votre abonnement ?")
-    st.markdown(
-        "Réservez un appel de 20 minutes avec Quentin pour discuter de vos besoins."
-    )
-    st.link_button(
-        "📅 Réserver un appel",
-        "https://calendly.com/contact-proppilot/appel-proppilot-20min",
-    )
-    st.markdown("📩 Ou contactez-nous : contact@proppilot.fr")
-    st.markdown("---")
-
-    col_prev, col_next = st.columns([1, 1])
-    with col_prev:
-        if st.button("← Précédent"):
-            st.session_state.wizard_step = 3
-            st.rerun()
-    with col_next:
-        if st.button("Suivant →", type="primary"):
-            st.session_state.wizard_step = 5
-            st.rerun()
-
-# ─── ÉTAPE 5 : Premier lead test ──────────────────────────────────────────────
-
-elif st.session_state.wizard_step == 5:
-    st.markdown("## Étape 5 — Testez votre premier lead !")
-
-    st.success("""
-    🎉 **Configuration terminée !**
-    Votre agence IA est presque prête. Testez le flux complet avec un lead fictif.
-    """)
-
-    with st.form("step5_test"):
-        st.markdown("**Simuler un message entrant :**")
-        test_phone = st.text_input("Téléphone (fictif)", value="+33600000099")
-        test_message = st.text_input(
-            "Message du prospect",
-            value="Bonjour, je cherche à acheter un appartement à Lyon, budget 350 000€",
-        )
-        test_prenom = st.text_input("Prénom (optionnel)", value="Jean")
-
-        col_prev, col_run = st.columns([1, 1])
-        with col_prev:
-            if st.form_submit_button("← Précédent"):
-                st.session_state.wizard_step = 4
-                st.rerun()
-        with col_run:
-            run_test = st.form_submit_button("🚀 Lancer le test", type="primary")
-
-    if run_test:
-        with st.spinner("Stockage du lead test en cours..."):
-            from lib.sms_storage import store_incoming_sms
             try:
-                result = store_incoming_sms(
-                    from_number=test_phone,
-                    to_number="",
-                    body=test_message,
-                    client_id=client_id,
-                )
-                st.markdown("### Résultat du test")
-                col_r1, col_r2 = st.columns(2)
-                with col_r1:
-                    st.metric("Lead ID", result.get("lead_id", "—")[:8] if result.get("lead_id") else "—")
-                    st.metric("Nouveau lead", "Oui" if result.get("is_new_lead") else "Non")
-                with col_r2:
-                    st.metric("Stocké", "✅" if result.get("stored") else "❌")
-
-                st.success("✅ **Votre agence IA est prête !** Les leads entrants sont capturés automatiquement.")
-
-                if st.button("🏠 Aller au dashboard"):
-                    st.switch_page("app.py")
-
+                from memory.database import get_connection
+                with get_connection() as conn:
+                    conn.execute(
+                        "UPDATE users SET first_name = %s, phone = %s WHERE id = %s",
+                        (first_name.strip() or None, phone_clean or None, client_id),
+                    )
+                st.session_state["agency_name"] = new_agency_name.strip()
+                st.success("Informations enregistrées.")
             except Exception as e:
-                st.error(f"Erreur lors du test : {e}")
-                st.info("Assurez-vous d'avoir lancé `python scripts/seed_demo_data.py` d'abord.")
+                st.error(f"Erreur lors de la sauvegarde : {e}")
 
-# ─── Section CRM ──────────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 2 — Paramètres commerciaux
+# ══════════════════════════════════════════════════════════════════════════════
 
 st.markdown("---")
-st.markdown("## 🔗 Connecter votre CRM")
-st.markdown("Synchronisez automatiquement vos leads entre PropPilot et votre logiciel métier.")
+st.markdown("### Paramètres commerciaux")
+st.caption("Ces valeurs sont utilisées pour le calcul de votre ROI et les estimations de CA.")
+
+with st.form("commercial_form"):
+    col_c, col_d = st.columns(2)
+    with col_c:
+        commission_rate = st.number_input(
+            "Taux de commission moyen (%)",
+            min_value=1.0,
+            max_value=10.0,
+            value=float(st.session_state.get("config_commission_rate", settings.agency_commission_rate)) * 100,
+            step=0.5,
+        )
+    with col_d:
+        avg_price = st.number_input(
+            "Prix moyen de vente (€)",
+            min_value=50_000,
+            max_value=5_000_000,
+            value=int(st.session_state.get("config_avg_price", settings.agency_average_price)),
+            step=10_000,
+        )
+    commercial_save = st.form_submit_button("Enregistrer", type="primary")
+
+if commercial_save:
+    st.session_state["config_commission_rate"] = commission_rate / 100
+    st.session_state["config_avg_price"] = avg_price
+    st.success("Paramètres commerciaux mis à jour.")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 3 — CRM et synchronisation
+# ══════════════════════════════════════════════════════════════════════════════
+
+st.markdown("---")
+st.markdown("### CRM et synchronisation")
+st.caption("Synchronisez automatiquement vos leads entre PropPilot et votre logiciel métier.")
 
 CRM_OPTIONS = ["Hektor (La Boîte Immo)", "Apimo", "Prospeneo", "Whise", "Adaptimmo", "Autre (import CSV)"]
-CRM_KEYS = ["hektor", "apimo", "prospeneo", "whise", "adaptimmo", "csv"]
+CRM_KEYS    = ["hektor", "apimo", "prospeneo", "whise", "adaptimmo", "csv"]
 
 selected_crm_label = st.selectbox(
     "Quel CRM utilisez-vous ?",
@@ -353,22 +160,17 @@ selected_crm_label = st.selectbox(
 selected_crm = CRM_KEYS[CRM_OPTIONS.index(selected_crm_label)]
 
 if selected_crm == "csv":
-    # ── Import CSV universel ──
-    st.markdown("### Import CSV")
+    st.markdown("#### Import CSV")
     st.info("Importez un fichier CSV exporté depuis votre CRM. Les colonnes sont détectées automatiquement.")
 
-    uploaded_file = st.file_uploader(
-        "Choisir un fichier CSV",
-        type=["csv"],
-        key="crm_csv_upload",
-    )
+    uploaded_file = st.file_uploader("Choisir un fichier CSV", type=["csv"], key="crm_csv_upload")
 
     if uploaded_file is not None:
         col_csv1, col_csv2 = st.columns([2, 1])
         with col_csv1:
             st.success(f"Fichier chargé : **{uploaded_file.name}** ({uploaded_file.size} octets)")
         with col_csv2:
-            if st.button("📥 Importer les leads", type="primary", key="crm_csv_import"):
+            if st.button("Importer les leads", type="primary", key="crm_csv_import"):
                 with st.spinner("Analyse et import en cours..."):
                     try:
                         from integrations.crm.csv_import import parse_csv_leads
@@ -389,15 +191,15 @@ if selected_crm == "csv":
                                 imported += 1
                             else:
                                 duplicates += 1
-                        st.success(f"✅ **{imported} leads importés**, {duplicates} doublons ignorés")
+                        st.success(f"**{imported} leads importés**, {duplicates} doublons ignorés.")
                         if errors:
-                            with st.expander(f"⚠️ {len(errors)} erreurs"):
+                            with st.expander(f"{len(errors)} erreurs"):
                                 for err in errors[:20]:
                                     st.text(err)
                     except Exception as e:
                         st.error(f"Erreur d'import : {e}")
 
-    with st.expander("📄 Voir un exemple de fichier CSV"):
+    with st.expander("Voir un exemple de fichier CSV"):
         try:
             from integrations.crm.csv_import import generate_sample_csv
             sample = generate_sample_csv("generic")
@@ -412,8 +214,8 @@ if selected_crm == "csv":
             st.text("prenom,nom,telephone,email,projet,localisation,budget")
 
 else:
-    # ── Connexion CRM via API ──
-    st.markdown(f"### Configuration {selected_crm_label}")
+    # ── Connexion CRM via API ──────────────────────────────────────────────────
+    st.markdown(f"#### Connexion {selected_crm_label}")
 
     with st.form(f"crm_form_{selected_crm}"):
         col_crm1, col_crm2 = st.columns(2)
@@ -422,20 +224,19 @@ else:
                 "Clé API",
                 type="password",
                 placeholder=f"Clé API {selected_crm_label}",
-                help="Disponible dans les paramètres de votre CRM > Intégrations API",
+                help="Disponible dans les paramètres de votre CRM > Intégrations API.",
             )
         with col_crm2:
             agency_id_input = st.text_input(
-                "ID Agence dans le CRM",
+                "Identifiant agence dans le CRM",
                 placeholder="ex: 12345",
-                help="Identifiant de votre agence dans le CRM (souvent visible dans l'URL)",
+                help="Visible dans l'URL ou les paramètres de votre CRM.",
             )
-
-        col_crm_prev, col_crm_test, col_crm_save = st.columns([1, 1, 1])
+        col_crm_test, col_crm_save = st.columns(2)
         with col_crm_test:
-            test_conn = st.form_submit_button("🔌 Tester la connexion")
+            test_conn = st.form_submit_button("Tester la connexion")
         with col_crm_save:
-            save_conn = st.form_submit_button("💾 Enregistrer", type="primary")
+            save_conn = st.form_submit_button("Enregistrer", type="primary")
 
     if test_conn:
         with st.spinner(f"Test de connexion {selected_crm_label}..."):
@@ -450,11 +251,11 @@ else:
                 result = asyncio.run(connector.test_connection())
                 if result.get("success"):
                     mock_note = " (mode démo)" if result.get("mock") else ""
-                    st.success(f"✅ Connexion réussie{mock_note}")
+                    st.success(f"Connexion réussie{mock_note}")
                     if result.get("agency_name"):
                         st.info(f"Agence trouvée : **{result['agency_name']}**")
                 else:
-                    st.error(f"❌ Échec : {result.get('error', 'Erreur inconnue')}")
+                    st.error(f"Échec : {result.get('error', 'Erreur inconnue')}")
             except Exception as e:
                 st.error(f"Erreur : {e}")
 
@@ -470,47 +271,42 @@ else:
                     api_key=api_key_input,
                     agency_id_crm=agency_id_input or "",
                 )
-                st.success(f"✅ Connexion {selected_crm_label} enregistrée !")
+                st.success(f"Connexion {selected_crm_label} enregistrée.")
             except Exception as e:
                 st.error(f"Erreur lors de l'enregistrement : {e}")
 
-    # ── Statut sync actuelle ──
+    # ── Statut connexion CRM ───────────────────────────────────────────────────
     try:
         from integrations.crm.repository import get_crm_connection
         conn_data = get_crm_connection(client_id, selected_crm)
         if conn_data:
             col_stat1, col_stat2, col_stat3 = st.columns(3)
             with col_stat1:
-                status_icon = "✅" if conn_data.get("enabled") else "⚠️"
-                st.metric("Statut", f"{status_icon} {'Actif' if conn_data.get('enabled') else 'Désactivé'}")
+                status_label = "Actif" if conn_data.get("enabled") else "Désactivé"
+                st.metric("Statut", status_label)
             with col_stat2:
                 last_sync = conn_data.get("last_sync")
-                st.metric("Dernière sync", last_sync[:16] if last_sync else "Jamais")
+                st.metric("Dernière synchronisation", last_sync[:16] if last_sync else "Jamais")
             with col_stat3:
-                if st.button("🔄 Synchroniser maintenant", key="crm_sync_now"):
+                if st.button("Synchroniser maintenant", key="crm_sync_now"):
                     with st.spinner("Synchronisation en cours..."):
                         try:
                             import asyncio
                             from integrations.sync.scheduler import sync_client
                             report = asyncio.run(sync_client(conn_data))
                             st.success(
-                                f"✅ {report['new_leads']} nouveaux leads · "
-                                f"{report['skipped']} doublons ignorés"
+                                f"{report['new_leads']} nouveaux leads · "
+                                f"{report['skipped']} doublons ignorés."
                             )
                             if report["errors"]:
-                                st.warning(f"{len(report['errors'])} erreurs : {report['errors'][0]}")
+                                st.warning(f"{len(report['errors'])} erreur(s) : {report['errors'][0]}")
                         except Exception as e:
-                            st.error(f"Erreur sync : {e}")
+                            st.error(f"Erreur : {e}")
     except Exception:
         pass
 
-# ── Paramètres de synchronisation ──
-st.markdown("### Synchronisation automatique")
-st.info(
-    "PropPilot synchronise vos leads toutes les **15 minutes** si le scheduler est actif "
-    "(service `proppilot-sync` dans Docker). "
-    "La synchronisation manuelle est toujours disponible ci-dessus."
-)
+# ── Préférences de synchronisation ────────────────────────────────────────────
+st.markdown("#### Préférences de synchronisation")
 
 try:
     from integrations.crm.repository import get_crm_connection, save_crm_connection
@@ -519,24 +315,23 @@ try:
         col_tog1, col_tog2, col_tog3 = st.columns(3)
         with col_tog1:
             sync_leads = st.toggle(
-                "Sync leads entrants",
+                "Leads entrants",
                 value=bool(conn_data.get("sync_leads", 1)),
                 key="toggle_sync_leads",
             )
         with col_tog2:
             sync_rdv = st.toggle(
-                "Sync RDV vers CRM",
+                "RDV vers CRM",
                 value=bool(conn_data.get("sync_rdv", 1)),
                 key="toggle_sync_rdv",
             )
         with col_tog3:
             sync_listings = st.toggle(
-                "Sync annonces vers CRM",
+                "Annonces vers CRM",
                 value=bool(conn_data.get("sync_listings", 1)),
                 key="toggle_sync_listings",
             )
-
-        if st.button("💾 Sauvegarder les préférences de sync", key="save_sync_prefs"):
+        if st.button("Enregistrer les préférences", key="save_sync_prefs"):
             try:
                 save_crm_connection(
                     client_id=client_id,
@@ -547,32 +342,42 @@ try:
                     sync_rdv=sync_rdv,
                     sync_listings=sync_listings,
                 )
-                st.success("✅ Préférences sauvegardées")
+                st.success("Préférences enregistrées.")
             except Exception as e:
                 st.error(f"Erreur : {e}")
+    else:
+        st.caption(
+            "Votre synchronisation CRM n'est pas encore configurée. "
+            "L'équipe PropPilot vous accompagne pendant le pilote."
+        )
 except Exception:
-    st.caption("Configurez et enregistrez une connexion CRM pour activer les options de sync.")
+    st.caption(
+        "Votre synchronisation CRM n'est pas encore configurée. "
+        "L'équipe PropPilot vous accompagne pendant le pilote."
+    )
 
-# ─── Push CRM (PropPilot → CRM) ───────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 4 — Export automatique vers votre CRM (Push)
+# ══════════════════════════════════════════════════════════════════════════════
 
 st.markdown("---")
-st.markdown("## 📤 Connecteur CRM — Export automatique des leads")
-st.markdown(
-    "À chaque lead qualifié, PropPilot le pousse automatiquement vers votre CRM. "
-    "Sens unique : PropPilot → CRM (pas de sync inverse)."
+st.markdown("### Export automatique vers votre CRM")
+st.caption(
+    "À chaque lead qualifié, PropPilot le transmet automatiquement vers votre CRM. "
+    "Sens unique : PropPilot → CRM."
 )
 
 # Lire config push CRM actuelle
-_crm_push_current = {"crm_type": "none", "crm_config": {}}
+_crm_push_current: dict = {"crm_type": "none", "crm_config": {}}
 try:
     from memory.database import get_connection as _gc2
+    import json as _json
     with _gc2() as _conn2:
         _row_crm = _conn2.execute(
             "SELECT crm_type, crm_config, crm_last_sync_at, crm_last_error FROM users WHERE id = %s",
             (client_id,),
         ).fetchone()
     if _row_crm:
-        import json as _json
         _crm_push_current["crm_type"] = _row_crm.get("crm_type") or "none"
         _raw_cfg = _row_crm.get("crm_config")
         if isinstance(_raw_cfg, dict):
@@ -580,47 +385,45 @@ try:
         elif isinstance(_raw_cfg, str) and _raw_cfg:
             _crm_push_current["crm_config"] = _json.loads(_raw_cfg)
         _crm_push_current["crm_last_sync_at"] = _row_crm.get("crm_last_sync_at")
-        _crm_push_current["crm_last_error"] = _row_crm.get("crm_last_error")
+        _crm_push_current["crm_last_error"]   = _row_crm.get("crm_last_error")
 except Exception:
     pass
 
 _CRM_PUSH_OPTIONS = ["Aucun", "Apimo", "Email parsing (Netty, Hektor, Modelo, etc.)"]
-_CRM_PUSH_KEYS = ["none", "apimo", "email"]
-_current_type = _crm_push_current.get("crm_type", "none")
-_current_idx = _CRM_PUSH_KEYS.index(_current_type) if _current_type in _CRM_PUSH_KEYS else 0
+_CRM_PUSH_KEYS   = ["none", "apimo", "email"]
+_current_type    = _crm_push_current.get("crm_type", "none")
+_current_idx     = _CRM_PUSH_KEYS.index(_current_type) if _current_type in _CRM_PUSH_KEYS else 0
 
 _selected_push_label = st.selectbox(
-    "Quel connecteur activer ?",
+    "Connecteur actif",
     options=_CRM_PUSH_OPTIONS,
     index=_current_idx,
     key="crm_push_select",
 )
 _selected_push_type = _CRM_PUSH_KEYS[_CRM_PUSH_OPTIONS.index(_selected_push_label)]
-
 _cfg = _crm_push_current.get("crm_config", {})
 
 if _selected_push_type == "apimo":
-    st.markdown("### Configuration Apimo")
-    st.caption("Les credentials Apimo sont fournis par votre administrateur Apimo dans Paramètres > API.")
+    st.markdown("##### Configuration Apimo")
+    st.caption("Vos identifiants Apimo sont disponibles dans Paramètres > API de votre espace Apimo.")
 
     with st.form("crm_push_apimo_form"):
         _apimo_provider = st.text_input(
-            "Provider ID Apimo",
+            "Provider ID",
             value=_cfg.get("provider_id", ""),
             placeholder="ex: 12345",
-            help="Identifiant numérique de votre agence dans Apimo",
         )
         _apimo_token = st.text_input(
-            "API Token Apimo",
+            "API Token",
             value=_cfg.get("api_token", ""),
             type="password",
             placeholder="Votre token Apimo",
         )
         _col_test, _col_save = st.columns(2)
         with _col_test:
-            _test_apimo = st.form_submit_button("🔌 Tester la connexion")
+            _test_apimo = st.form_submit_button("Tester la connexion")
         with _col_save:
-            _save_apimo = st.form_submit_button("💾 Enregistrer", type="primary")
+            _save_apimo = st.form_submit_button("Enregistrer", type="primary")
 
     if _test_apimo:
         with st.spinner("Test Apimo..."):
@@ -632,9 +435,9 @@ if _selected_push_type == "apimo":
                 )
                 _result = _conn_test.test_connection()
                 if _result.get("success"):
-                    st.success(f"✅ {_result['message']}")
+                    st.success(_result["message"])
                 else:
-                    st.error(f"❌ {_result['message']}")
+                    st.error(_result["message"])
             except Exception as _e:
                 st.error(f"Erreur : {_e}")
 
@@ -649,37 +452,36 @@ if _selected_push_type == "apimo":
                     crm_type="apimo",
                     config={"provider_id": _apimo_provider, "api_token": _apimo_token},
                 )
-                st.success("✅ Connecteur Apimo enregistré — les leads seront pushés automatiquement.")
+                st.success("Connecteur Apimo enregistré — les leads seront transmis automatiquement.")
             except Exception as _e:
                 st.error(f"Erreur : {_e}")
 
 elif _selected_push_type == "email":
-    st.markdown("### Configuration Email parsing")
+    st.markdown("##### Configuration Email parsing")
     st.caption(
-        "PropPilot envoie un email plain text à votre CRM à chaque nouveau lead qualifié. "
-        "Compatible avec tous les CRM dotés d'une boîte mail d'import."
+        "PropPilot envoie un email structuré à votre CRM à chaque nouveau lead qualifié. "
+        "Compatible avec tout CRM disposant d'une adresse d'import."
     )
 
     with st.form("crm_push_email_form"):
         _email_target = st.text_input(
-            "Email cible du CRM",
+            "Adresse email d'import du CRM",
             value=_cfg.get("target_email", ""),
             placeholder="import@moncrm.fr",
-            help="Adresse email où votre CRM reçoit les leads (consultez la doc de votre CRM)",
+            help="Consultez la documentation de votre CRM pour trouver cette adresse.",
         )
+        _crm_labels = ["Netty", "Hektor (La Boîte Immo)", "Modelo Office", "Périclès", "Krea", "Autre"]
+        _current_label = _cfg.get("crm_label", "Autre")
         _email_crm_label = st.selectbox(
-            "Quel CRM utilisez-vous ?",
-            options=["Netty", "Hektor (La Boîte Immo)", "Modelo Office", "Périclès", "Krea", "Autre"],
-            index=["Netty", "Hektor (La Boîte Immo)", "Modelo Office", "Périclès", "Krea", "Autre"].index(
-                _cfg.get("crm_label", "Autre")
-            ) if _cfg.get("crm_label") in ["Netty", "Hektor (La Boîte Immo)", "Modelo Office", "Périclès", "Krea", "Autre"] else 5,
-            help="Informatif seulement — n'impacte pas le comportement",
+            "CRM destinataire",
+            options=_crm_labels,
+            index=_crm_labels.index(_current_label) if _current_label in _crm_labels else len(_crm_labels) - 1,
         )
         _col_test2, _col_save2 = st.columns(2)
         with _col_test2:
-            _test_email = st.form_submit_button("📧 Envoyer un email test")
+            _test_email = st.form_submit_button("Envoyer un email test")
         with _col_save2:
-            _save_email = st.form_submit_button("💾 Enregistrer", type="primary")
+            _save_email = st.form_submit_button("Enregistrer", type="primary")
 
     if _test_email:
         if not _email_target:
@@ -714,9 +516,9 @@ elif _selected_push_type == "email":
                     }
                     _ok = _test_connector.push_lead(_test_lead)
                     if _ok:
-                        st.success(f"✅ Email test envoyé à {_email_target}")
+                        st.success(f"Email test envoyé à {_email_target}.")
                     else:
-                        st.error("❌ Envoi échoué — vérifiez les logs.")
+                        st.error("Envoi échoué — vérifiez les logs.")
                 except Exception as _e:
                     st.error(f"Erreur : {_e}")
 
@@ -731,13 +533,13 @@ elif _selected_push_type == "email":
                     crm_type="email",
                     config={"target_email": _email_target, "crm_label": _email_crm_label},
                 )
-                st.success(f"✅ Connecteur Email enregistré — leads envoyés vers {_email_target}.")
+                st.success(f"Connecteur Email enregistré — leads transmis vers {_email_target}.")
             except Exception as _e:
                 st.error(f"Erreur : {_e}")
 
 else:
     if _current_type != "none":
-        if st.button("🚫 Désactiver le connecteur CRM push", type="secondary"):
+        if st.button("Désactiver le connecteur", type="secondary"):
             try:
                 from lib.crm_connectors.factory import save_crm_push_config
                 save_crm_push_config(client_id=client_id, crm_type="none", config={})
@@ -746,75 +548,50 @@ else:
             except Exception as _e:
                 st.error(f"Erreur : {_e}")
 
-# ── Statut push CRM ────────────────────────────────────────────────────────────
+# ── Statut export CRM ──────────────────────────────────────────────────────────
 if _selected_push_type != "none" or _current_type != "none":
-    st.markdown("#### Statut du connecteur")
+    st.markdown("##### Statut de l'export")
     try:
         from lib.crm_connectors.factory import get_push_stats_7d
         _stats = get_push_stats_7d(client_id)
         _st_col1, _st_col2, _st_col3 = st.columns(3)
         with _st_col1:
             _last_sync = _crm_push_current.get("crm_last_sync_at")
-            _sync_str = _last_sync.strftime("%d/%m %H:%M") if _last_sync else "Jamais"
-            st.metric("Dernière sync OK", _sync_str)
+            _sync_str  = _last_sync.strftime("%d/%m %H:%M") if _last_sync else "Jamais"
+            st.metric("Dernière sync", _sync_str)
         with _st_col2:
-            st.metric("Leads pushés (7j)", _stats.get("success", 0))
+            st.metric("Leads transmis (7 j)", _stats.get("success", 0))
         with _st_col3:
-            _last_err = _crm_push_current.get("crm_last_error")
-            st.metric("Erreurs (7j)", _stats.get("error", 0))
+            st.metric("Erreurs (7 j)", _stats.get("error", 0))
+        _last_err = _crm_push_current.get("crm_last_error")
         if _last_err:
-            st.warning(f"⚠️ Dernière erreur : {_last_err[:200]}")
+            st.warning(f"Dernière erreur : {_last_err[:200]}")
     except Exception:
         st.caption("Statistiques indisponibles.")
 
-# ─── Mon numéro de téléphone (click-to-call) ──────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 5 — Préférences d'assistant
+# ══════════════════════════════════════════════════════════════════════════════
 
 st.markdown("---")
-st.markdown("## 📱 Mon numéro de téléphone")
-st.markdown(
-    "Utilisé par le click-to-call : quand vous appelez un lead depuis le dashboard, "
-    "PropPilot appelle d'abord ce numéro, puis vous met en relation avec le lead."
-)
-
-current_phone = ""
-try:
-    from memory.database import get_connection
-    with get_connection() as conn:
-        row = conn.execute(
-            "SELECT phone FROM users WHERE id = %s LIMIT 1",
-            (client_id,),
-        ).fetchone()
-        if row and row.get("phone"):
-            current_phone = row["phone"]
-except Exception:
-    pass
-
-with st.form("phone_form"):
-    phone_input = st.text_input(
-        "Numéro (format E.164)",
-        value=current_phone,
-        placeholder="+33612345678",
-        help="Format international obligatoire : +33 suivi des 9 chiffres (ex: +33612345678)",
+with st.expander("Préférences d'assistant IA", expanded=False):
+    st.caption(
+        "Personnalisez le nom et le rôle utilisés par votre assistant dans les échanges automatiques."
     )
-    phone_submitted = st.form_submit_button("💾 Enregistrer mon numéro", type="primary")
+    with st.form("assistant_prefs_form"):
+        conseiller_prenom = st.text_input(
+            "Prénom de l'assistant",
+            value=st.session_state.get("config_conseiller_prenom", "Léa"),
+            placeholder="ex: Léa",
+        )
+        conseiller_titre = st.text_input(
+            "Titre de l'assistant",
+            value=st.session_state.get("config_conseiller_titre", "conseillère immobilier"),
+            placeholder="ex: conseillère immobilier",
+        )
+        prefs_save = st.form_submit_button("Enregistrer", type="primary")
 
-if phone_submitted:
-    import re as _re
-    phone_clean = (phone_input or "").strip()
-    if phone_clean and not _re.fullmatch(r"\+[1-9]\d{6,14}", phone_clean):
-        st.error("Format invalide. Utilisez le format E.164 : +33612345678")
-    else:
-        try:
-            from memory.database import get_connection
-            with get_connection() as conn:
-                conn.execute(
-                    "UPDATE users SET phone = %s WHERE id = %s",
-                    (phone_clean or None, client_id),
-                )
-            if phone_clean:
-                st.success(f"✅ Numéro enregistré : {phone_clean}")
-            else:
-                st.info("Numéro supprimé.")
-        except Exception as e:
-            st.error(f"Erreur lors de la sauvegarde : {e}")
-
+    if prefs_save:
+        st.session_state["config_conseiller_prenom"] = conseiller_prenom
+        st.session_state["config_conseiller_titre"] = conseiller_titre
+        st.success("Préférences d'assistant mises à jour.")
