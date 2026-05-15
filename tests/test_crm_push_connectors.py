@@ -152,12 +152,13 @@ class TestEmailParsingConnector:
         assert result is True
 
     def test_subject_contains_action_label(self, lead_data):
-        """Le sujet contient [ACTION: ...] si next_action_label est fourni."""
+        """Le sujet suit le format [PropPilot] avec nom et statut."""
         from lib.crm_connectors.email_parsing import EmailParsingConnector
         conn = EmailParsingConnector(target_email="test@crm.fr")
         subject = conn._build_subject(lead_data)
-        assert "[ACTION: Rappeler avant 18h]" in subject
+        assert subject.startswith("[PropPilot]")
         assert "Marie" in subject or "Dupont" in subject
+        assert "chaud" in subject
 
     def test_subject_without_action(self, lead_data):
         """Sans next_action_label → sujet sans [ACTION:]."""
@@ -168,16 +169,16 @@ class TestEmailParsingConnector:
         assert "[ACTION:" not in subject
 
     def test_body_plain_text_structure(self, lead_data):
-        """Le corps est plain text avec les champs requis."""
+        """Le corps est plain text avec les champs requis (format spec)."""
         from lib.crm_connectors.email_parsing import EmailParsingConnector
         conn = EmailParsingConnector(target_email="test@crm.fr")
         body = conn._build_body(lead_data)
-        assert "Nom: Dupont" in body
-        assert "Prénom: Marie" in body
-        assert "Téléphone: +33612345678" in body
-        assert "Score: chaud" in body
-        assert "Source: PropPilot" in body
-        assert "Action recommandée: Rappeler avant 18h" in body
+        assert "NOM: Dupont" in body
+        assert "PRENOM: Marie" in body
+        assert "TELEPHONE: +33612345678" in body
+        assert "STATUT:" in body
+        assert "PROCHAINE_ACTION: Rappeler avant 18h" in body
+        assert "PropPilot — Mise à jour automatique" in body
 
     def test_no_target_email_returns_false(self, lead_data):
         """Sans email cible → push_lead retourne False."""

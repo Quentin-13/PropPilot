@@ -388,6 +388,32 @@ def _run_migrations(conn) -> None:
         "ON conversations(client_id, read_at)"
     )
 
+    # Migration 017 — cockpit: marquer action comme faite
+    conn.execute(
+        "ALTER TABLE leads ADD COLUMN IF NOT EXISTS last_action_completed_at TIMESTAMP"
+    )
+
+    # Migration 016 — crm_push_queue retry
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS crm_push_queue (
+            id SERIAL PRIMARY KEY,
+            client_id TEXT NOT NULL,
+            lead_id TEXT NOT NULL,
+            payload_text TEXT DEFAULT '',
+            target_email TEXT DEFAULT '',
+            status TEXT DEFAULT 'pending',
+            attempts INTEGER DEFAULT 0,
+            last_error TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            sent_at TIMESTAMP
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_crm_push_queue_lead "
+        "ON crm_push_queue(lead_id)"
+    )
+
 
 # ─── Init / Reset ─────────────────────────────────────────────────────────────
 

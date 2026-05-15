@@ -91,7 +91,8 @@ def _send_weekly_reports_job() -> None:
 
 def _trigger_post_extraction_hooks(lead_id: str, client_id: str) -> None:
     """
-    Hooks post-extraction : next_action + push CRM.
+    Hooks post-extraction : calcul next_action.
+    Le push CRM est déclenché depuis extract_and_update_lead() — pas ici.
     Erreurs silencieuses — ne bloque jamais le pipeline.
     """
     try:
@@ -99,14 +100,6 @@ def _trigger_post_extraction_hooks(lead_id: str, client_id: str) -> None:
         compute_next_action(lead_id)
     except Exception as e:
         logger.warning("[PostExtraction] next_action lead_id=%s: %s", lead_id, e)
-
-    try:
-        from lib.crm_connectors.factory import build_lead_data_from_db, push_lead_to_crm
-        lead_data = build_lead_data_from_db(lead_id)
-        if lead_data:
-            push_lead_to_crm(client_id=client_id, lead_data=lead_data)
-    except Exception as e:
-        logger.warning("[PostExtraction] CRM push lead_id=%s: %s", lead_id, e)
 
 
 def _run_sms_extraction_batch() -> None:
@@ -159,6 +152,15 @@ def _run_sms_extraction_batch() -> None:
             logger.error("[SMS Batch] lead_id=%s: %s", lead_id, e)
 
 
+def _run_crm_retry_batch() -> None:
+    """Job APScheduler — rejoue les pushs CRM en échec toutes les 10 min."""
+    try:
+        from lib.crm_connectors.factory import retry_failed_pushes
+        retry_failed_pushes()
+    except Exception as e:
+        logger.error("[CRM Retry Batch] %s", e)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialisation au démarrage du serveur."""
@@ -200,6 +202,12 @@ async def lifespan(app: FastAPI):
                 run_health_alert_job,
                 IntervalTrigger(minutes=15),
                 id="health_alert",
+                replace_existing=True,
+            )
+            scheduler.add_job(
+                _run_crm_retry_batch,
+                IntervalTrigger(minutes=10),
+                id="crm_retry_batch",
                 replace_existing=True,
             )
             scheduler.start()
