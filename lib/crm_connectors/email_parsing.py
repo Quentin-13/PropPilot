@@ -5,18 +5,21 @@ Envoie un email plain text (PAS HTML) à l'adresse cible du CRM client.
 Compatible avec tous les CRM qui importent des leads depuis leur boîte mail
 (Netty, Hektor, Modelo Office, Périclès, Krea, etc.).
 
-Sujet : [Lead PropPilot] {nom_prospect} - {type_projet} - {score_label} [ACTION: {label}]
-Corps  : champs clés sur lignes séparées, parsing facile côté CRM
+Sujet  : [PropPilot] Mise à jour lead — {nom ou tel} — {chaud/tiède/froid}
+Corps  : champs structurés + historique conversations pour parsing CRM
 Reply-To : email du client PropPilot (pour recevoir les réponses du CRM)
 """
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Optional
 
 from lib.crm_connectors.base import CRMConnector
 
 logger = logging.getLogger(__name__)
+
+_STATUT_DISPLAY = {"chaud": "chaud", "tiede": "tiède", "tiède": "tiède", "froid": "froid"}
 
 
 class EmailParsingConnector(CRMConnector):
@@ -55,54 +58,119 @@ class EmailParsingConnector(CRMConnector):
             return {"success": False, "message": "Adresse email cible non configurée"}
         return {"success": True, "message": f"Configuration OK — cible : {self._target_email}"}
 
+    def push_test_lead(self, lead_data: dict) -> bool:
+        """Envoi test avec sujet [TEST PropPilot] — utilisé depuis le dashboard."""
+        if not self._target_email:
+            return False
+        body = self._build_body(lead_data)
+        return self._send("[TEST PropPilot] Remontée CRM", body)
+
     # ─── Construction du message ───────────────────────────────────────────────
 
     def _build_subject(self, lead_data: dict) -> str:
         prenom = lead_data.get("prenom") or ""
         nom = lead_data.get("nom") or ""
-        nom_complet = f"{prenom} {nom}".strip() or "Inconnu"
-        type_projet = (lead_data.get("type_projet") or "inconnu").capitalize()
-        score_label = (lead_data.get("score_label") or "froid").capitalize()
-        subject = f"[Lead PropPilot] {nom_complet} - {type_projet} - {score_label}"
-        if lead_data.get("next_action_label"):
-            subject += f" [ACTION: {lead_data['next_action_label']}]"
-        return subject
+        nom_complet = f"{prenom} {nom}".strip()
+        ident = nom_complet or lead_data.get("telephone") or "Inconnu"
+        statut_raw = lead_data.get("statut") or lead_data.get("score_label") or "froid"
+        statut = _STATUT_DISPLAY.get(statut_raw, statut_raw)
+        return f"[PropPilot] Mise à jour lead — {ident} — {statut}"
 
     def _build_body(self, lead_data: dict) -> str:
         from lib.crm_connectors.apimo_mapping import _budget_str, _surface_str
 
-        budget_str = _budget_str(lead_data)
-        surface_str = _surface_str(lead_data)
+        def _s(val) -> str:
+            """Retourne une chaîne propre, jamais 'None'."""
+            if val is None:
+                return ""
+            s = str(val).strip()
+            return s if s.lower() != "none" else ""
 
-        lines = [
-            "=== LEAD PROPPILOT ===",
+        lead_id    = _s(lead_data.get("id"))
+        client_id  = _s(lead_data.get("client_id"))
+        updated_at = _s(lead_data.get("updated_at")) or datetime.now().strftime("%Y-%m-%d %H:%M")
+        lead_type  = _s(lead_data.get("lead_type")) or "acheteur"
+        score      = lead_data.get("score")
+        score_str  = f"{score}/24" if score is not None else ""
+        statut_raw = lead_data.get("statut") or lead_data.get("score_label") or "froid"
+        statut     = _STATUT_DISPLAY.get(statut_raw, statut_raw)
+        nom        = _s(lead_data.get("nom"))
+        prenom     = _s(lead_data.get("prenom"))
+        telephone  = _s(lead_data.get("telephone"))
+        email_lead = _s(lead_data.get("email"))
+        projet     = _s(lead_data.get("type_projet"))
+        budget     = _budget_str(lead_data) or ""
+        zone       = _s(lead_data.get("zone"))
+        type_bien  = _s(lead_data.get("type_bien"))
+        surface    = _surface_str(lead_data) or ""
+        urgence    = _s(lead_data.get("urgence"))
+        motivation = _s(lead_data.get("motivation"))
+        objections = _s(lead_data.get("objections"))
+        financement = _s(lead_data.get("financement_str"))
+        resume     = _s(lead_data.get("resume"))
+        prochaine_action = _s(lead_data.get("next_action_label"))
+        raison     = _s(lead_data.get("next_action_reason"))
+        historique = _s(lead_data.get("conversation_history")) or "(Aucun échange enregistré)"
+
+        def _opt(label: str, val: str) -> list[str]:
+            """Retourne [label: val] seulement si val est non vide."""
+            return [f"{label}: {val}"] if val else []
+
+        lines: list[str] = [
+            f"PROPPILOT_LEAD_ID: {lead_id}",
+            f"PROPPILOT_CLIENT_ID: {client_id}",
+            f"PROPPILOT_UPDATED_AT: {updated_at}",
             "",
-            f"Nom: {lead_data.get('nom') or ''}",
-            f"Prénom: {lead_data.get('prenom') or ''}",
-            f"Téléphone: {lead_data.get('telephone') or ''}",
-            f"Email: {lead_data.get('email') or ''}",
+            f"TYPE_LEAD: {lead_type}",
+            f"SCORE: {score_str}",
+            f"STATUT: {statut}",
             "",
-            f"Type projet: {lead_data.get('type_projet') or ''}",
-            f"Budget: {budget_str}" if budget_str else "Budget: ",
-            f"Zone: {lead_data.get('zone') or ''}",
-            f"Type bien: {lead_data.get('type_bien') or ''}",
-            f"Surface: {surface_str}" if surface_str else "Surface: ",
-            f"Motivation: {lead_data.get('motivation') or ''}",
-            f"Score: {lead_data.get('score_label') or 'froid'}",
-            f"Résumé: {lead_data.get('resume') or ''}",
-            f"Source: PropPilot",
+            f"NOM: {nom}",
+            f"PRENOM: {prenom}",
+            f"TELEPHONE: {telephone}",
         ]
+        if email_lead:
+            lines.append(f"EMAIL: {email_lead}")
 
-        if lead_data.get("next_action_label"):
-            lines += [
-                "",
-                "=== ACTION RECOMMANDÉE ===",
-                f"Action recommandée: {lead_data['next_action_label']}",
-            ]
-            if lead_data.get("next_action_reason"):
-                lines.append(f"Pourquoi: {lead_data['next_action_reason']}")
+        # Section projet — champs optionnels
+        project_fields = (
+            _opt("PROJET", projet)
+            + _opt("BUDGET", budget)
+            + _opt("ZONE", zone)
+            + _opt("TYPE_BIEN", type_bien)
+            + _opt("SURFACE", surface)
+        )
+        if project_fields:
+            lines += [""] + project_fields
 
-        lines += ["", "=== FIN ==="]
+        # Section qualification — champs optionnels
+        qual_fields = (
+            _opt("URGENCE", urgence)
+            + _opt("MOTIVATION", motivation)
+            + _opt("OBJECTIONS", objections)
+            + _opt("FINANCEMENT", financement)
+        )
+        if qual_fields:
+            lines += [""] + qual_fields
+
+        # Résumé (toujours présent)
+        lines += ["", "RESUME:", resume]
+
+        # Actions — optionnelles
+        action_fields = (
+            _opt("PROCHAINE_ACTION", prochaine_action)
+            + _opt("RAISON", raison)
+        )
+        if action_fields:
+            lines += [""] + action_fields
+
+        lines += [
+            "",
+            "HISTORIQUE_CONVERSATIONS:",
+            historique,
+            "---",
+            "PropPilot — Mise à jour automatique",
+        ]
         return "\n".join(lines)
 
     # ─── Envoi SendGrid ────────────────────────────────────────────────────────
@@ -125,7 +193,6 @@ class EmailParsingConnector(CRMConnector):
                 subject=subject,
                 plain_text_content=body,
             )
-            # Reply-To → email du client PropPilot pour recevoir les réponses
             if self._reply_to_email:
                 mail.reply_to = ReplyTo(self._reply_to_email)
 

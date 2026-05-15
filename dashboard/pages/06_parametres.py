@@ -501,6 +501,7 @@ elif _selected_push_type == "email":
                         "nom": "Dupont (test)",
                         "telephone": "+33600000001",
                         "email": "marie.dupont@test.fr",
+                        "lead_type": "acheteur",
                         "type_projet": "achat",
                         "budget_min": 300000,
                         "budget_max": 400000,
@@ -508,13 +509,24 @@ elif _selected_push_type == "email":
                         "type_bien": "T3",
                         "surface_min": 65,
                         "surface_max": 80,
-                        "motivation": "mutation_pro",
+                        "score": 20,
                         "score_label": "chaud",
-                        "resume": "Lead test PropPilot — acheteur T3 Lyon 6, mutation pro.",
+                        "statut": "chaud",
+                        "motivation": "Mutation professionnelle, délai court",
+                        "urgence": "< 3 mois",
+                        "objections": "Financement à confirmer",
+                        "financement_str": "prêt bancaire, apport 20%",
+                        "updated_at": "2026-05-15 10:00",
+                        "resume": "Lead test PropPilot — acheteur T3 Lyon 6, mutation pro. Budget cohérent avec le marché.",
                         "next_action_label": "Rappeler sous 2h pour proposer un RDV",
                         "next_action_reason": "Lead chaud, premier contact.",
+                        "conversation_history": (
+                            "[SMS IN  - 2026-05-15 09:55] Bonjour, je cherche un T3 à Lyon 6\n"
+                            "[SMS OUT - 2026-05-15 09:56] Bonjour Marie, je suis Léa de PropPilot. "
+                            "Quel est votre budget ?"
+                        ),
                     }
-                    _ok = _test_connector.push_lead(_test_lead)
+                    _ok = _test_connector.push_test_lead(_test_lead)
                     if _ok:
                         st.success(f"Email test envoyé à {_email_target}.")
                     else:
