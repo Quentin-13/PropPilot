@@ -388,6 +388,11 @@ def _run_migrations(conn) -> None:
         "ON conversations(client_id, read_at)"
     )
 
+    # Migration 017 — cockpit: marquer action comme faite
+    conn.execute(
+        "ALTER TABLE leads ADD COLUMN IF NOT EXISTS last_action_completed_at TIMESTAMP"
+    )
+
     # Migration 016 — crm_push_queue retry
     conn.execute("""
         CREATE TABLE IF NOT EXISTS crm_push_queue (
