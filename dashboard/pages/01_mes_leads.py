@@ -262,56 +262,40 @@ else:
             if selected_lead.resume:
                 st.markdown(f"**Résumé IA :** *{selected_lead.resume}*")
 
-            # Actions rapides
-            st.markdown("#### Actions rapides")
-            action_col1, action_col2, action_col3, action_col4, action_col5, action_col6 = st.columns(6)
+            # ── Actions ───────────────────────────────────────────────────────
+            act_col1, act_col2, act_col3 = st.columns(3)
 
-            with action_col1:
-                if st.button("📱 Envoyer SMS", key=f"sms_{lead_id}"):
-                    if selected_lead.telephone:
-                        from tools.twilio_tool import TwilioTool
-                        twilio = TwilioTool()
-                        result = twilio.send_sms(
-                            to=selected_lead.telephone,
-                            body=f"Bonjour {selected_lead.prenom} ! Votre conseiller {agency_name} souhaite vous rappeler. Êtes-vous disponible maintenant ?",
-                        )
-                        if result["success"]:
-                            st.success(f"SMS {'(mock)' if result.get('mock') else ''} envoyé !")
-                        else:
-                            st.error("Erreur envoi SMS")
-                    else:
-                        st.warning("Pas de numéro de téléphone")
+            # Numéro agent — lu une seule fois
+            _agent_phone = None
+            try:
+                from memory.database import get_connection as _gc
+                with _gc() as _conn:
+                    _row = _conn.execute(
+                        "SELECT phone FROM users WHERE id = %s LIMIT 1",
+                        (client_id,),
+                    ).fetchone()
+                    if _row:
+                        _agent_phone = _row.get("phone")
+            except Exception:
+                pass
 
-            with action_col2:
-                # Vérifier si l'agent a renseigné son numéro de téléphone
-                _agent_phone = None
-                try:
-                    from memory.database import get_connection as _gc
-                    with _gc() as _conn:
-                        _row = _conn.execute(
-                            "SELECT phone FROM users WHERE id = %s LIMIT 1",
-                            (client_id,),
-                        ).fetchone()
-                        if _row:
-                            _agent_phone = _row.get("phone")
-                except Exception:
-                    pass
-
+            with act_col1:
                 if not _agent_phone:
-                    if st.button(
-                        "📞 Appeler",
+                    st.button(
+                        "Appeler",
                         key=f"call_{lead_id}",
                         disabled=True,
-                        help="Renseignez votre numéro dans ⚙️ Mes paramètres pour activer le click-to-call",
-                    ):
-                        pass
-                    st.caption("📵 Numéro agent requis — [Mes paramètres](pages/06_parametres.py)")
+                        help="Configurez votre numéro dans Mes paramètres pour activer le click-to-call.",
+                    )
+                    st.caption(
+                        "Numéro agent non configuré. "
+                        "Rendez-vous dans [Mes paramètres](/06_parametres) pour l'ajouter."
+                    )
                 elif not selected_lead.telephone:
-                    if st.button("📞 Appeler", key=f"call_{lead_id}", disabled=True):
-                        pass
-                    st.caption("Pas de numéro pour ce lead")
+                    st.button("Appeler", key=f"call_{lead_id}", disabled=True)
+                    st.caption("Numéro du lead inconnu.")
                 else:
-                    if st.button("📞 Appeler", key=f"call_{lead_id}"):
+                    if st.button("Appeler", key=f"call_{lead_id}", type="primary"):
                         try:
                             import httpx
                             token = st.session_state.get("token", "")
@@ -327,46 +311,49 @@ else:
                             )
                             if resp.status_code == 200:
                                 data = resp.json()
-                                st.success(f"Appel initié ! {data.get('message', '')}")
+                                st.success(f"Appel initié. {data.get('message', '')}")
                             else:
-                                detail = resp.json().get("detail", resp.text)
-                                st.error(f"Erreur : {detail}")
+                                st.error(f"Erreur : {resp.json().get('detail', resp.text)}")
                         except Exception as exc:
                             st.error(f"Impossible de joindre l'API : {exc}")
 
-            with action_col3:
-                if st.button("📄 Générer annonce", key=f"listing_{lead_id}"):
-                    st.info("Génération annonce (Phase 2 — ListingGeneratorAgent)")
-
-            with action_col4:
-                if st.button("✅ Mandat gagné", key=f"mandat_{lead_id}"):
-                    selected_lead.statut = LeadStatus.MANDAT
-                    selected_lead.mandat_date = datetime.now()
-                    update_lead(selected_lead)
-                    st.success("🎉 Mandat enregistré !")
-                    st.rerun()
-
-            with action_col5:
-                if st.button("☎️ Rappelé", key=f"rappele_{lead_id}",
-                             help="Marque ce lead comme rappelé (statut → qualifié)"):
-                    if selected_lead.statut.value in ("entrant", "nurturing"):
-                        selected_lead.statut = LeadStatus.QUALIFIE
-                        update_lead(selected_lead)
-                        st.success("Lead marqué comme rappelé (qualifié)")
-                        st.rerun()
+            with act_col2:
+                if st.button("Envoyer SMS", key=f"sms_{lead_id}"):
+                    if selected_lead.telephone:
+                        from tools.twilio_tool import TwilioTool
+                        twilio = TwilioTool()
+                        result = twilio.send_sms(
+                            to=selected_lead.telephone,
+                            body=f"Bonjour {selected_lead.prenom} ! Votre conseiller {agency_name} souhaite vous rappeler. Êtes-vous disponible maintenant ?",
+                        )
+                        if result["success"]:
+                            st.success(f"SMS {'(démo) ' if result.get('mock') else ''}envoyé.")
+                        else:
+                            st.error("Erreur lors de l'envoi du SMS.")
                     else:
-                        st.info(f"Statut actuel : {selected_lead.statut.value}")
+                        st.warning("Numéro de téléphone inconnu pour ce lead.")
 
-            with action_col6:
-                if st.button("❌ Perdu", key=f"perdu_{lead_id}"):
-                    selected_lead.statut = LeadStatus.PERDU
-                    update_lead(selected_lead)
-                    st.warning("Lead marqué comme perdu")
-                    st.rerun()
+            with act_col3:
+                # Bouton actif uniquement si une prochaine action est définie
+                if _na.get("next_action_label"):
+                    if st.button("Marquer comme fait", key=f"done_{lead_id}"):
+                        if selected_lead.statut.value in ("entrant", "nurturing"):
+                            selected_lead.statut = LeadStatus.QUALIFIE
+                            update_lead(selected_lead)
+                            st.success("Action marquée comme effectuée.")
+                            st.rerun()
+                        else:
+                            st.info(f"Statut actuel : {selected_lead.statut.value}")
 
-            if st.button("💬 Voir SMS", key=f"voir_sms_{lead_id}"):
-                st.session_state["selected_lead_id"] = lead_id
-                st.switch_page("pages/04_sms.py")
+            # Lien discret vers la conversation
+            if selected_lead.telephone:
+                if st.button(
+                    "Voir la conversation",
+                    key=f"voir_conv_{lead_id}",
+                    type="secondary",
+                ):
+                    st.session_state["selected_lead_id"] = lead_id
+                    st.switch_page("pages/04_sms.py")
 
             # Notes agent
             st.markdown("#### Notes agent")
