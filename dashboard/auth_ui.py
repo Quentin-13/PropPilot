@@ -7,6 +7,7 @@ Fonctions publiques :
 """
 from __future__ import annotations
 
+import base64
 import sys
 from pathlib import Path
 
@@ -26,16 +27,18 @@ from dashboard.auth_cookies import (
 )
 
 
-# ─── Logo inline SVG ──────────────────────────────────────────────────────────
+# ─── Logo PNG ────────────────────────────────────────────────────────────────
 
-_LOGO_SVG_RAW = (ROOT / "static" / "logo-proppilot.svg").read_text(encoding="utf-8")
+_LOGO_PNG_B64 = base64.b64encode(
+    (ROOT / "static" / "logo-proppilot.png").read_bytes()
+).decode()
 
 
 def _logo(size: int = 48, uid: str = "") -> str:
-    """Retourne l'inline SVG du logo PropPilot prêt pour st.markdown."""
-    return _LOGO_SVG_RAW.replace(
-        'width="1254" height="1254"',
-        f'width="{size}" height="{size}" viewBox="0 0 1254 1254"',
+    """Retourne un <img> base64 du logo PropPilot prêt pour st.markdown."""
+    return (
+        f'<img src="data:image/png;base64,{_LOGO_PNG_B64}" '
+        f'style="height:{size}px;width:auto;display:inline-block;vertical-align:middle;" />'
     )
 
 

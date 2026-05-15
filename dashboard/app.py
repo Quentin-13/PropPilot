@@ -4,6 +4,7 @@ Initialise la DB, vérifie l'auth, affiche le tableau de bord personnalisé.
 """
 from __future__ import annotations
 
+import base64
 import sys
 from pathlib import Path
 
@@ -23,7 +24,7 @@ settings = get_settings()
 # ─── Configuration Streamlit ───────────────────────────────────────────────────
 st.set_page_config(
     page_title="PropPilot",
-    page_icon=f"{settings.api_url}/static/favicon.svg",
+    page_icon=f"{settings.api_url}/static/favicon.png",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -182,28 +183,13 @@ except Exception:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # BLOC 1 — Header
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-_LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 56" width="160" height="45">
-  <g transform="translate(0,0)">
-    <polygon points="28,0 53,14 53,42 28,56 3,42 3,14" fill="#0d1f3c"/>
-    <line x1="3" y1="28" x2="53" y2="28" stroke="#1e3a6e" stroke-width="0.8"/>
-    <line x1="28" y1="0" x2="28" y2="56" stroke="#1e3a6e" stroke-width="0.8"/>
-    <polygon points="28,11 42,24 14,24" fill="none" stroke="white" stroke-width="1.6"/>
-    <rect x="16" y="24" width="25" height="20" fill="none" stroke="white" stroke-width="1.6"/>
-    <rect x="19" y="27" width="8" height="7" fill="#3b82f6" rx="1"/>
-    <rect x="30" y="27" width="8" height="7" fill="#3b82f6" rx="1"/>
-    <rect x="23" y="32" width="11" height="12" fill="#1e40af" rx="1"/>
-    <circle cx="28" cy="16" r="3" fill="#e67e22"/>
-    <circle cx="3" cy="14" r="2" fill="#3b82f6"/>
-    <circle cx="53" cy="14" r="2" fill="#3b82f6"/>
-    <circle cx="3" cy="42" r="2" fill="#3b82f6"/>
-    <circle cx="53" cy="42" r="2" fill="#3b82f6"/>
-  </g>
-  <text x="65" y="30" font-family="Arial" font-size="22" font-weight="900"
-        fill="white" letter-spacing="-0.5">Prop</text>
-  <text x="120" y="30" font-family="Arial" font-size="22" font-weight="300"
-        fill="#3b82f6" letter-spacing="2">Pilot</text>
-  <rect x="65" y="34" width="118" height="2" fill="#e67e22" rx="1"/>
-</svg>"""
+_LOGO_PNG_B64 = base64.b64encode(
+    (ROOT / "static" / "logo-proppilot.png").read_bytes()
+).decode()
+_LOGO_IMG_TAG = (
+    f'<img src="data:image/png;base64,{_LOGO_PNG_B64}" '
+    f'style="height:40px;width:auto;display:block;" />'
+)
 
 now = datetime.now()
 date_fr = f"{JOURS[now.weekday()]} {now.day} {MOIS[now.month-1]} {now.year} · {now.strftime('%H:%M')}"
@@ -215,7 +201,7 @@ badge_class = "badge-plan-active" if plan_active else "badge-plan-inactive"
 badge_label = "Actif" if plan_active else "Inactif"
 
 st.markdown(f"""
-<div style="margin-bottom:16px;">{_LOGO_SVG}</div>
+<div style="margin-bottom:16px;">{_LOGO_IMG_TAG}</div>
 """, unsafe_allow_html=True)
 
 st.title(greeting)
