@@ -23,7 +23,7 @@ settings = get_settings()
 # ─── Configuration Streamlit ───────────────────────────────────────────────────
 st.set_page_config(
     page_title="PropPilot",
-    page_icon="https://proppilot-production.up.railway.app/static/favicon.svg",
+    page_icon=f"{settings.api_url}/static/favicon.svg",
     layout="wide",
     initial_sidebar_state="expanded",
 )
