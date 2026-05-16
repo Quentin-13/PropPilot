@@ -44,6 +44,14 @@ if is_super_admin(st.session_state.get("email", "")):
 
 client_id = st.session_state.get("user_id", settings.agency_client_id)
 
+# Premier login : rediriger vers la page bienvenue
+try:
+    from memory.phone_numbers import should_show_welcome
+    if should_show_welcome(client_id):
+        st.switch_page("pages/00_bienvenue.py")
+except Exception:
+    pass  # Ne jamais bloquer le cockpit sur une erreur d'onboarding
+
 # ─── Chargement cockpit ───────────────────────────────────────────────────────
 
 try:

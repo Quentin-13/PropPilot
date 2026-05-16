@@ -68,6 +68,16 @@ render_sidebar_logout()
 if is_super_admin(st.session_state.get("email", "")):
     st.switch_page("pages/99_admin.py")
 
+# Premier login admin agence → page bienvenue (super-admins déjà exclus ci-dessus)
+try:
+    from config.settings import get_settings as _gs
+    _client_id = st.session_state.get("user_id", _gs().agency_client_id)
+    from memory.phone_numbers import should_show_welcome
+    if should_show_welcome(_client_id):
+        st.switch_page("pages/00_bienvenue.py")
+except Exception:
+    pass  # Ne jamais bloquer le dashboard sur une erreur d'onboarding
+
 if not st.session_state.get("is_admin", False):
     st.error("🚫 Accès non autorisé — réservé à l'administrateur PropPilot.")
     st.stop()

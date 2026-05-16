@@ -607,3 +607,10 @@ with st.expander("Préférences d'assistant IA", expanded=False):
         st.session_state["config_conseiller_prenom"] = conseiller_prenom
         st.session_state["config_conseiller_titre"] = conseiller_titre
         st.success("Préférences d'assistant mises à jour.")
+
+# ── Onboarding ─────────────────────────────────────────────────────────────────
+
+st.markdown("---")
+st.caption("Besoin de revoir les informations de démarrage ?")
+if st.button("Revoir la page bienvenue", type="secondary"):
+    st.switch_page("pages/00_bienvenue.py")
