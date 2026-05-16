@@ -184,10 +184,15 @@ def _show_plan_selection() -> None:
 
 def show_auth_page() -> None:
     """Affiche la page d'authentification (tabs login + signup)."""
-    # Cacher la navigation sidebar quand non connecté
     st.markdown("""
     <style>
     [data-testid="stSidebarNav"] { display: none; }
+    .main, [data-testid="stAppViewContainer"],
+    .block-container { background: #0f1117 !important; }
+    @media (max-width: 767px) {
+        .main, [data-testid="stAppViewContainer"],
+        .block-container { background: #0f1117 !important; }
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -201,7 +206,7 @@ def show_auth_page() -> None:
         <div style="text-align: center; padding: 40px 0 24px 0;">
             {_logo(56, "lp")}
             <h1 style="margin: 8px 0 4px 0; font-size: 2rem;">PropPilot</h1>
-            <p style="color: #64748b; margin: 0;">L'IA pour les agences immobilières françaises</p>
+            <p style="color: #64748b; margin: 0;">Appels &amp; SMS prospects → CRM, sans saisie manuelle.</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -298,7 +303,7 @@ def show_auth_page() -> None:
 
         st.markdown("""
         <div style="text-align: center; margin-top: 24px; color: #94a3b8; font-size: 12px;">
-            60 Jours Satisfait ou Remboursé · Support email inclus
+            Résumé automatique, informations détectées, remontée CRM.
         </div>
         <div style="text-align: center; margin-top: 16px; color: #71717a; font-size: 11px; line-height: 1.6; padding: 0 8px;">
             Vous n'avez pas encore de compte ?<br>
@@ -462,10 +467,13 @@ def render_sidebar_logout() -> None:
         if not is_admin:
             # Navigation principale
             if st.button("📋 Tâches du jour", use_container_width=True, key="_nav_tasks"):
+                st.session_state["_close_sidebar_mobile"] = True
                 st.switch_page("pages/tasks.py")
             if st.button("👥 Mes leads", use_container_width=True, key="_nav_leads"):
+                st.session_state["_close_sidebar_mobile"] = True
                 st.switch_page("pages/01_mes_leads.py")
             if st.button("📞 Appels capturés", use_container_width=True, key="_nav_calls"):
+                st.session_state["_close_sidebar_mobile"] = True
                 st.switch_page("pages/calls.py")
             _sms_unread = 0
             try:
@@ -497,14 +505,62 @@ def render_sidebar_logout() -> None:
 
             # Compte & configuration
             if st.button("⚙️ Mes paramètres", use_container_width=True, key="_nav_parametres"):
+                st.session_state["_close_sidebar_mobile"] = True
                 st.switch_page("pages/06_parametres.py")
             if st.button("💳 Abonnement", use_container_width=True, key="_nav_facturation"):
+                st.session_state["_close_sidebar_mobile"] = True
                 st.switch_page("pages/09_facturation.py")
 
             st.markdown("---")
+
+        # Contraste mobile : boutons sidebar lisibles sur fond sombre
+        st.markdown("""
+<style>
+/* Fond sidebar forcé sur mobile */
+@media (max-width: 767px) {
+    [data-testid="stSidebar"] { background: #1a3a5c !important; }
+    [data-testid="stSidebar"] * { color: white !important; }
+    [data-testid="stSidebar"] button {
+        background: rgba(255,255,255,0.12) !important;
+        color: white !important;
+        border-color: rgba(255,255,255,0.2) !important;
+    }
+    [data-testid="stSidebar"] button:hover {
+        background: rgba(255,255,255,0.22) !important;
+    }
+    [data-testid="stSidebar"] hr { border-color: rgba(255,255,255,0.2) !important; }
+    /* Contenu principal : fond sombre sur mobile */
+    .main, [data-testid="stAppViewContainer"],
+    .block-container { background: #0f1117 !important; }
+    /* Texte du contenu principal : clair sur fond sombre */
+    .main p, .main span, .main div,
+    [data-testid="stMarkdownContainer"] p { color: #e2e8f0; }
+    h1, h2, h3 { color: white !important; }
+}
+</style>
+""", unsafe_allow_html=True)
 
         if st.button("🚪 Déconnexion", use_container_width=True, key="_logout_btn"):
             _cookie_clear()
             for key in ["authenticated", "token", "user_id", "agency_name", "plan", "plan_active", "is_admin"]:
                 st.session_state.pop(key, None)
             st.rerun()
+
+    # Fermeture automatique du menu mobile après navigation (hors sidebar)
+    if st.session_state.pop("_close_sidebar_mobile", False):
+        import streamlit.components.v1 as components
+        components.html(
+            "<script>"
+            "(function(){"
+            "try{"
+            "if(window.parent.innerWidth>=768)return;"
+            "setTimeout(function(){"
+            "var b=window.parent.document"
+            ".querySelector('[data-testid=\"stSidebarCollapseButton\"]');"
+            "if(b)b.click();"
+            "},200);"
+            "}catch(e){}"
+            "})();"
+            "</script>",
+            height=0,
+        )
