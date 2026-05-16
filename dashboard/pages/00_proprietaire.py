@@ -136,12 +136,12 @@ MOIS  = ["janvier","février","mars","avril","mai","juin",
 now = datetime.now()
 date_fr = f"{JOURS[now.weekday()]} {now.day} {MOIS[now.month-1]} {now.year} · {now.strftime('%H:%M')}"
 
-# ─── Logo PNG ─────────────────────────────────────────────────────────────────
-_LOGO_PNG_B64 = base64.b64encode(
-    (ROOT / "static" / "logo-proppilot.png").read_bytes()
+# ─── Logo SVG ─────────────────────────────────────────────────────────────────
+_LOGO_B64 = base64.b64encode(
+    (ROOT / "static" / "logo-proppilot.svg").read_bytes()
 ).decode()
 _LOGO_SVG = (
-    f'<img src="data:image/png;base64,{_LOGO_PNG_B64}" '
+    f'<img src="data:image/svg+xml;base64,{_LOGO_B64}" '
     f'style="height:36px;width:auto;" />'
 )
 

@@ -183,11 +183,11 @@ except Exception:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # BLOC 1 — Header
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-_LOGO_PNG_B64 = base64.b64encode(
-    (ROOT / "static" / "logo-proppilot.png").read_bytes()
+_LOGO_SVG_B64 = base64.b64encode(
+    (ROOT / "static" / "logo-proppilot.svg").read_bytes()
 ).decode()
 _LOGO_IMG_TAG = (
-    f'<img src="data:image/png;base64,{_LOGO_PNG_B64}" '
+    f'<img src="data:image/svg+xml;base64,{_LOGO_SVG_B64}" '
     f'style="height:40px;width:auto;display:block;" />'
 )
 

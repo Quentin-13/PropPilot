@@ -27,17 +27,17 @@ from dashboard.auth_cookies import (
 )
 
 
-# ─── Logo PNG ────────────────────────────────────────────────────────────────
+# ─── Logo SVG ────────────────────────────────────────────────────────────────
 
-_LOGO_PNG_B64 = base64.b64encode(
-    (ROOT / "static" / "logo-proppilot.png").read_bytes()
+_LOGO_SVG_B64 = base64.b64encode(
+    (ROOT / "static" / "logo-proppilot.svg").read_bytes()
 ).decode()
 
 
 def _logo(size: int = 48, uid: str = "") -> str:
     """Retourne un <img> base64 du logo PropPilot prêt pour st.markdown."""
     return (
-        f'<img src="data:image/png;base64,{_LOGO_PNG_B64}" '
+        f'<img src="data:image/svg+xml;base64,{_LOGO_SVG_B64}" '
         f'style="height:{size}px;width:auto;display:inline-block;vertical-align:middle;" />'
     )
 
