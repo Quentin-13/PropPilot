@@ -69,6 +69,11 @@ class Settings(BaseSettings):
         """Parse la liste des numéros Twilio disponibles depuis la variable d'env."""
         return [n.strip() for n in (self.twilio_available_numbers_raw or "").split(",") if n.strip()]
 
+    # Resend — transport email HTTP prioritaire (contourne les restrictions SMTP Railway)
+    resend_api_key: Optional[str] = Field(default=None, alias="RESEND_API_KEY")
+    resend_from_email: str = Field(default="contact@proppilot.fr", alias="RESEND_FROM_EMAIL")
+    resend_from_name: str = Field(default="PropPilot", alias="RESEND_FROM_NAME")
+
     # SendGrid
     sendgrid_api_key: Optional[str] = Field(default=None, alias="SENDGRID_API_KEY")
     sendgrid_from_email: str = Field(default="noreply@proppilot.fr", alias="SENDGRID_FROM_EMAIL")
@@ -186,6 +191,12 @@ class Settings(BaseSettings):
         if self.testing or self.mock_mode == "always":
             return False
         return bool(self.google_client_id and self.google_client_secret)
+
+    @property
+    def resend_available(self) -> bool:
+        if self.testing or self.mock_mode == "always":
+            return False
+        return bool(self.resend_api_key)
 
     @property
     def sendgrid_available(self) -> bool:

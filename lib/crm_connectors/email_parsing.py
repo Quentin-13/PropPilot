@@ -174,14 +174,20 @@ class EmailParsingConnector(CRMConnector):
         ]
         return "\n".join(lines)
 
-    # ─── Envoi : SendGrid prioritaire, SMTP en fallback ───────────────────────
+    # ─── Envoi : Resend → SendGrid → SMTP → mock ──────────────────────────────
 
     def _send(self, subject: str, body: str) -> bool:
         s = get_settings()
 
-        if not s.sendgrid_available and not s.smtp_available:
+        if not s.resend_available and not s.sendgrid_available and not s.smtp_available:
             logger.info("[MOCK][Email CRM] subject=%s → %s", subject[:60], self._target_email)
             return True
+
+        if s.resend_available:
+            ok = self._send_via_resend(subject, body, s)
+            if ok:
+                return True
+            logger.warning("[Email CRM] Resend échoué — bascule sur SendGrid")
 
         if s.sendgrid_available:
             ok = self._send_via_sendgrid(subject, body, s)
@@ -193,6 +199,43 @@ class EmailParsingConnector(CRMConnector):
             return self._send_via_smtp(subject, body, s)
 
         return False
+
+    def _send_via_resend(self, subject: str, body: str, s) -> bool:
+        import json
+        import urllib.request
+
+        from_field = f"{s.resend_from_name} <{s.resend_from_email}>" if s.resend_from_name else s.resend_from_email
+        payload = json.dumps({
+            "from": from_field,
+            "to": [self._target_email],
+            "subject": subject,
+            "text": body,
+        }).encode()
+
+        req = urllib.request.Request(
+            "https://api.resend.com/emails",
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {s.resend_api_key}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                status = resp.status
+            success = status in (200, 201, 202)
+            if success:
+                logger.info("[Email CRM][Resend] Envoyé → %s (status %s)", self._target_email, status)
+            else:
+                logger.warning("[Email CRM][Resend] Échec → %s (status %s)", self._target_email, status)
+            return success
+        except urllib.error.HTTPError as e:
+            logger.error("[Email CRM][Resend] HTTP %s : %s", e.code, e.reason)
+            return False
+        except Exception as e:
+            logger.error("[Email CRM][Resend] Erreur : %s", e)
+            return False
 
     def _send_via_sendgrid(self, subject: str, body: str, s) -> bool:
         try:

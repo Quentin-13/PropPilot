@@ -212,6 +212,130 @@ def test_pas_de_push_si_email_cible_vide(lead_complet):
     mock_send.assert_not_called()
 
 
+# ─── Tests Resend ─────────────────────────────────────────────────────────────
+
+def _mock_settings_resend(resend_ok=True, sendgrid_ok=False, smtp_ok=False):
+    s = MagicMock()
+    s.resend_available = resend_ok
+    s.sendgrid_available = sendgrid_ok
+    s.smtp_available = smtp_ok
+    s.resend_api_key = "re_test_key"
+    s.resend_from_email = "contact@proppilot.fr"
+    s.resend_from_name = "PropPilot"
+    return s
+
+
+def test_resend_prioritaire_si_configure():
+    """Resend doit être tenté en premier quand resend_available=True."""
+    connector = EmailParsingConnector(target_email="import@moncrm.fr")
+    s = _mock_settings_resend(resend_ok=True, sendgrid_ok=True, smtp_ok=True)
+
+    with patch("lib.crm_connectors.email_parsing.get_settings", return_value=s), \
+         patch.object(connector, "_send_via_resend", return_value=True) as mock_resend, \
+         patch.object(connector, "_send_via_sendgrid") as mock_sg, \
+         patch.object(connector, "_send_via_smtp") as mock_smtp:
+        result = connector._send("Sujet", "Corps")
+
+    assert result is True
+    mock_resend.assert_called_once()
+    mock_sg.assert_not_called()
+    mock_smtp.assert_not_called()
+
+
+def test_resend_succes_pas_de_fallback():
+    """Si Resend réussit, SendGrid et SMTP ne sont jamais appelés."""
+    connector = EmailParsingConnector(target_email="import@moncrm.fr")
+    s = _mock_settings_resend(resend_ok=True, sendgrid_ok=True, smtp_ok=True)
+
+    with patch("lib.crm_connectors.email_parsing.get_settings", return_value=s), \
+         patch.object(connector, "_send_via_resend", return_value=True), \
+         patch.object(connector, "_send_via_sendgrid") as mock_sg, \
+         patch.object(connector, "_send_via_smtp") as mock_smtp:
+        connector._send("Sujet", "Corps")
+
+    mock_sg.assert_not_called()
+    mock_smtp.assert_not_called()
+
+
+def test_resend_echoue_fallback_sendgrid():
+    """Si Resend échoue, SendGrid prend le relais."""
+    connector = EmailParsingConnector(target_email="import@moncrm.fr")
+    s = _mock_settings_resend(resend_ok=True, sendgrid_ok=True, smtp_ok=False)
+
+    with patch("lib.crm_connectors.email_parsing.get_settings", return_value=s), \
+         patch.object(connector, "_send_via_resend", return_value=False), \
+         patch.object(connector, "_send_via_sendgrid", return_value=True) as mock_sg:
+        result = connector._send("Sujet", "Corps")
+
+    assert result is True
+    mock_sg.assert_called_once()
+
+
+def test_resend_payload_correct():
+    """Le payload envoyé à Resend contient from/to/subject/text corrects."""
+    import json
+    import urllib.request
+
+    connector = EmailParsingConnector(target_email="import@moncrm.fr")
+    s = MagicMock()
+    s.resend_api_key = "re_test_key"
+    s.resend_from_email = "contact@proppilot.fr"
+    s.resend_from_name = "PropPilot"
+
+    captured = {}
+
+    class FakeResp:
+        status = 200
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+
+    def fake_urlopen(req, timeout=None):
+        captured["url"] = req.full_url
+        captured["payload"] = json.loads(req.data.decode())
+        captured["auth"] = req.get_header("Authorization")
+        return FakeResp()
+
+    with patch("urllib.request.urlopen", fake_urlopen):
+        result = connector._send_via_resend("Mon sujet", "Mon corps", s)
+
+    assert result is True
+    assert captured["payload"]["from"] == "PropPilot <contact@proppilot.fr>"
+    assert captured["payload"]["to"] == ["import@moncrm.fr"]
+    assert captured["payload"]["subject"] == "Mon sujet"
+    assert captured["payload"]["text"] == "Mon corps"
+    assert "html" not in captured["payload"]
+    # Clé jamais exposée en clair dans les données loggées (payload uniquement)
+    assert captured["auth"] == "Bearer re_test_key"
+    assert captured["url"] == "https://api.resend.com/emails"
+
+
+def test_resend_echec_http_retourne_false():
+    """Une HTTPError Resend (ex: 422) retourne False sans lever d'exception."""
+    import urllib.error
+    connector = EmailParsingConnector(target_email="import@moncrm.fr")
+    s = MagicMock()
+    s.resend_api_key = "re_test_key"
+    s.resend_from_email = "contact@proppilot.fr"
+    s.resend_from_name = "PropPilot"
+
+    with patch("urllib.request.urlopen",
+               side_effect=urllib.error.HTTPError(None, 422, "Unprocessable", {}, None)):
+        result = connector._send_via_resend("Sujet", "Corps", s)
+
+    assert result is False
+
+
+def test_mock_quand_aucun_transport():
+    """Sans Resend/SendGrid/SMTP, le mock renvoie True (démo)."""
+    connector = EmailParsingConnector(target_email="import@moncrm.fr")
+    s = _mock_settings_resend(resend_ok=False, sendgrid_ok=False, smtp_ok=False)
+
+    with patch("lib.crm_connectors.email_parsing.get_settings", return_value=s):
+        result = connector._send("Sujet", "Corps")
+
+    assert result is True
+
+
 # ─── Tests SMTP fallback ──────────────────────────────────────────────────────
 
 def test_smtp_fallback_quand_sendgrid_echoue(lead_complet):
@@ -259,6 +383,7 @@ def test_mock_quand_ni_sendgrid_ni_smtp():
     connector = EmailParsingConnector(target_email="import@moncrm.fr")
 
     mock_settings = MagicMock()
+    mock_settings.resend_available = False
     mock_settings.sendgrid_available = False
     mock_settings.smtp_available = False
 
