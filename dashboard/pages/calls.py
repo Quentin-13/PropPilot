@@ -45,6 +45,7 @@ with col_period:
     period = st.selectbox(
         "Période",
         ["Aujourd'hui", "7 derniers jours", "30 derniers jours", "Personnalisé"],
+        index=2,
         key="calls_period",
     )
 

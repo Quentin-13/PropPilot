@@ -370,7 +370,7 @@ if _selected_push_type != "none" or _current_type != "none":
 # ══════════════════════════════════════════════════════════════════════════════
 
 st.markdown("---")
-with st.expander("Préférences d'assistant IA", expanded=False):
+with st.expander("Préférences PropPilot", expanded=False):
     st.caption(
         "Personnalisez le nom et le rôle utilisés par votre assistant dans les échanges automatiques."
     )
@@ -390,7 +390,7 @@ with st.expander("Préférences d'assistant IA", expanded=False):
     if prefs_save:
         st.session_state["config_conseiller_prenom"] = conseiller_prenom
         st.session_state["config_conseiller_titre"] = conseiller_titre
-        st.success("Préférences d'assistant mises à jour.")
+        st.success("Préférences PropPilot mises à jour.")
 
 # ── Onboarding ─────────────────────────────────────────────────────────────────
 
