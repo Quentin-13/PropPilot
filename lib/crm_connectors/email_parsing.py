@@ -218,6 +218,7 @@ class EmailParsingConnector(CRMConnector):
             headers={
                 "Authorization": f"Bearer {s.resend_api_key}",
                 "Content-Type": "application/json",
+                "User-Agent": "PropPilot/1.0",
             },
             method="POST",
         )

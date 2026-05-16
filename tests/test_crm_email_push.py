@@ -293,6 +293,7 @@ def test_resend_payload_correct():
         captured["url"] = req.full_url
         captured["payload"] = json.loads(req.data.decode())
         captured["auth"] = req.get_header("Authorization")
+        captured["user_agent"] = req.get_header("User-agent")
         return FakeResp()
 
     with patch("urllib.request.urlopen", fake_urlopen):
@@ -307,6 +308,7 @@ def test_resend_payload_correct():
     # Clé jamais exposée en clair dans les données loggées (payload uniquement)
     assert captured["auth"] == "Bearer re_test_key"
     assert captured["url"] == "https://api.resend.com/emails"
+    assert captured["user_agent"] == "PropPilot/1.0"
 
 
 def test_resend_echec_http_retourne_false():
