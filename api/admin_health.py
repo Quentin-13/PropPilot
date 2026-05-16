@@ -257,6 +257,9 @@ def _send_admin_sms(admin_phone: str, alerts: list[str], settings) -> None:
         if not settings.twilio_available:
             logger.info("[MOCK] Admin SMS alert: %s → %s", admin_phone, msg)
             return
+        if not settings.twilio_sms_number:
+            logger.info("[AdminHealth] Admin SMS alerts disabled: no Twilio sender configured")
+            return
         from twilio.rest import Client
         client = Client(settings.twilio_account_sid, settings.twilio_auth_token)
         client.messages.create(

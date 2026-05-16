@@ -119,6 +119,26 @@ class TestSendAdminSms:
         # Doit ne pas lever d'exception même avec beaucoup d'alertes
         _send_admin_sms("+33600000000", long_alerts, s)
 
+    def test_no_sms_when_no_sender_configured(self, monkeypatch, caplog):
+        """twilio_available=True mais twilio_sms_number absent → log INFO, pas d'erreur."""
+        import logging
+        monkeypatch.setenv("TWILIO_ACCOUNT_SID", "AC_fake")
+        monkeypatch.setenv("TWILIO_AUTH_TOKEN", "fake_token")
+        monkeypatch.setenv("MOCK_MODE", "never")
+        monkeypatch.setenv("TESTING", "false")
+        from config.settings import get_settings
+        get_settings.cache_clear()
+        s = get_settings()
+
+        with patch("api.admin_health.Client", create=True) as mock_client:
+            with caplog.at_level(logging.INFO, logger="api.admin_health"):
+                from api.admin_health import _send_admin_sms
+                _send_admin_sms("+33600000000", ["EXTRACTION_FAILED_5"], s)
+
+        mock_client.assert_not_called()
+        assert any("disabled" in r.message.lower() for r in caplog.records)
+        get_settings.cache_clear()
+
 
 # ── run_health_alert_job ──────────────────────────────────────────────────────
 
