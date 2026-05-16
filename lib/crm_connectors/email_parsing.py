@@ -231,7 +231,14 @@ class EmailParsingConnector(CRMConnector):
                 logger.warning("[Email CRM][Resend] Échec → %s (status %s)", self._target_email, status)
             return success
         except urllib.error.HTTPError as e:
-            logger.error("[Email CRM][Resend] HTTP %s : %s", e.code, e.reason)
+            try:
+                err_body = e.read().decode(errors="replace")[:500]
+            except Exception:
+                err_body = "(body illisible)"
+            logger.error(
+                "[Email CRM][Resend] HTTP %s from=%s to=%s body=%s",
+                e.code, s.resend_from_email, self._target_email, err_body,
+            )
             return False
         except Exception as e:
             logger.error("[Email CRM][Resend] Erreur : %s", e)
