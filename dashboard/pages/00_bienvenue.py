@@ -180,7 +180,17 @@ st.markdown("</div>", unsafe_allow_html=True)
 st.markdown('<div class="welcome-section yellow">', unsafe_allow_html=True)
 st.markdown('<div class="section-head">Votre CRM</div>', unsafe_allow_html=True)
 
-_crm_name = crm_label or "Hektor"
+def _short_crm_name(label: str) -> str:
+    """Extrait le nom court du CRM pour le texte d'intro (ex : 'Hektor (La Boîte Immo)' → 'Hektor').
+    Retourne 'Votre CRM' si le CRM n'est pas configuré ou si ce n'est pas un CRM traditionnel."""
+    if not label:
+        return "Votre CRM"
+    short = label.split("(")[0].strip()
+    if short in ("Email", "Import CSV"):
+        return "Votre CRM"
+    return short or "Votre CRM"
+
+_crm_name = _short_crm_name(crm_label)
 
 st.markdown(
     f'<p style="color:#94a3b8;margin-bottom:14px;">'
@@ -221,7 +231,7 @@ else:
     # none ou error → message rassurant, pas de détail technique
     st.markdown(
         '<p style="color:#94a3b8;margin-bottom:0;">'
-        "Votre remontée CRM est en cours de configuration. "
+        "La remontée vers votre CRM est en cours de configuration. "
         "L'équipe PropPilot vous accompagne pendant le pilote.</p>",
         unsafe_allow_html=True,
     )
