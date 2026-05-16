@@ -95,7 +95,7 @@ def _make_call_repo_conn():
         cur = MagicMock()
         sql_s = sql.strip()
         if "FROM leads" in sql_s:
-            cur.fetchone.return_value = {"score": 0, "motivation": ""}
+            cur.fetchone.return_value = {"score": 0, "motivation": "", "prenom": "", "nom": ""}
         elif "INSERT INTO conversation_extractions" in sql_s:
             cur.fetchone.return_value = {"id": 42}
         return cur
@@ -209,7 +209,7 @@ def test_tiede_devient_chaud_apres_urgence():
     def _execute(sql, params=None):
         cur = MagicMock()
         if "FROM leads" in sql:
-            cur.fetchone.return_value = {"score": 14, "motivation": ""}
+            cur.fetchone.return_value = {"score": 14, "motivation": "", "prenom": "", "nom": ""}
         return cur
     conn.execute.side_effect = _execute
 
@@ -242,7 +242,7 @@ def test_score_ne_retrograde_pas():
     def _execute(sql, params=None):
         cur = MagicMock()
         if "FROM leads" in sql:
-            cur.fetchone.return_value = {"score": 21, "motivation": "divorce"}
+            cur.fetchone.return_value = {"score": 21, "motivation": "divorce", "prenom": "", "nom": ""}
         return cur
     conn.execute.side_effect = _execute
 
@@ -358,7 +358,7 @@ def test_chaud_devient_froid_apres_refroidissement():
     def _execute(sql, params=None):
         cur = MagicMock()
         if "FROM leads" in sql:
-            cur.fetchone.return_value = {"score": 21, "motivation": "divorce"}
+            cur.fetchone.return_value = {"score": 21, "motivation": "divorce", "prenom": "", "nom": ""}
         return cur
     conn.execute.side_effect = _execute
 
@@ -398,7 +398,7 @@ def test_score_partiel_sms_ne_retrograde_jamais():
     def _execute(sql, params=None):
         cur = MagicMock()
         if "FROM leads" in sql:
-            cur.fetchone.return_value = {"score": 21, "motivation": "divorce"}
+            cur.fetchone.return_value = {"score": 21, "motivation": "divorce", "prenom": "", "nom": ""}
         return cur
     conn.execute.side_effect = _execute
 
@@ -430,7 +430,7 @@ def test_extraction_consolidee_echouee_conserve_score_chaud():
         if "INSERT INTO conversation_extractions" in sql_s:
             cur.fetchone.return_value = {"id": 77}
         elif "FROM leads" in sql_s:
-            cur.fetchone.return_value = {"score": 21, "motivation": "divorce"}
+            cur.fetchone.return_value = {"score": 21, "motivation": "divorce", "prenom": "", "nom": ""}
         return cur
     conn.execute.side_effect = _execute
 

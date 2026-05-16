@@ -27,8 +27,13 @@ def _force_testing(monkeypatch):
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
-def _make_conn(score: int = 0, motivation: str = "") -> MagicMock:
-    """Connexion mock : SELECT leads renvoie score/motivation, INSERT renvoie id=42."""
+def _make_conn(
+    score: int = 0,
+    motivation: str = "",
+    prenom: str = "",
+    nom: str = "",
+) -> MagicMock:
+    """Connexion mock : SELECT leads renvoie score/motivation/prenom/nom, INSERT renvoie id=42."""
     conn = MagicMock()
 
     def _execute(sql, params=None):
@@ -37,7 +42,12 @@ def _make_conn(score: int = 0, motivation: str = "") -> MagicMock:
         if "FROM calls" in sql_s:
             cur.fetchone.return_value = {"lead_id": "lead-001", "client_id": "client-001"}
         elif "FROM leads" in sql_s:
-            cur.fetchone.return_value = {"score": score, "motivation": motivation}
+            cur.fetchone.return_value = {
+                "score": score,
+                "motivation": motivation,
+                "prenom": prenom,
+                "nom": nom,
+            }
         elif "INSERT INTO conversation_extractions" in sql_s:
             cur.fetchone.return_value = {"id": 42}
         return cur
@@ -242,3 +252,109 @@ def test_save_call_extraction_inserts_with_source_call():
     assert len(inserts) == 1
     sql = inserts[0][0][0]
     assert "'call'" in sql  # source='call' est littéral dans le SQL
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 4. Nom / prénom — extraction et application
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_apply_sets_prenom_nom_when_lead_is_anonymous():
+    """Extraction avec prenom+nom → écrit dans leads si le lead est anonyme."""
+    from lib.call_extraction_pipeline import CallExtractionData
+    from memory.call_repository import _apply_extraction_to_lead
+
+    conn = _make_conn(prenom="", nom="")
+    data = CallExtractionData(score_qualification="tiede", prenom="Quentin", nom="Gouaze")
+
+    _apply_extraction_to_lead("lead-001", data, conn)
+
+    updates = _update_calls(conn)
+    sql = updates[0][0][0]
+    params = updates[0][0][1]
+    assert "prenom" in sql
+    assert "nom" in sql
+    assert "Quentin" in params
+    assert "Gouaze" in params
+
+
+def test_apply_does_not_overwrite_existing_prenom_nom():
+    """Lead avec prenom/nom déjà connus → extraction ne les écrase pas."""
+    from lib.call_extraction_pipeline import CallExtractionData
+    from memory.call_repository import _apply_extraction_to_lead
+
+    conn = _make_conn(prenom="Marie", nom="Martin")
+    data = CallExtractionData(score_qualification="tiede", prenom="Quentin", nom="Gouaze")
+
+    _apply_extraction_to_lead("lead-001", data, conn)
+
+    updates = _update_calls(conn)
+    sql = updates[0][0][0]
+    assert "prenom" not in sql
+    assert "nom" not in sql
+
+
+def test_apply_skips_blacklisted_names():
+    """Valeurs blacklistées (anonyme, prospect, client…) ne sont pas écrites."""
+    from lib.call_extraction_pipeline import CallExtractionData
+    from memory.call_repository import _apply_extraction_to_lead
+
+    for bad in ["Anonyme", "prospect", "Client", "Inconnu", ""]:
+        conn = _make_conn(prenom="", nom="")
+        data = CallExtractionData(
+            score_qualification="froid",
+            prenom=bad,
+            nom=bad,
+        )
+        _apply_extraction_to_lead("lead-001", data, conn)
+        updates = _update_calls(conn)
+        sql = updates[0][0][0]
+        assert "prenom" not in sql, f"prenom ne doit pas être écrit pour '{bad}'"
+        assert "nom" not in sql, f"nom ne doit pas être écrit pour '{bad}'"
+
+
+def test_apply_sets_prenom_only_when_nom_missing():
+    """Extraction avec seulement le prénom → écrit prenom, pas nom (standalone)."""
+    import re
+    from lib.call_extraction_pipeline import CallExtractionData
+    from memory.call_repository import _apply_extraction_to_lead
+
+    conn = _make_conn(prenom="", nom="")
+    data = CallExtractionData(score_qualification="froid", prenom="Sophie", nom=None)
+
+    _apply_extraction_to_lead("lead-001", data, conn)
+
+    updates = _update_calls(conn)
+    sql = updates[0][0][0]
+    params = updates[0][0][1]
+    assert re.search(r"\bprenom\b", sql), "prenom doit être dans l'UPDATE"
+    assert "Sophie" in params
+    # "nom" seul (mot entier) ne doit pas apparaître — "prenom" est autorisé
+    assert not re.search(r"\bnom\b", sql.split("WHERE")[0]), "nom standalone ne doit pas être set"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 5. display_label — fallback UI
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def test_display_label_prenom_et_nom():
+    from memory.models import Lead
+    lead = Lead(prenom="Quentin", nom="Gouaze", telephone="+33614150263")
+    assert lead.display_label == "Quentin Gouaze"
+
+
+def test_display_label_prenom_seul():
+    from memory.models import Lead
+    lead = Lead(prenom="Quentin", nom="", telephone="+33614150263")
+    assert lead.display_label == "Quentin"
+
+
+def test_display_label_telephone_fallback():
+    from memory.models import Lead
+    lead = Lead(prenom="", nom="", telephone="+33614150263")
+    assert lead.display_label == "+33614150263"
+
+
+def test_display_label_anonyme_last_resort():
+    from memory.models import Lead
+    lead = Lead(prenom="", nom="", telephone="")
+    assert lead.display_label == "Anonyme"

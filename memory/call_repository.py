@@ -31,13 +31,15 @@ def _apply_extraction_to_lead(lead_id: str, data, conn, overwrite_score: bool = 
     if not lead_id:
         return
     row = conn.execute(
-        "SELECT score, motivation FROM leads WHERE id = %s", (lead_id,)
+        "SELECT score, motivation, prenom, nom FROM leads WHERE id = %s", (lead_id,)
     ).fetchone()
     if not row:
         return
 
     current_score = row["score"] or 0
     current_motivation = row["motivation"] or ""
+    current_prenom = (row["prenom"] or "").strip()
+    current_nom = (row["nom"] or "").strip()
     fields: dict = {}
 
     # Préférer le score numérique si disponible, sinon mapper le label texte
@@ -74,6 +76,17 @@ def _apply_extraction_to_lead(lead_id: str, data, conn, overwrite_score: bool = 
 
     if data.motivation and not current_motivation.strip():
         fields["motivation"] = data.motivation
+
+    # Nom / prénom : écrire uniquement si le lead n'en a pas encore et que la valeur
+    # extraite est fiable (non vide, non dans la blacklist des placeholders).
+    _NAME_BLACKLIST = {"", "anonyme", "prospect", "client", "inconnu", "inconnu(e)",
+                       "monsieur", "madame", "m.", "mme", "m", "mme."}
+    extracted_prenom = (getattr(data, "prenom", None) or "").strip()
+    extracted_nom = (getattr(data, "nom", None) or "").strip()
+    if not current_prenom and extracted_prenom.lower() not in _NAME_BLACKLIST:
+        fields["prenom"] = extracted_prenom
+    if not current_nom and extracted_nom.lower() not in _NAME_BLACKLIST:
+        fields["nom"] = extracted_nom
 
     fields["last_extraction_at"] = datetime.utcnow()
     fields["updated_at"] = datetime.utcnow()

@@ -69,7 +69,9 @@ def _build_call_prompt(transcript: str) -> str:
         '  "score_qualification": "<chaud|tiede|froid>",\n'
         '  "prochaine_action_suggeree": "<description libre ou null>",\n'
         '  "resume_appel": "<résumé en 3-5 phrases>",\n'
-        '  "points_attention": ["<signal ou blocage détecté>"]\n'
+        '  "points_attention": ["<signal ou blocage détecté>"],\n'
+        '  "prenom": "<prénom du prospect si explicitement mentionné, sinon null>",\n'
+        '  "nom": "<nom de famille du prospect si explicitement mentionné, sinon null>"\n'
         "}}"
     )
 
@@ -94,6 +96,10 @@ class CallExtractionData:
     # Cas ambigu vendeur+acheteur
     is_ambiguous: bool = False
     linked_lead_hint: Optional[str] = None
+
+    # Identité prospect
+    prenom: Optional[str] = None
+    nom: Optional[str] = None
 
     # Infos extraites
     type_projet: Optional[str] = None
@@ -195,6 +201,8 @@ class CallExtractionData:
             prochaine_action_suggeree=data.get("prochaine_action_suggeree"),
             resume_appel=data.get("resume_appel"),
             points_attention=data.get("points_attention") or [],
+            prenom=data.get("prenom") or None,
+            nom=data.get("nom") or None,
             extraction_model=model,
             extraction_prompt_version=EXTRACTION_PROMPT_VERSION,
             cost_usd=cost_usd,

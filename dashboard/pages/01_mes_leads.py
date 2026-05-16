@@ -183,7 +183,7 @@ else:
             "ID": lead.id[:8],
             "_lead_id": lead.id,
             "Type": f"{type_icon} {lead_type.capitalize()}",
-            "Nom": lead.nom_complet,
+            "Nom": lead.display_label,
             "Téléphone": lead.telephone,
             "Score": f"{score_emoji} {lead.score}/24",
             "_score_raw": lead.score,
@@ -282,7 +282,7 @@ else:
                 st.markdown(f"**Séquence :** {selected_lead.nurturing_sequence.value if selected_lead.nurturing_sequence else '—'}")
 
             if selected_lead.resume:
-                st.markdown(f"**Résumé IA :** *{selected_lead.resume}*")
+                st.markdown(f"**Résumé automatique :** *{selected_lead.resume}*")
 
             # ── Actions ───────────────────────────────────────────────────────
             act_col1, act_col2, act_col3 = st.columns(3)
@@ -464,7 +464,7 @@ else:
 
                 if last:
                     source_label = "appel téléphonique" if last.get("source") == "call" else "SMS"
-                    st.markdown("#### 🧠 Données extraites par l'IA")
+                    st.markdown("#### 📋 Informations détectées")
                     ext_col1, ext_col2, ext_col3 = st.columns(3)
                     with ext_col1:
                         st.markdown(f"**Type projet :** {last.get('type_projet') or '—'}")

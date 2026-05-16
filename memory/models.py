@@ -83,6 +83,14 @@ class Lead:
         return " ".join(parts) if parts else "Anonyme"
 
     @property
+    def display_label(self) -> str:
+        """Nom d'affichage avec fallback téléphone : évite 'Anonyme' si le numéro est connu."""
+        parts = [p for p in [self.prenom, self.nom] if p]
+        if parts:
+            return " ".join(parts)
+        return self.telephone or "Anonyme"
+
+    @property
     def score_label(self) -> str:
         if self.score >= 18:
             return "Chaud 🔴"

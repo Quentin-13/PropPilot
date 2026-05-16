@@ -69,7 +69,9 @@ def _build_sms_prompt(thread: str) -> str:
         '  "score_qualification": "<chaud|tiede|froid>",\n'
         '  "prochaine_action_suggeree": "<description libre ou null>",\n'
         '  "resume_appel": "<résumé en 2-3 phrases>",\n'
-        '  "points_attention": ["<signal ou blocage détecté>"]\n'
+        '  "points_attention": ["<signal ou blocage détecté>"],\n'
+        '  "prenom": "<prénom du prospect si explicitement mentionné, sinon null>",\n'
+        '  "nom": "<nom de famille du prospect si explicitement mentionné, sinon null>"\n'
         "}}"
     )
 
