@@ -39,18 +39,18 @@ st.markdown("""
 h1, h2, h3, h4, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 { color: white !important; }
 p, .stMarkdown p, .stMarkdown li { color: #e2e8f0; }
 label, .stSelectbox label, .stSlider label { color: #cbd5e1 !important; }
-/* Boutons secondaires : fond sombre + texte lisible */
-.stButton > button {
+/* Boutons contenu principal uniquement (pas sidebar) */
+[data-testid="stMain"] .stButton > button {
     background: #1e2130 !important;
     color: #e2e8f0 !important;
     border: 1px solid #334155 !important;
 }
-.stButton > button[kind="primary"] {
+[data-testid="stMain"] .stButton > button[kind="primary"] {
     background: #3b82f6 !important;
     color: white !important;
     border: none !important;
 }
-.stButton > button:hover { opacity: 0.85; }
+[data-testid="stMain"] .stButton > button:hover { opacity: 0.85; }
 </style>
 """, unsafe_allow_html=True)
 

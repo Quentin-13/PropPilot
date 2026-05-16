@@ -30,6 +30,37 @@ st.set_page_config(
 require_auth()
 render_sidebar_logout()
 
+st.markdown("""
+<style>
+.main, [data-testid="stAppViewContainer"] { background: #0f1117; }
+.block-container { padding-top: 1.5rem; }
+h1, h2, h3, h4, h5,
+.stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4 {
+    color: #fafafa !important;
+}
+p, .stMarkdown p, .stMarkdown li { color: #e5e7eb; }
+label, .stSelectbox label, .stSlider label { color: #cbd5e1 !important; }
+/* Ciblage contenu principal uniquement (pas sidebar) */
+[data-testid="stMain"] .stButton > button {
+    background: #1e2130 !important;
+    color: #f3f4f6 !important;
+    border: 1px solid #334155 !important;
+}
+[data-testid="stMain"] .stButton > button[kind="primary"] {
+    background: #3b82f6 !important;
+    color: white !important;
+    border: none !important;
+}
+[data-testid="stMain"] .stButton > button:disabled {
+    background: #111827 !important;
+    color: #6b7280 !important;
+    border: 1px solid #1e293b !important;
+    opacity: 1 !important;
+}
+[data-testid="stMain"] .stButton > button:hover:not(:disabled) { opacity: 0.85; }
+</style>
+""", unsafe_allow_html=True)
+
 client_id = st.session_state.get("user_id", settings.agency_client_id)
 
 # ─── Header ───────────────────────────────────────────────────────────────────
@@ -319,7 +350,7 @@ st.markdown("---")
 st.markdown("#### 🎵 Enregistrement")
 recording_url = call.get("recording_url") or ""
 if not recording_url or recording_url.startswith("https://mock-b2/"):
-    st.info("Enregistrement audio non disponible (mock ou en cours de traitement).")
+    st.info("Enregistrement en cours de traitement.")
 else:
     audio_url = _get_audio_url(recording_url)
     if audio_url:
@@ -355,7 +386,7 @@ else:
 has_extraction = bool(call.get("score_qualification") or call.get("resume_appel"))
 
 if has_extraction:
-    st.markdown("#### 🧠 Données extraites par l'IA")
+    st.markdown("#### 📋 Informations détectées")
 
     ext_col1, ext_col2, ext_col3 = st.columns(3)
 
@@ -439,7 +470,7 @@ if has_extraction:
     # Résumé IA
     resume = call.get("resume_appel") or ""
     if resume:
-        st.markdown("#### 💬 Résumé IA")
+        st.markdown("#### 💬 Résumé de l'appel")
         st.markdown(
             f'<div style="background:#1e2130;border-radius:8px;padding:16px;'
             f'border-left:4px solid #3b82f6;color:#e2e8f0;font-size:0.92rem;">'
@@ -451,7 +482,7 @@ if has_extraction:
 else:
     status = call.get("status") or ""
     if status in ("initiated", "ringing", "answered", "recorded", "transcribed"):
-        st.info("Extraction IA en cours de traitement…")
+        st.info("Structuration automatique en cours…")
     elif status == "transcription_failed":
         pass  # message déjà affiché dans la section transcription
     else:
