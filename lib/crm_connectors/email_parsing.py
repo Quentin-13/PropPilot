@@ -233,8 +233,13 @@ class EmailParsingConnector(CRMConnector):
             if self._reply_to_email:
                 msg["Reply-To"] = self._reply_to_email
 
-            with smtplib.SMTP(s.smtp_host, s.smtp_port, timeout=15) as server:
-                if s.smtp_use_tls:
+            if s.smtp_port == 465:
+                smtp_cls = smtplib.SMTP_SSL(s.smtp_host, s.smtp_port, timeout=15)
+            else:
+                smtp_cls = smtplib.SMTP(s.smtp_host, s.smtp_port, timeout=15)
+
+            with smtp_cls as server:
+                if s.smtp_port != 465 and s.smtp_use_tls:
                     server.starttls()
                 server.login(s.smtp_user, s.smtp_password)
                 server.sendmail(s.smtp_from_email, [self._target_email], msg.as_string())

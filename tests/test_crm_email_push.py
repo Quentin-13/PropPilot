@@ -288,6 +288,62 @@ def test_smtp_echoue_retourne_false():
     assert result is False
 
 
+def test_smtp_port_465_utilise_smtp_ssl():
+    """Port 465 doit utiliser SMTP_SSL, pas SMTP."""
+    import smtplib
+    connector = EmailParsingConnector(target_email="import@moncrm.fr")
+
+    mock_settings = MagicMock()
+    mock_settings.smtp_host = "smtp.hostinger.com"
+    mock_settings.smtp_port = 465
+    mock_settings.smtp_user = "contact@proppilot.fr"
+    mock_settings.smtp_password = "secret"
+    mock_settings.smtp_from_email = "contact@proppilot.fr"
+    mock_settings.smtp_from_name = "PropPilot"
+    mock_settings.smtp_use_tls = True
+
+    mock_server = MagicMock()
+    mock_server.__enter__ = lambda s: s
+    mock_server.__exit__ = MagicMock(return_value=False)
+
+    with patch("smtplib.SMTP_SSL", return_value=mock_server) as mock_ssl, \
+         patch("smtplib.SMTP") as mock_plain:
+        result = connector._send_via_smtp("Sujet", "Corps", mock_settings)
+
+    assert result is True
+    mock_ssl.assert_called_once_with("smtp.hostinger.com", 465, timeout=15)
+    mock_plain.assert_not_called()
+    mock_server.starttls.assert_not_called()
+
+
+def test_smtp_port_587_utilise_starttls():
+    """Port 587 avec smtp_use_tls=True doit utiliser SMTP + starttls."""
+    import smtplib
+    connector = EmailParsingConnector(target_email="import@moncrm.fr")
+
+    mock_settings = MagicMock()
+    mock_settings.smtp_host = "smtp.hostinger.com"
+    mock_settings.smtp_port = 587
+    mock_settings.smtp_user = "contact@proppilot.fr"
+    mock_settings.smtp_password = "secret"
+    mock_settings.smtp_from_email = "contact@proppilot.fr"
+    mock_settings.smtp_from_name = "PropPilot"
+    mock_settings.smtp_use_tls = True
+
+    mock_server = MagicMock()
+    mock_server.__enter__ = lambda s: s
+    mock_server.__exit__ = MagicMock(return_value=False)
+
+    with patch("smtplib.SMTP", return_value=mock_server) as mock_plain, \
+         patch("smtplib.SMTP_SSL") as mock_ssl:
+        result = connector._send_via_smtp("Sujet", "Corps", mock_settings)
+
+    assert result is True
+    mock_plain.assert_called_once_with("smtp.hostinger.com", 587, timeout=15)
+    mock_ssl.assert_not_called()
+    mock_server.starttls.assert_called_once()
+
+
 def test_sendgrid_succes_pas_de_smtp(lead_complet):
     """Si SendGrid réussit, SMTP ne doit pas être appelé."""
     connector = EmailParsingConnector(target_email="import@moncrm.fr")
