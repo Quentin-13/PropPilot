@@ -212,6 +212,101 @@ def test_pas_de_push_si_email_cible_vide(lead_complet):
     mock_send.assert_not_called()
 
 
+# ─── Tests SMTP fallback ──────────────────────────────────────────────────────
+
+def test_smtp_fallback_quand_sendgrid_echoue(lead_complet):
+    """Si SendGrid échoue, _send_via_smtp est appelé en fallback."""
+    connector = EmailParsingConnector(target_email="import@moncrm.fr")
+
+    with patch.object(connector, "_send_via_sendgrid", return_value=False), \
+         patch.object(connector, "_send_via_smtp", return_value=True) as mock_smtp, \
+         patch("lib.crm_connectors.email_parsing.EmailParsingConnector._send",
+               wraps=connector._send):
+
+        # On configure un settings avec sendgrid ET smtp disponibles
+        mock_settings = MagicMock()
+        mock_settings.sendgrid_available = True
+        mock_settings.smtp_available = True
+
+        with patch("lib.crm_connectors.email_parsing.get_settings", return_value=mock_settings):
+            result = connector._send("Sujet test", "Corps test")
+
+    assert result is True
+    mock_smtp.assert_called_once()
+
+
+def test_smtp_seul_quand_pas_sendgrid(lead_complet):
+    """Sans SendGrid, SMTP seul est utilisé directement."""
+    connector = EmailParsingConnector(target_email="import@moncrm.fr")
+
+    mock_settings = MagicMock()
+    mock_settings.sendgrid_available = False
+    mock_settings.smtp_available = True
+
+    with patch("lib.crm_connectors.email_parsing.get_settings", return_value=mock_settings), \
+         patch.object(connector, "_send_via_smtp", return_value=True) as mock_smtp, \
+         patch.object(connector, "_send_via_sendgrid") as mock_sg:
+
+        result = connector._send("Sujet test", "Corps test")
+
+    assert result is True
+    mock_smtp.assert_called_once()
+    mock_sg.assert_not_called()
+
+
+def test_mock_quand_ni_sendgrid_ni_smtp():
+    """Sans aucun transport configuré, le mock renvoie True (mode démo)."""
+    connector = EmailParsingConnector(target_email="import@moncrm.fr")
+
+    mock_settings = MagicMock()
+    mock_settings.sendgrid_available = False
+    mock_settings.smtp_available = False
+
+    with patch("lib.crm_connectors.email_parsing.get_settings", return_value=mock_settings):
+        result = connector._send("Sujet test", "Corps test")
+
+    assert result is True
+
+
+def test_smtp_echoue_retourne_false():
+    """Si SMTP lève une exception, _send_via_smtp retourne False."""
+    import smtplib
+    connector = EmailParsingConnector(target_email="import@moncrm.fr")
+
+    mock_settings = MagicMock()
+    mock_settings.smtp_host = "smtp.hostinger.com"
+    mock_settings.smtp_port = 587
+    mock_settings.smtp_user = "contact@proppilot.fr"
+    mock_settings.smtp_password = "secret"
+    mock_settings.smtp_from_email = "contact@proppilot.fr"
+    mock_settings.smtp_from_name = "PropPilot"
+    mock_settings.smtp_use_tls = True
+
+    with patch("smtplib.SMTP", side_effect=smtplib.SMTPException("connexion refusée")):
+        result = connector._send_via_smtp("Sujet", "Corps", mock_settings)
+
+    assert result is False
+
+
+def test_sendgrid_succes_pas_de_smtp(lead_complet):
+    """Si SendGrid réussit, SMTP ne doit pas être appelé."""
+    connector = EmailParsingConnector(target_email="import@moncrm.fr")
+
+    mock_settings = MagicMock()
+    mock_settings.sendgrid_available = True
+    mock_settings.smtp_available = True
+
+    with patch("lib.crm_connectors.email_parsing.get_settings", return_value=mock_settings), \
+         patch.object(connector, "_send_via_sendgrid", return_value=True) as mock_sg, \
+         patch.object(connector, "_send_via_smtp") as mock_smtp:
+
+        result = connector._send("Sujet", "Corps")
+
+    assert result is True
+    mock_sg.assert_called_once()
+    mock_smtp.assert_not_called()
+
+
 # ─── Test 8 : accent tiède ────────────────────────────────────────────────────
 
 def test_accent_tiede(connector):

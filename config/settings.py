@@ -74,6 +74,15 @@ class Settings(BaseSettings):
     sendgrid_from_email: str = Field(default="noreply@proppilot.fr", alias="SENDGRID_FROM_EMAIL")
     sendgrid_from_name: str = Field(default="PropPilot", alias="SENDGRID_FROM_NAME")
 
+    # SMTP — fallback email CRM (ex: Hostinger)
+    smtp_host: Optional[str] = Field(default=None, alias="SMTP_HOST")
+    smtp_port: int = Field(default=587, alias="SMTP_PORT")
+    smtp_user: Optional[str] = Field(default=None, alias="SMTP_USER")
+    smtp_password: Optional[str] = Field(default=None, alias="SMTP_PASSWORD")
+    smtp_from_email: str = Field(default="contact@proppilot.fr", alias="SMTP_FROM_EMAIL")
+    smtp_from_name: str = Field(default="PropPilot", alias="SMTP_FROM_NAME")
+    smtp_use_tls: bool = Field(default=True, alias="SMTP_USE_TLS")
+
     # Google Calendar
     google_calendar_id: str = Field(default="primary", alias="GOOGLE_CALENDAR_ID")
     google_service_account_json: Optional[str] = Field(default=None, alias="GOOGLE_SERVICE_ACCOUNT_JSON")
@@ -183,6 +192,12 @@ class Settings(BaseSettings):
         if self.testing or self.mock_mode == "always":
             return False
         return bool(self.sendgrid_api_key)
+
+    @property
+    def smtp_available(self) -> bool:
+        if self.testing or self.mock_mode == "always":
+            return False
+        return bool(self.smtp_host and self.smtp_user and self.smtp_password)
 
     @property
     def stripe_available(self) -> bool:

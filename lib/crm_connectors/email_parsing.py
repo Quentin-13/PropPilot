@@ -15,6 +15,7 @@ import logging
 from datetime import datetime
 from typing import Optional
 
+from config.settings import get_settings
 from lib.crm_connectors.base import CRMConnector
 
 logger = logging.getLogger(__name__)
@@ -173,16 +174,27 @@ class EmailParsingConnector(CRMConnector):
         ]
         return "\n".join(lines)
 
-    # ─── Envoi SendGrid ────────────────────────────────────────────────────────
+    # ─── Envoi : SendGrid prioritaire, SMTP en fallback ───────────────────────
 
     def _send(self, subject: str, body: str) -> bool:
-        from config.settings import get_settings
         s = get_settings()
 
-        if not s.sendgrid_available:
+        if not s.sendgrid_available and not s.smtp_available:
             logger.info("[MOCK][Email CRM] subject=%s → %s", subject[:60], self._target_email)
             return True
 
+        if s.sendgrid_available:
+            ok = self._send_via_sendgrid(subject, body, s)
+            if ok:
+                return True
+            logger.warning("[Email CRM] SendGrid échoué — bascule sur SMTP")
+
+        if s.smtp_available:
+            return self._send_via_smtp(subject, body, s)
+
+        return False
+
+    def _send_via_sendgrid(self, subject: str, body: str, s) -> bool:
         try:
             from sendgrid import SendGridAPIClient
             from sendgrid.helpers.mail import Mail, ReplyTo
@@ -200,10 +212,35 @@ class EmailParsingConnector(CRMConnector):
             response = sg.send(mail)
             success = response.status_code in (200, 201, 202)
             if success:
-                logger.info("[Email CRM] Envoyé → %s (status %s)", self._target_email, response.status_code)
+                logger.info("[Email CRM][SendGrid] Envoyé → %s (status %s)", self._target_email, response.status_code)
             else:
-                logger.warning("[Email CRM] Échec → %s (status %s)", self._target_email, response.status_code)
+                logger.warning("[Email CRM][SendGrid] Échec → %s (status %s body=%s)", self._target_email, response.status_code, response.body)
             return success
         except Exception as e:
-            logger.error("[Email CRM] Erreur SendGrid : %s", e)
+            logger.error("[Email CRM][SendGrid] Erreur : %s", e)
+            return False
+
+    def _send_via_smtp(self, subject: str, body: str, s) -> bool:
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.utils import formataddr
+
+        try:
+            msg = MIMEText(body, "plain", "utf-8")
+            msg["Subject"] = subject
+            msg["From"] = formataddr((s.smtp_from_name or "PropPilot", s.smtp_from_email))
+            msg["To"] = self._target_email
+            if self._reply_to_email:
+                msg["Reply-To"] = self._reply_to_email
+
+            with smtplib.SMTP(s.smtp_host, s.smtp_port, timeout=15) as server:
+                if s.smtp_use_tls:
+                    server.starttls()
+                server.login(s.smtp_user, s.smtp_password)
+                server.sendmail(s.smtp_from_email, [self._target_email], msg.as_string())
+
+            logger.info("[Email CRM][SMTP] Envoyé → %s via %s", self._target_email, s.smtp_host)
+            return True
+        except Exception as e:
+            logger.error("[Email CRM][SMTP] Erreur : %s", e)
             return False
