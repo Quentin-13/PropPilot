@@ -103,16 +103,31 @@ def assign_available_phone_number(client_id: str) -> Optional[str]:
 
 
 def get_assigned_number(client_id: str) -> Optional[str]:
-    """Retourne le numéro PropPilot du client, ou None si aucun assigné."""
+    """
+    Retourne le numéro PropPilot du client.
+
+    Priorité :
+    1. phone_numbers.phone_number (pool géré) — source primaire
+    2. users.twilio_sms_number — backward compat (numéros pré-pool)
+
+    Pour un pilote multi-agents, créer un compte par agent afin d'attribuer
+    un numéro PropPilot distinct à chacun.
+    """
     if not client_id:
         return None
     try:
         with get_connection() as conn:
-            row = conn.execute(
+            pool_row = conn.execute(
+                "SELECT phone_number FROM phone_numbers WHERE client_id = %s LIMIT 1",
+                (client_id,),
+            ).fetchone()
+            if pool_row and pool_row["phone_number"]:
+                return pool_row["phone_number"]
+            user_row = conn.execute(
                 "SELECT twilio_sms_number FROM users WHERE id = %s LIMIT 1",
                 (client_id,),
             ).fetchone()
-        return (row["twilio_sms_number"] or None) if row else None
+            return (user_row["twilio_sms_number"] or None) if user_row else None
     except Exception as exc:
         _log.error("[PhonePool] get_assigned_number erreur: %s", exc)
         return None

@@ -220,3 +220,68 @@ class TestWelcomeContext:
             ctx = get_client_welcome_context("client-001")
 
         assert ctx["crm_status"] == "configured"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# get_assigned_number
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestGetAssignedNumber:
+
+    def test_returns_pool_number_when_assigned(self):
+        """phone_numbers a un numéro pour ce client → priorité sur users."""
+        cm, conn = _mock_conn()
+        # Premier execute (phone_numbers) → numéro du pool
+        conn.execute.return_value.fetchone.side_effect = [
+            {"phone_number": "+33700000010"},   # phone_numbers
+        ]
+
+        with patch("memory.phone_numbers.get_connection", return_value=cm):
+            from memory.phone_numbers import get_assigned_number
+            result = get_assigned_number("client-pool")
+
+        assert result == "+33700000010"
+        conn.execute.assert_called_once()  # s'arrête après phone_numbers
+
+    def test_falls_back_to_twilio_sms_number(self):
+        """phone_numbers vide → retourne users.twilio_sms_number."""
+        cm, conn = _mock_conn()
+        conn.execute.return_value.fetchone.side_effect = [
+            None,                                        # phone_numbers : vide
+            {"twilio_sms_number": "+33700000011"},       # users : numéro legacy
+        ]
+
+        with patch("memory.phone_numbers.get_connection", return_value=cm):
+            from memory.phone_numbers import get_assigned_number
+            result = get_assigned_number("client-legacy")
+
+        assert result == "+33700000011"
+
+    def test_returns_none_when_no_number_assigned(self):
+        """Aucun numéro dans pool ni dans users → retourne None."""
+        cm, conn = _mock_conn()
+        conn.execute.return_value.fetchone.side_effect = [
+            None,                              # phone_numbers : vide
+            {"twilio_sms_number": None},       # users : pas de numéro
+        ]
+
+        with patch("memory.phone_numbers.get_connection", return_value=cm):
+            from memory.phone_numbers import get_assigned_number
+            result = get_assigned_number("client-nouveau")
+
+        assert result is None
+
+    def test_client_isolation(self):
+        """Deux clients ont des numéros distincts — pas de fuite."""
+        numbers = []
+        for i, cid in enumerate(["client-A", "client-B"]):
+            cm, conn = _mock_conn()
+            number = f"+3370000001{i}"
+            conn.execute.return_value.fetchone.side_effect = [
+                {"phone_number": number},
+            ]
+            with patch("memory.phone_numbers.get_connection", return_value=cm):
+                from memory.phone_numbers import get_assigned_number
+                numbers.append(get_assigned_number(cid))
+
+        assert numbers[0] != numbers[1]

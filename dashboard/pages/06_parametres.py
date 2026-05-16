@@ -51,6 +51,40 @@ st.title("Mes paramètres")
 st.caption("Configurez les informations de votre agence et vos préférences.")
 
 # ══════════════════════════════════════════════════════════════════════════════
+# SECTION 0 — Numéro PropPilot
+# ══════════════════════════════════════════════════════════════════════════════
+
+_prop_number: str | None = None
+try:
+    from memory.phone_numbers import get_assigned_number
+    _prop_number = get_assigned_number(client_id)
+except Exception:
+    pass
+
+st.markdown("### 📞 Votre numéro PropPilot")
+
+if _prop_number:
+    st.markdown(
+        f'<div style="background:#1e2130;border-radius:10px;padding:20px 24px;'
+        f'border-left:4px solid #10b981;margin-bottom:8px;">'
+        f'<div style="color:#94a3b8;font-size:0.78rem;letter-spacing:0.08em;margin-bottom:8px;">NUMÉRO ACTIF</div>'
+        f'<div style="font-size:1.7rem;font-weight:800;color:white;font-family:monospace;letter-spacing:0.06em;">'
+        f'{_prop_number}</div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+    st.code(_prop_number, language=None)
+    st.caption(
+        "Utilisez ce numéro sur les annonces ou le flux de leads du pilote. "
+        "Les appels entrants et SMS reçus sur ce numéro sont captés par PropPilot."
+    )
+else:
+    st.info(
+        "Votre numéro PropPilot est en cours d'attribution. "
+        "L'équipe PropPilot vous accompagne pendant le pilote."
+    )
+
+# ══════════════════════════════════════════════════════════════════════════════
 # SECTION 1 — Identité de l'agence
 # ══════════════════════════════════════════════════════════════════════════════
 
