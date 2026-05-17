@@ -40,34 +40,6 @@ class OutboundCallResponse(BaseModel):
     message: str
 
 
-# ── TwiML pour les appels sortants ───────────────────────────────────────────
-
-def _build_outbound_agent_twiml(
-    lead_phone: str,
-    legal_short_text: str,
-    recording_cb: str,
-    status_cb: str,
-) -> str:
-    """
-    TwiML servi à l'agent quand il décroche.
-    1. Mention courte ("Appel enregistré via PropPilot")
-    2. Mise en conférence avec enregistrement vers le lead
-    """
-    escaped = legal_short_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    return (
-        '<?xml version="1.0" encoding="UTF-8"?>'
-        "<Response>"
-        f'<Say language="fr-FR" voice="Polly.Léa">{escaped}</Say>'
-        f'<Dial record="record-from-answer" '
-        f'recordingStatusCallback="{recording_cb}" '
-        f'recordingStatusCallbackMethod="POST" '
-        f'action="{status_cb}">'
-        f"<Number>{lead_phone}</Number>"
-        f"</Dial>"
-        "</Response>"
-    )
-
-
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/outbound", response_model=OutboundCallResponse)
@@ -120,7 +92,11 @@ async def initiate_outbound_call(body: OutboundCallRequest, request: Request):
 
     # Caller ID : numéro Twilio de l'agence par défaut
     caller_id = body.caller_id or settings.twilio_sms_number or agent_phone
-    base_url = str(request.base_url).rstrip("/")
+
+    # Utilise les headers X-Forwarded pour obtenir l'URL publique (Railway / reverse proxy)
+    forwarded_proto = request.headers.get("X-Forwarded-Proto", request.url.scheme)
+    forwarded_host = request.headers.get("X-Forwarded-Host", request.url.netloc)
+    base_url = f"{forwarded_proto}://{forwarded_host}"
 
     if not settings.twilio_available:
         # Mock mode
@@ -151,16 +127,16 @@ async def initiate_outbound_call(body: OutboundCallRequest, request: Request):
 
     # Appel réel via Twilio
     try:
+        from urllib.parse import quote
         from twilio.rest import Client as TwilioClient
 
         twilio_client = TwilioClient(settings.twilio_account_sid, settings.twilio_auth_token)
 
-        # TwiML URL servi à l'agent quand il décroche
+        # TwiML public servi à l'agent quand il décroche — hors /api/ (pas de JWT requis)
         twiml_url = (
-            f"{base_url}/api/calls/outbound/twiml"
-            f"?lead_phone={lead_phone}"
-            f"&recording_cb={base_url}/webhooks/twilio/voice/recording"
-            f"&status_cb={base_url}/webhooks/twilio/voice/status"
+            f"{base_url}/webhooks/twilio/voice/outbound"
+            f"?lead_phone={quote(lead_phone, safe='')}"
+            f"&lead_id={quote(body.lead_id, safe='')}"
         )
 
         call = twilio_client.calls.create(
@@ -198,30 +174,6 @@ async def initiate_outbound_call(body: OutboundCallRequest, request: Request):
     except Exception as exc:
         logger.error("[Outbound] Twilio call creation failed: %s", exc)
         raise HTTPException(status_code=502, detail=f"Erreur Twilio : {exc}")
-
-
-@router.get("/outbound/twiml")
-async def outbound_twiml(
-    request: Request,
-    lead_phone: str,
-    recording_cb: str,
-    status_cb: str,
-):
-    """
-    TwiML retourné à l'agent quand il décroche l'appel sortant.
-    Joue la mention légale courte puis compose le numéro du lead.
-    """
-    from fastapi.responses import Response
-    from config.settings import get_settings
-
-    settings = get_settings()
-    twiml = _build_outbound_agent_twiml(
-        lead_phone=lead_phone,
-        legal_short_text=settings.legal_notice_short_text,
-        recording_cb=recording_cb,
-        status_cb=status_cb,
-    )
-    return Response(content=twiml, media_type="application/xml")
 
 
 @router.get("/{call_id}")

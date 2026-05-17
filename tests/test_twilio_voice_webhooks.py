@@ -396,3 +396,117 @@ def test_persist_incoming_call_no_client_id_skips_lead():
     create_call_kwargs = mock_create_call.call_args[1]
     assert create_call_kwargs["lead_id"] is None
     assert create_call_kwargs["client_id"] == ""
+
+
+# ── TwiML outbound bridge ─────────────────────────────────────────────────────
+
+def test_outbound_bridge_no_signature_rejected(client):
+    """Route /webhooks/twilio/voice/outbound sans signature → 403."""
+    resp = client.post(
+        "/webhooks/twilio/voice/outbound",
+        data={"CallSid": "CA999"},
+    )
+    assert resp.status_code == 403
+
+
+def test_outbound_bridge_returns_xml_with_dial(client_no_auth):
+    """lead_phone valide → TwiML avec <Dial><Number>."""
+    resp = client_no_auth.post(
+        "/webhooks/twilio/voice/outbound?lead_phone=%2B33600000001&lead_id=lead-001",
+        data={"CallSid": "CAoutbound001"},
+    )
+    assert resp.status_code == 200
+    assert "application/xml" in resp.headers["content-type"]
+    body = resp.text
+    assert "<Dial" in body
+    assert "<Number>+33600000001</Number>" in body
+    assert "record-from-answer" in body
+
+
+def test_outbound_bridge_no_lead_phone_returns_error_twiml(client_no_auth):
+    """lead_phone absent → TwiML d'erreur propre avec <Hangup/>."""
+    resp = client_no_auth.post(
+        "/webhooks/twilio/voice/outbound",
+        data={"CallSid": "CAoutbound002"},
+    )
+    assert resp.status_code == 200
+    assert "application/xml" in resp.headers["content-type"]
+    body = resp.text
+    assert "<Hangup" in body
+    assert "<Dial" not in body
+
+
+def test_outbound_bridge_no_jwt_needed(client_no_auth):
+    """Route publique — pas d'Authorization header requis."""
+    resp = client_no_auth.post(
+        "/webhooks/twilio/voice/outbound?lead_phone=%2B33699998888",
+        data={"CallSid": "CAoutbound003"},
+    )
+    # Accessible sans Bearer token (pas 401)
+    assert resp.status_code != 401
+
+
+def test_outbound_twiml_url_uses_public_route():
+    """initiate_outbound_call construit une URL pointant vers /webhooks/twilio/voice/outbound."""
+    _clear_settings()
+    with patch.dict(os.environ, {"JWT_SECRET_KEY": "test-secret", "TESTING": "true"}):
+        _clear_settings()
+
+        from datetime import datetime, timedelta, timezone
+        from jose import jwt as jose_jwt
+        expiry = datetime.now(tz=timezone.utc) + timedelta(hours=1)
+        token = jose_jwt.encode(
+            {"sub": "user-123", "plan": "Starter", "exp": expiry},
+            "test-secret",
+            algorithm="HS256",
+        )
+
+        created_calls = []
+
+        def _mock_create(to, from_, url, **kwargs):
+            created_calls.append({"to": to, "url": url})
+            mock_call = MagicMock()
+            mock_call.sid = "CAreal001"
+            return mock_call
+
+        mock_twilio_client = MagicMock()
+        mock_twilio_client.calls.create.side_effect = _mock_create
+
+        with patch("memory.lead_repository.get_lead") as mock_lead, \
+             patch("memory.database.get_connection") as mock_conn, \
+             patch("memory.call_repository.create_call", return_value="call-real-001"), \
+             patch("twilio.rest.Client", return_value=mock_twilio_client), \
+             patch("memory.stripe_billing.is_plan_active", return_value=True), \
+             patch.dict(os.environ, {
+                 "TWILIO_ACCOUNT_SID": "ACtest",
+                 "TWILIO_AUTH_TOKEN": "tok",
+                 "TWILIO_SMS_NUMBER": "+33700000001",
+                 "TESTING": "false",  # écrase le TESTING=true de l'outer context
+             }):
+            _clear_settings()
+
+            mock_lead_obj = MagicMock()
+            mock_lead_obj.telephone = "+33699998888"
+            mock_lead.return_value = mock_lead_obj
+            mock_conn.return_value.__enter__.return_value.execute.return_value.fetchone.return_value = {
+                "phone": "+33611112222",
+                "twilio_sms_number": "+33700000001",
+            }
+
+            from fastapi.testclient import TestClient
+            from server import app
+            with TestClient(app, raise_server_exceptions=False) as c:
+                resp = c.post(
+                    "/api/calls/outbound",
+                    json={"lead_id": "lead-001", "agent_id": "user-123", "lead_phone": "+33699998888"},
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+
+        assert resp.status_code == 200
+        assert len(created_calls) == 1
+        twiml_url = created_calls[0]["url"]
+        assert "/webhooks/twilio/voice/outbound" in twiml_url
+        assert "%2B33699998888" in twiml_url or "+33699998888" in twiml_url
+        assert "/api/calls/outbound/twiml" not in twiml_url
+
+    _clear_settings()

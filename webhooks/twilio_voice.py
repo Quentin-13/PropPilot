@@ -3,6 +3,7 @@ Webhooks Twilio Voice — appels entrants, enregistrement, statut.
 
 Routes :
     POST /webhooks/twilio/voice/incoming  — TwiML : mention légale + record + dial
+    POST /webhooks/twilio/voice/outbound  — TwiML : bridge agent → lead (appel sortant)
     POST /webhooks/twilio/voice/recording — Notification fin d'enregistrement
     POST /webhooks/twilio/voice/status    — Suivi du statut de l'appel
 
@@ -96,6 +97,37 @@ def _build_voicemail_twiml(recording_cb: str) -> str:
         f'<Record maxLength="120" action="{recording_cb}" '
         f'recordingStatusCallback="{recording_cb}" '
         f'recordingStatusCallbackMethod="POST" />'
+        "</Response>"
+    )
+
+
+def _build_outbound_bridge_twiml(lead_phone: str, recording_cb: str, status_cb: str) -> str:
+    """
+    TwiML servi à l'agent quand il décroche l'appel sortant.
+    Compose le numéro du lead et connecte les deux parties.
+    """
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        "<Response>"
+        '<Say language="fr-FR" voice="Polly.Lea-Neural">Connexion avec le prospect.</Say>'
+        f'<Dial record="record-from-answer" '
+        f'recordingStatusCallback="{recording_cb}" '
+        f'recordingStatusCallbackMethod="POST" '
+        f'action="{status_cb}">'
+        f"<Number>{lead_phone}</Number>"
+        f"</Dial>"
+        "</Response>"
+    )
+
+
+def _build_outbound_error_twiml() -> str:
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        "<Response>"
+        '<Say language="fr-FR" voice="Polly.Lea-Neural">'
+        "Impossible de joindre le prospect. Numéro invalide."
+        "</Say>"
+        "<Hangup/>"
         "</Response>"
     )
 
@@ -207,6 +239,37 @@ async def voice_voicemail(request: Request):
     except Exception as exc:
         logger.warning("[Voice] Could not update status for %s: %s", call_sid, exc)
 
+    return Response(content=twiml, media_type="application/xml")
+
+
+@router.post("/webhooks/twilio/voice/outbound", response_class=Response)
+async def voice_outbound_bridge(
+    request: Request,
+    lead_phone: str = "",
+    lead_id: str = "",
+):
+    """
+    TwiML déclenché quand l'agent décroche l'appel sortant initié par PropPilot.
+    Compose le numéro du lead et connecte les deux parties.
+
+    Route publique (pas de JWT) — validation signature Twilio uniquement.
+    Paramètres transmis en query string par /api/calls/outbound.
+    """
+    if not await validate_twilio_signature(request):
+        raise HTTPException(status_code=403, detail="Signature Twilio invalide")
+
+    forwarded_proto = request.headers.get("X-Forwarded-Proto", request.url.scheme)
+    forwarded_host = request.headers.get("X-Forwarded-Host", request.url.netloc)
+    base_url = f"{forwarded_proto}://{forwarded_host}"
+    recording_cb = f"{base_url}/webhooks/twilio/voice/recording"
+    status_cb = f"{base_url}/webhooks/twilio/voice/status"
+
+    if not lead_phone:
+        logger.warning("[Outbound TwiML] lead_phone manquant lead_id=%s", lead_id)
+        return Response(content=_build_outbound_error_twiml(), media_type="application/xml")
+
+    logger.info("[Outbound TwiML] Connexion agent → lead lead_phone=%s lead_id=%s", lead_phone, lead_id)
+    twiml = _build_outbound_bridge_twiml(lead_phone, recording_cb, status_cb)
     return Response(content=twiml, media_type="application/xml")
 
 
