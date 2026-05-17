@@ -173,7 +173,7 @@ def _compute_via_llm(lead_row: dict, lead_id: str) -> Optional[NextAction]:
             raw = raw.split("```")[1].split("```")[0].strip()
 
         data = json.loads(raw)
-        deadline = _parse_deadline(data.get("action_deadline_iso"))
+        deadline = _sanitize_deadline(_parse_deadline(data.get("action_deadline_iso")))
 
         return NextAction(
             label=(data.get("action_label") or "")[:80],
@@ -264,6 +264,8 @@ def _build_context(lead_row: dict, lead_id: str) -> dict:
         "silence_jours": silence_jours,
         "conversations": conversations,
         "calls_summary": calls_summary,
+        "current_date": now.strftime("%d/%m/%Y"),
+        "current_year": now.year,
     }
 
 
@@ -281,6 +283,8 @@ def _build_prompt(ctx: dict) -> str:
         else "Délai inconnu"
     )
 
+    next_year = ctx["current_year"] + 1
+
     return f"""Analyse ce lead immobilier et propose UNE action prioritaire pour l'agent.
 
 PROFIL LEAD :
@@ -290,6 +294,7 @@ PROFIL LEAD :
 - Statut pipeline : {ctx['statut']}
 - Motivation : {ctx['motivation'] or 'non précisée'}
 - Silence depuis dernier contact agent : {silence_text}
+- Date du jour (référence obligatoire pour toute date) : {ctx['current_date']}
 
 CONVERSATIONS SMS (chronologique) :
 {conv_text}
@@ -302,15 +307,22 @@ Réponds avec ce JSON exact (aucun texte autour) :
   "action_label": "<Action courte ≤80 car, en français naturel, actionnable>",
   "action_priority": "<haute|moyenne|basse>",
   "action_reason": "<Explication 1 phrase — pourquoi cette action maintenant>",
-  "action_deadline_iso": "<ISO 8601 ou null — ex: 2026-05-11T18:00:00+02:00>"
+  "action_deadline_iso": "<ISO 8601 ou null — ex: {next_year}-01-15T10:00:00+01:00>"
 }}
 
 Règles :
-- action_label doit être une instruction directe à l'agent (ex: "Rappeler avant 18h", "Envoyer SMS de réactivation")
+- action_label doit être une instruction directe à l'agent (ex: "Rappeler avant 18h", "Prévoir une relance début {next_year}")
 - haute = lead chaud non recontacté depuis > 24h OU silence > 48h OU urgence signalée
 - moyenne = action utile mais pas critique
 - basse = lead froid ou en nurturing long terme
-- deadline seulement si pertinente (rappel urgent, délai évoqué par le prospect)"""
+- deadline seulement si pertinente (rappel urgent, délai évoqué par le prospect)
+- RÈGLES DE DATE ABSOLUES (la date du jour est {ctx['current_date']}) :
+  * "l'année prochaine" → deadline en {next_year} (jamais {ctx['current_year']} si on est déjà en {ctx['current_year']})
+  * "dans 6 mois" → calculer depuis le {ctx['current_date']}
+  * "après l'été" → si on est avant septembre {ctx['current_year']}, deadline en septembre/octobre {ctx['current_year']} ; sinon septembre/octobre {next_year}
+  * "début d'année prochaine" → janvier/février {next_year}
+  * Ne JAMAIS proposer une deadline dans le passé — si le calcul donne une date passée, mettre action_deadline_iso à null
+  * Si l'intention est vague, préférer un wording sans date exacte plutôt qu'une date fausse"""
 
 
 def _mock_action(lead_row: dict) -> NextAction:
@@ -369,3 +381,17 @@ def _parse_deadline(iso_str: Optional[str]) -> Optional[datetime]:
         return dt
     except Exception:
         return None
+
+
+def _sanitize_deadline(deadline: Optional[datetime]) -> Optional[datetime]:
+    """Rejette une deadline passée — ne jamais afficher une action dont la date est révolue."""
+    if deadline is None:
+        return None
+    now = datetime.now().replace(tzinfo=None)
+    if deadline < now:
+        logger.warning(
+            "[NextAction] deadline dans le passé (%s) ignorée",
+            deadline.isoformat(),
+        )
+        return None
+    return deadline
