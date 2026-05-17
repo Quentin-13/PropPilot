@@ -541,3 +541,14 @@ with st.expander("➕ Ajouter un lead manuellement"):
                     create_lead(new_lead)
                     st.success(f"Lead {m_prenom} {m_nom} créé avec succès !")
                     st.rerun()
+
+# ─── Auto-refresh intelligent ─────────────────────────────────────────────────
+# Placé en dernier — le JS vérifie qu'aucun input n'est focus et qu'aucun champ
+# n'a de contenu avant de déclencher le reload (pas de perte de saisie).
+# Note : une sélection de ligne dans le tableau est réinitialisée au refresh
+# (comportement attendu sur un cockpit temps réel).
+try:
+    from dashboard.lib.auto_refresh import inject_smart_refresh
+    inject_smart_refresh(interval_seconds=60)
+except Exception:
+    pass

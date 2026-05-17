@@ -304,3 +304,13 @@ if reminders:
     with st.expander(f"Rappels planifiés ({len(reminders)})"):
         for r in reminders:
             _render_reminder_compact(r)
+
+# ─── Auto-refresh intelligent ─────────────────────────────────────────────────
+# Placé en dernier pour ne jamais interrompre les actions en cours.
+# Déclenche un reload uniquement si l'onglet est en arrière-plan
+# OU si l'utilisateur est inactif depuis 60 s, et qu'aucun input n'est focus.
+try:
+    from dashboard.lib.auto_refresh import inject_smart_refresh
+    inject_smart_refresh(interval_seconds=60)
+except Exception:
+    pass

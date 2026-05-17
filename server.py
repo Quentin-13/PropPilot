@@ -788,6 +788,36 @@ async def twilio_sms_incoming(request: Request, background_tasks: BackgroundTask
         except Exception as e:
             logger.error("[Twilio SMS] Extraction lead_id=%s: %s", lead_id, e)
 
+        # Notification SMS agent (non bloquant — exception capturée)
+        try:
+            from lib.agent_notifier import notify_agent_sms
+            from memory.lead_repository import get_lead
+            from config.settings import get_settings as _gs
+            _lead = get_lead(lead_id)
+            _lead_name = ""
+            if _lead:
+                _lead_name = (
+                    f"{_lead.prenom or ''} {_lead.nom or ''}".strip() or from_number
+                )
+            _next_action_label: str | None = None
+            try:
+                from lib.lead_extraction.next_action import compute_next_action
+                _na = compute_next_action(lead_id)
+                if _na:
+                    _next_action_label = _na.label
+            except Exception:
+                pass
+            notify_agent_sms(
+                client_id=_cid,
+                lead_id=lead_id,
+                lead_name=_lead_name or from_number,
+                from_number=from_number,
+                dashboard_url=_gs().dashboard_url,
+                next_action=_next_action_label,
+            )
+        except Exception as _notif_e:
+            logger.warning("[Twilio SMS] Agent notif lead_id=%s: %s", lead_id, _notif_e)
+
     background_tasks.add_task(_store)
 
     return Response(

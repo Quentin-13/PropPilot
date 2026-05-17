@@ -426,6 +426,62 @@ with st.expander("Préférences PropPilot", expanded=False):
         st.session_state["config_conseiller_titre"] = conseiller_titre
         st.success("Préférences PropPilot mises à jour.")
 
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION — Notifications SMS prospect
+# ══════════════════════════════════════════════════════════════════════════════
+
+st.markdown("---")
+st.markdown("### Notifications SMS prospect")
+st.caption(
+    "Recevez une alerte sur votre téléphone personnel dès qu'un prospect vous envoie un SMS. "
+    "Nécessite que votre numéro de téléphone soit renseigné ci-dessus."
+)
+
+_notif_enabled = True
+try:
+    from memory.database import get_connection as _gc_notif
+    with _gc_notif() as _c_notif:
+        _r_notif = _c_notif.execute(
+            "SELECT sms_notif_enabled FROM users WHERE id = %s LIMIT 1",
+            (client_id,),
+        ).fetchone()
+        if _r_notif:
+            raw = _r_notif.get("sms_notif_enabled")
+            _notif_enabled = raw if raw is not None else True
+except Exception:
+    pass
+
+with st.form("notif_sms_form"):
+    notif_toggle = st.checkbox(
+        "Recevoir les notifications SMS prospect",
+        value=bool(_notif_enabled),
+        help=(
+            "Quand un prospect écrit via votre numéro PropPilot, vous recevez "
+            "une alerte courte sur votre téléphone personnel (max 1 alerte / 10 min par lead)."
+        ),
+    )
+    notif_save = st.form_submit_button("Enregistrer", type="primary")
+
+if notif_save:
+    if notif_toggle and not current_phone:
+        st.warning(
+            "Renseignez d'abord votre numéro de téléphone (section Identité) "
+            "pour recevoir les notifications."
+        )
+    else:
+        try:
+            from memory.database import get_connection as _gc_notif2
+            with _gc_notif2() as _c_notif2:
+                _c_notif2.execute(
+                    "UPDATE users SET sms_notif_enabled = %s WHERE id = %s",
+                    (notif_toggle, client_id),
+                )
+            st.success(
+                "Notifications activées." if notif_toggle else "Notifications désactivées."
+            )
+        except Exception as _ne:
+            st.error(f"Erreur lors de la sauvegarde : {_ne}")
+
 # ── Onboarding ─────────────────────────────────────────────────────────────────
 
 st.markdown("---")

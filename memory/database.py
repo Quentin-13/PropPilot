@@ -329,6 +329,10 @@ def _run_migrations(conn) -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS smspartner_number TEXT DEFAULT NULL",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS twilio_sms_number TEXT DEFAULT NULL",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name TEXT DEFAULT NULL",
+        # Numéro personnel agent (pour notifications SMS et click-to-call)
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT DEFAULT NULL",
+        # Préférence notifications SMS prospect (true par défaut)
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS sms_notif_enabled BOOLEAN DEFAULT TRUE",
     ]:
         conn.execute(col_sql)
 
