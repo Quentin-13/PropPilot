@@ -6,7 +6,7 @@ Compatible avec tous les CRM qui importent des leads depuis leur boîte mail
 (Netty, Hektor, Modelo Office, Périclès, Krea, etc.).
 
 Sujet  : [PropPilot] Mise à jour lead — {nom ou tel} — {chaud/tiède/froid}
-Corps  : champs structurés + historique conversations pour parsing CRM
+Corps  : champs structurés pour parsing CRM (résumé, qualification, prochaine action)
 Reply-To : email du client PropPilot (pour recevoir les réponses du CRM)
 """
 from __future__ import annotations
@@ -111,7 +111,6 @@ class EmailParsingConnector(CRMConnector):
         resume     = _s(lead_data.get("resume"))
         prochaine_action = _s(lead_data.get("next_action_label"))
         raison     = _s(lead_data.get("next_action_reason"))
-        historique = _s(lead_data.get("conversation_history")) or "(Aucun échange enregistré)"
 
         def _opt(label: str, val: str) -> list[str]:
             """Retourne [label: val] seulement si val est non vide."""
@@ -167,8 +166,6 @@ class EmailParsingConnector(CRMConnector):
 
         lines += [
             "",
-            "HISTORIQUE_CONVERSATIONS:",
-            historique,
             "---",
             "PropPilot — Mise à jour automatique",
         ]

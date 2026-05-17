@@ -87,7 +87,7 @@ def test_body_contient_tous_les_champs_spec(connector, lead_complet):
     assert "RESUME:" in body
     assert "PROCHAINE_ACTION:" in body
     assert "RAISON:" in body
-    assert "HISTORIQUE_CONVERSATIONS:" in body
+    assert "HISTORIQUE_CONVERSATIONS:" not in body
     assert "PropPilot — Mise à jour automatique" in body
 
 
@@ -111,7 +111,6 @@ def test_body_valeurs_correctes(connector, lead_complet):
     assert "Financement à confirmer" in body
     assert "prêt bancaire" in body
     assert "Rappeler sous 2h" in body
-    assert "[SMS IN" in body
 
 
 # ─── Test 3 : sujet production ────────────────────────────────────────────────
