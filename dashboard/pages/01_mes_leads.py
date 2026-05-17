@@ -285,7 +285,7 @@ else:
                 st.markdown(f"**Résumé automatique :** *{selected_lead.resume}*")
 
             # ── Actions ───────────────────────────────────────────────────────
-            act_col1, act_col2, act_col3 = st.columns(3)
+            act_col1, act_col2 = st.columns(2)
 
             # Numéro agent — lu une seule fois
             _agent_phone = None
@@ -340,22 +340,6 @@ else:
                             st.error(f"Impossible de joindre l'API : {exc}")
 
             with act_col2:
-                if st.button("Envoyer SMS", key=f"sms_{lead_id}"):
-                    if selected_lead.telephone:
-                        from tools.twilio_tool import TwilioTool
-                        twilio = TwilioTool()
-                        result = twilio.send_sms(
-                            to=selected_lead.telephone,
-                            body=f"Bonjour {selected_lead.prenom} ! Votre conseiller {agency_name} souhaite vous rappeler. Êtes-vous disponible maintenant ?",
-                        )
-                        if result["success"]:
-                            st.success(f"SMS {'(démo) ' if result.get('mock') else ''}envoyé.")
-                        else:
-                            st.error("Erreur lors de l'envoi du SMS.")
-                    else:
-                        st.warning("Numéro de téléphone inconnu pour ce lead.")
-
-            with act_col3:
                 # Bouton actif uniquement si une prochaine action est définie
                 if _na.get("next_action_label"):
                     if st.button("Marquer comme fait", key=f"done_{lead_id}"):
