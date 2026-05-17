@@ -7,7 +7,8 @@ dans un ordre chronologique strict.
 Format de sortie :
     [SMS IN  - 2026-05-05 14:32] Bonjour, je cherche une maison à Toulouse...
     [SMS OUT - 2026-05-06 10:45] Bonjour, voici une sélection de biens.
-    [CALL    - 2026-05-06 10:15] (transcription complète Whisper)
+    [CALL IN  - 2026-05-06 10:15] (transcription appel entrant Whisper)
+    [CALL OUT - 2026-05-06 10:20] (transcription appel sortant Whisper)
 
 Garantit l'isolation client_id — ne mélange jamais les données de clients distincts.
 """
@@ -87,7 +88,7 @@ def build_lead_conversation_transcript(lead_id: str, client_id: str) -> str:
         with get_connection() as conn:
             rows = conn.execute(
                 """
-                SELECT started_at, transcript_text
+                SELECT started_at, transcript_text, direction
                 FROM calls
                 WHERE lead_id = %s AND client_id = %s
                   AND transcript_text IS NOT NULL AND transcript_text <> ''
@@ -100,7 +101,9 @@ def build_lead_conversation_transcript(lead_id: str, client_id: str) -> str:
             dt = _to_dt(row["started_at"])
             ts = _format_ts(row["started_at"])
             text = (row.get("transcript_text") or "").strip()
-            events.append((dt, f"[CALL    - {ts}] {text}"))
+            direction = (row.get("direction") or "inbound").lower()
+            tag = "CALL IN " if direction == "inbound" else "CALL OUT"
+            events.append((dt, f"[{tag} - {ts}] {text}"))
 
     except Exception as exc:
         logger.warning("[Transcript] Calls lead_id=%s client=%s: %s", lead_id, client_id, exc)
