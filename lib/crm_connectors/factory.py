@@ -298,6 +298,7 @@ def _get_connector_and_type(client_id: str) -> tuple[Optional[CRMConnector], str
                 (client_id,),
             ).fetchone()
         if not row:
+            logger.warning("[CRM Push] Client inconnu — push impossible client_id=%s", client_id)
             return None, "none"
 
         crm_type = row["crm_type"] or "none"
@@ -320,9 +321,10 @@ def _get_connector_and_type(client_id: str) -> tuple[Optional[CRMConnector], str
             ), "apimo"
 
         if crm_type == "email":
+            from lib.crm_connectors.email_parsing import EmailParsingConnector
             target_email = config.get("target_email", "")
             if not target_email:
-                logger.warning("[CRM Factory] crm_type=email mais target_email vide — skip")
+                logger.warning("[CRM Push] crm_type=email — target_email non configuré, push skippé")
                 return None, "email"
             return EmailParsingConnector(
                 target_email=target_email,

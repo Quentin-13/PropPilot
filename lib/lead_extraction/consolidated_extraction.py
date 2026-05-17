@@ -65,6 +65,8 @@ def extract_and_update_lead(lead_id: str, client_id: str):
             lead_data = build_lead_data_from_db(lead_id)
             if lead_data:
                 push_lead_to_crm(client_id=client_id, lead_data=lead_data)
+            else:
+                logger.warning("[CRM Push] lead_data introuvable — push skippé lead_id=%s", lead_id)
         except Exception as crm_exc:
             logger.warning("[Consolidated] CRM push lead_id=%s: %s", lead_id, crm_exc)
 
