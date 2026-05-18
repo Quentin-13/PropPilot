@@ -161,59 +161,87 @@ def get_dashboard_kpis(client_id: str, period_days: int = 7) -> dict:
                 "leads_enrichis": 0, "envois_crm": 0, "actions_recommandees": 0}
 
 
+# Filtres canoniques avec alias 'ce.' — source de vérité unique pour stats ET détail.
+# Règles métier :
+#   budgets     : au moins un prix > 0 renseigné
+#   zones       : texte géographique utile (exclut null, '', 'inconnu', 'non renseigné', …)
+#   types_bien  : type précis (exclut 'autre', valeurs génériques)
+#   motivations : motivation précise (exclut 'autre', valeurs génériques)
+#   financements: objet JSON non vide (exclut null et {})
+#   objections  : au moins un point renseigné dans la liste
 _CATEGORY_FILTER: dict[str, str] = {
-    "budgets":     "ce.budget_min IS NOT NULL OR ce.budget_max IS NOT NULL",
-    "zones":       "ce.zone_geographique IS NOT NULL AND ce.zone_geographique != ''",
-    "types_bien":  "ce.type_bien IS NOT NULL AND ce.type_bien != ''",
-    "motivations": "ce.motivation IS NOT NULL AND ce.motivation != ''",
-    "financements":"ce.financement IS NOT NULL AND ce.financement <> '{}'::jsonb",
-    "objections":  "ce.points_attention IS NOT NULL AND jsonb_array_length(ce.points_attention) > 0",
+    "budgets": (
+        "(ce.budget_min IS NOT NULL AND ce.budget_min > 0)"
+        " OR (ce.budget_max IS NOT NULL AND ce.budget_max > 0)"
+    ),
+    "zones": (
+        "ce.zone_geographique IS NOT NULL AND ce.zone_geographique != ''"
+        " AND lower(ce.zone_geographique) NOT IN"
+        " ('null', 'non renseigné', 'non renseignée', 'inconnu', 'inconnue', 'n/a')"
+    ),
+    "types_bien": (
+        "ce.type_bien IS NOT NULL AND ce.type_bien != ''"
+        " AND lower(ce.type_bien) NOT IN ('autre', 'null', 'inconnu', 'inconnue', 'n/a')"
+    ),
+    "motivations": (
+        "ce.motivation IS NOT NULL AND ce.motivation != ''"
+        " AND lower(ce.motivation) NOT IN ('autre', 'null', 'inconnu', 'inconnue', 'n/a')"
+    ),
+    "financements": (
+        "ce.financement IS NOT NULL AND ce.financement <> '{}'::jsonb"
+    ),
+    "objections": (
+        "ce.points_attention IS NOT NULL AND jsonb_array_length(ce.points_attention) > 0"
+    ),
 }
+
+_FILTER_KEYS = ("budgets", "zones", "types_bien", "motivations", "financements", "objections")
+
+
+def _no_alias(f: str) -> str:
+    """Retire le préfixe 'ce.' pour les requêtes sur table unique (sans JOIN)."""
+    return f.replace("ce.", "")
 
 
 def get_detected_info_stats(client_id: str, period_days: int = 7) -> dict:
     """
     Compte les leads distincts ayant une information clé extraite sur la période.
     Source : conversation_extractions (extraction_status='ok').
+    Utilise _CATEGORY_FILTER comme source de vérité — même prédicats que get_detected_info_detail.
     """
     since = datetime.now() - timedelta(days=period_days)
+    _select = ",\n                     ".join(
+        f"COUNT(DISTINCT lead_id) FILTER (WHERE {_no_alias(_CATEGORY_FILTER[k])}) AS {k}"
+        for k in _FILTER_KEYS
+    )
     try:
         with get_connection() as conn:
             row = conn.execute(
-                """SELECT
-                     COUNT(DISTINCT lead_id) FILTER (WHERE budget_min IS NOT NULL
-                                         OR budget_max IS NOT NULL) AS budgets,
-                     COUNT(DISTINCT lead_id) FILTER (WHERE zone_geographique IS NOT NULL
-                                         AND zone_geographique != '') AS zones,
-                     COUNT(DISTINCT lead_id) FILTER (WHERE type_bien IS NOT NULL
-                                         AND type_bien != '') AS types_bien,
-                     COUNT(DISTINCT lead_id) FILTER (WHERE motivation IS NOT NULL
-                                         AND motivation != '') AS motivations,
-                     COUNT(DISTINCT lead_id) FILTER (WHERE financement IS NOT NULL
-                                         AND financement <> '{}'::jsonb) AS financements,
-                     COUNT(DISTINCT lead_id) FILTER (WHERE points_attention IS NOT NULL
-                                         AND jsonb_array_length(points_attention) > 0) AS objections
+                f"""SELECT {_select}
                    FROM conversation_extractions
                    WHERE client_id = ? AND extraction_status = 'ok' AND extracted_at >= ?""",
                 (client_id, since),
             ).fetchone()
         if row:
-            return {k: row[k] or 0
-                    for k in ("budgets", "zones", "types_bien", "motivations", "financements", "objections")}
+            return {k: row[k] or 0 for k in _FILTER_KEYS}
     except Exception as e:
         logger.warning("[Cockpit] get_detected_info_stats: %s", e)
-    return {"budgets": 0, "zones": 0, "types_bien": 0, "motivations": 0, "financements": 0, "objections": 0}
+    return {k: 0 for k in _FILTER_KEYS}
 
 
 def get_detected_info_detail(client_id: str, category: str, period_days: int = 30) -> list[dict]:
     """
-    Retourne un enregistrement par lead distinct (extraction la plus récente sur la période).
+    Retourne un enregistrement par lead distinct (valeurs de la dernière extraction).
+    Sélection : leads ayant AU MOINS UNE extraction OK sur la période avec le champ renseigné.
+    Garantit : len(résultat) == get_detected_info_stats(...)[category] pour la même période.
     category : budgets | zones | types_bien | motivations | financements | objections
     """
     cat_filter = _CATEGORY_FILTER.get(category)
     if not cat_filter:
         return []
     since = datetime.now() - timedelta(days=period_days)
+    # Sous-requête : leads qualifiés (toute extraction dans la période passe le filtre)
+    # Requête principale : dernière extraction par lead (DISTINCT ON) pour les valeurs à afficher
     try:
         with get_connection() as conn:
             rows = conn.execute(
@@ -225,14 +253,57 @@ def get_detected_info_detail(client_id: str, category: str, period_days: int = 3
                 FROM conversation_extractions ce
                 LEFT JOIN leads l ON l.id = ce.lead_id
                 WHERE ce.client_id = ? AND ce.extraction_status = 'ok' AND ce.extracted_at >= ?
-                  AND ({cat_filter})
+                  AND ce.lead_id IN (
+                    SELECT DISTINCT lead_id
+                    FROM conversation_extractions
+                    WHERE client_id = ? AND extraction_status = 'ok' AND extracted_at >= ?
+                      AND ({_no_alias(cat_filter)})
+                  )
                 ORDER BY ce.lead_id, ce.extracted_at DESC
+                """,
+                (client_id, since, client_id, since),
+            ).fetchall()
+        return [dict(r) for r in rows]
+    except Exception as e:
+        logger.warning("[Cockpit] get_detected_info_detail: %s", e)
+        return []
+
+
+def get_detected_info_matrix(client_id: str, period_days: int = 30) -> list[dict]:
+    """
+    Matrice de débogage : un enregistrement par lead distinct sur la période,
+    avec un flag booléen par catégorie d'information détectée (any extraction).
+    Non exposé dans l'UI client — usage admin et tests uniquement.
+    """
+    since = datetime.now() - timedelta(days=period_days)
+    try:
+        with get_connection() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT
+                    ce.lead_id,
+                    COALESCE(
+                        NULLIF(trim(COALESCE(l.prenom,'') || ' ' || COALESCE(l.nom,'')), ' '),
+                        l.telephone, 'Prospect'
+                    ) AS display_name,
+                    bool_or({_CATEGORY_FILTER["budgets"]})      AS has_budget,
+                    bool_or({_CATEGORY_FILTER["zones"]})        AS has_zone,
+                    bool_or({_CATEGORY_FILTER["types_bien"]})   AS has_type_bien,
+                    bool_or({_CATEGORY_FILTER["motivations"]})  AS has_motivation,
+                    bool_or({_CATEGORY_FILTER["financements"]}) AS has_financement,
+                    bool_or({_CATEGORY_FILTER["objections"]})   AS has_points_attention,
+                    MAX(ce.extracted_at)                        AS extracted_at
+                FROM conversation_extractions ce
+                LEFT JOIN leads l ON l.id = ce.lead_id
+                WHERE ce.client_id = ? AND ce.extraction_status = 'ok' AND ce.extracted_at >= ?
+                GROUP BY ce.lead_id, l.prenom, l.nom, l.telephone
+                ORDER BY MAX(ce.extracted_at) DESC
                 """,
                 (client_id, since),
             ).fetchall()
         return [dict(r) for r in rows]
     except Exception as e:
-        logger.warning("[Cockpit] get_detected_info_detail: %s", e)
+        logger.warning("[Cockpit] get_detected_info_matrix: %s", e)
         return []
 
 

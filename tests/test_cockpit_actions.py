@@ -621,3 +621,325 @@ def test_detail_financements_non_vide_retourne_lignes():
 
     assert len(rows) == 1
     assert rows[0]["lead_id"] == "lead-fin-1"
+
+
+# ─── Tests Task 4 : filtres renforcés et cohérence ───────────────────────────
+
+def test_stats_sql_filtre_budget_strictement_positif():
+    """
+    Le filtre budgets exige budget_min > 0 ou budget_max > 0.
+    Un lead avec budget_min=0 et budget_max=0 ne doit pas être compté.
+    Vérifie que le SQL généré contient la condition > 0.
+    """
+    from dashboard.lib.cockpit import get_detected_info_stats
+
+    _row = MagicMock()
+    _row.__getitem__ = lambda s, k: 0
+    _row.get = lambda k, d=0: 0
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = _row
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        get_detected_info_stats("client-001", period_days=7)
+
+    sql = mock_conn.execute.call_args[0][0]
+    assert "budget_min > 0" in sql or "budget_max > 0" in sql, (
+        "Filtre budgets doit exiger > 0, pas seulement IS NOT NULL"
+    )
+
+
+def test_stats_sql_filtre_points_attention_tableau_non_vide():
+    """
+    Le filtre objections doit rejeter points_attention=[].
+    Vérifie que le SQL utilise jsonb_array_length(...) > 0.
+    """
+    from dashboard.lib.cockpit import get_detected_info_stats
+
+    _row = MagicMock()
+    _row.__getitem__ = lambda s, k: 0
+    _row.get = lambda k, d=0: 0
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = _row
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        get_detected_info_stats("client-001", period_days=7)
+
+    sql = mock_conn.execute.call_args[0][0]
+    assert "jsonb_array_length" in sql, (
+        "Filtre objections doit utiliser jsonb_array_length pour exclure []"
+    )
+
+
+def test_stats_sql_filtre_financement_vide_exclu():
+    """
+    Le filtre financements doit rejeter financement={}.
+    Vérifie que le SQL contient <> '{}' ou != '{}' (JSONB vide exclu).
+    """
+    from dashboard.lib.cockpit import get_detected_info_stats
+
+    _row = MagicMock()
+    _row.__getitem__ = lambda s, k: 0
+    _row.get = lambda k, d=0: 0
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = _row
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        get_detected_info_stats("client-001", period_days=7)
+
+    sql = mock_conn.execute.call_args[0][0]
+    assert "<> '{}'" in sql or "!= '{}'" in sql, (
+        "Filtre financements doit exclure le JSONB vide '{}'"
+    )
+
+
+def test_stats_sql_exclut_valeurs_generiques():
+    """
+    Les filtres zones, types_bien et motivations excluent les valeurs génériques
+    ('inconnu', 'autre', 'non renseigné', 'n/a', …).
+    Vérifie que le SQL généré contient NOT IN avec ces valeurs.
+    """
+    from dashboard.lib.cockpit import get_detected_info_stats
+
+    _row = MagicMock()
+    _row.__getitem__ = lambda s, k: 0
+    _row.get = lambda k, d=0: 0
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = _row
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        get_detected_info_stats("client-001", period_days=7)
+
+    sql = mock_conn.execute.call_args[0][0]
+    assert "NOT IN" in sql, "SQL doit exclure les valeurs génériques avec NOT IN"
+    assert "inconnu" in sql.lower(), "SQL doit exclure 'inconnu'"
+    assert "autre" in sql.lower(), "SQL doit exclure 'autre' (types_bien et motivations)"
+    assert "non renseigné" in sql.lower(), "SQL doit exclure 'non renseigné'"
+
+
+def test_stats_lead_unique_plusieurs_extractions_compte_une_fois():
+    """
+    Un même lead avec 3 extractions budget doit être compté 1 fois (DISTINCT).
+    Ce test vérifie le comportement quand la DB retourne 1 (déjà dédupliqué côté SQL).
+    """
+    from dashboard.lib.cockpit import get_detected_info_stats
+
+    _row = MagicMock()
+    _row.__getitem__ = lambda s, k: 1
+    _row.get = lambda k, d=0: 1
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = _row
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        stats = get_detected_info_stats("client-001", period_days=7)
+
+    assert stats["budgets"] == 1, "Lead compté deux fois au lieu d'une"
+    sql = mock_conn.execute.call_args[0][0]
+    assert "COUNT(DISTINCT" in sql, "SQL doit déduplicuer avec COUNT(DISTINCT lead_id)"
+
+
+def test_stats_filtre_periode_extraction():
+    """
+    Seules les extractions dans la fenêtre temporelle sont prises en compte.
+    Vérifie que le SQL contient extracted_at >= ?.
+    """
+    from dashboard.lib.cockpit import get_detected_info_stats
+
+    _row = MagicMock()
+    _row.__getitem__ = lambda s, k: 0
+    _row.get = lambda k, d=0: 0
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = _row
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        get_detected_info_stats("client-001", period_days=7)
+
+    sql = mock_conn.execute.call_args[0][0]
+    params = mock_conn.execute.call_args[0][1]
+    assert "extracted_at" in sql, "SQL doit filtrer par extracted_at"
+    # La date seuil doit être dans les paramètres (2e param après client_id)
+    assert len(params) >= 2, "SQL doit recevoir client_id + date seuil en paramètres"
+
+
+def test_coherence_stats_detail_utilisent_meme_filtre():
+    """
+    Stats et détail utilisent _CATEGORY_FILTER comme source de vérité unique.
+    Pour chaque catégorie, les deux fonctions doivent inclure le même prédicat
+    dans leur SQL (garantit que compteur == len(détail)).
+    """
+    from dashboard.lib.cockpit import (
+        _CATEGORY_FILTER, _FILTER_KEYS, _no_alias,
+        get_detected_info_stats, get_detected_info_detail,
+    )
+
+    mock_cursor_stats = MagicMock()
+    _row = MagicMock()
+    _row.__getitem__ = lambda s, k: 0
+    _row.get = lambda k, d=0: 0
+    mock_cursor_stats.fetchone.return_value = _row
+
+    mock_cursor_detail = MagicMock()
+    mock_cursor_detail.fetchall.return_value = []
+
+    mock_conn = MagicMock()
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    for cat in _FILTER_KEYS:
+        expected_fragment = _no_alias(_CATEGORY_FILTER[cat])[:30]  # 30 premiers chars suffisent
+
+        mock_conn.execute.return_value = mock_cursor_stats
+        with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+            get_detected_info_stats("client-coh", period_days=30)
+        sql_stats = mock_conn.execute.call_args[0][0]
+
+        mock_conn.execute.return_value = mock_cursor_detail
+        with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+            get_detected_info_detail("client-coh", cat, period_days=30)
+        sql_detail = mock_conn.execute.call_args[0][0]
+
+        assert expected_fragment in sql_stats, (
+            f"Catégorie '{cat}': fragment '{expected_fragment}' absent du SQL stats"
+        )
+        assert expected_fragment in sql_detail, (
+            f"Catégorie '{cat}': fragment '{expected_fragment}' absent du SQL détail"
+        )
+
+
+def test_stats_isolation_client_id():
+    """
+    get_detected_info_stats transmet client_id en paramètre SQL.
+    Un appel pour client-A ne peut pas retourner les données de client-B.
+    """
+    from dashboard.lib.cockpit import get_detected_info_stats
+
+    _row = MagicMock()
+    _row.__getitem__ = lambda s, k: 0
+    _row.get = lambda k, d=0: 0
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = _row
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        get_detected_info_stats("client-ALPHA", period_days=7)
+
+    params = mock_conn.execute.call_args[0][1]
+    assert "client-ALPHA" in params, "client_id doit être passé en paramètre SQL (pas interpolé)"
+
+
+def test_detail_sousrequete_garantit_coherence():
+    """
+    get_detected_info_detail utilise une sous-requête IN pour sélectionner les leads
+    où AU MOINS UNE extraction passe le filtre — garantit cohérence avec stats.
+    Vérifie que le SQL contient un sous-SELECT avec DISTINCT lead_id.
+    """
+    from dashboard.lib.cockpit import get_detected_info_detail
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchall.return_value = []
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    for cat in ("budgets", "zones", "financements", "objections"):
+        with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+            get_detected_info_detail("client-001", cat, period_days=30)
+
+        sql = mock_conn.execute.call_args[0][0]
+        assert "IN (" in sql or "lead_id IN" in sql, (
+            f"Catégorie '{cat}' : SQL doit utiliser une sous-requête IN pour garantir la cohérence"
+        )
+        assert "SELECT DISTINCT lead_id" in sql or "DISTINCT lead_id" in sql, (
+            f"Catégorie '{cat}' : sous-requête doit dédupliquer les leads"
+        )
+
+
+def test_get_detected_info_matrix_structure():
+    """
+    get_detected_info_matrix retourne une liste de dicts
+    avec les 8 clés attendues (lead_id, display_name, has_* × 6).
+    """
+    from dashboard.lib.cockpit import get_detected_info_matrix
+
+    _fake_row = {
+        "lead_id": "lead-1",
+        "display_name": "Alice Dupont",
+        "has_budget": True,
+        "has_zone": False,
+        "has_type_bien": False,
+        "has_motivation": True,
+        "has_financement": False,
+        "has_points_attention": False,
+        "extracted_at": "2026-05-01 10:00:00",
+    }
+    mock_cursor = MagicMock()
+    mock_cursor.fetchall.return_value = [_fake_row]
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        matrix = get_detected_info_matrix("client-001", period_days=30)
+
+    assert isinstance(matrix, list)
+    assert len(matrix) == 1
+    row = matrix[0]
+    expected_keys = {
+        "lead_id", "display_name",
+        "has_budget", "has_zone", "has_type_bien",
+        "has_motivation", "has_financement", "has_points_attention",
+        "extracted_at",
+    }
+    assert expected_keys.issubset(set(row.keys())), (
+        f"Clés manquantes : {expected_keys - set(row.keys())}"
+    )
+
+
+def test_get_detected_info_matrix_exception_retourne_liste_vide():
+    """Erreur DB → retourne [] sans lever d'exception."""
+    from dashboard.lib.cockpit import get_detected_info_matrix
+
+    mock_conn = MagicMock()
+    mock_conn.execute.side_effect = Exception("connexion perdue")
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        result = get_detected_info_matrix("client-001", period_days=30)
+
+    assert result == []
