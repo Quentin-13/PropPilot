@@ -240,9 +240,11 @@ def test_push_crm_extraction_failed_ne_push_pas():
     mock_push.assert_not_called()
 
 
-def test_push_crm_extraction_success_push_declenche():
+def test_push_crm_extraction_success_ne_push_pas_directement():
     """
-    consolidated_extraction réussie → push_lead_to_crm est déclenché.
+    extract_and_update_lead() réussie → push_lead_to_crm NON déclenché depuis
+    extract_and_update_lead elle-même. Le push est délégué aux hooks post-extraction
+    (server.py / twilio_voice.py) pour garantir l'ordre compute_next_action → push.
     """
     from lib.lead_extraction.consolidated_extraction import extract_and_update_lead
 
@@ -250,18 +252,15 @@ def test_push_crm_extraction_success_push_declenche():
     mock_data.extraction_status = "success"
     mock_data.score_qualification = 18
 
-    mock_lead_data = {"id": "lead-001", "resume": "Test", "client_id": "client-1"}
-
     with patch("lib.consolidated_transcript.build_lead_conversation_transcript", return_value="Bonjour"), \
          patch("lib.call_extraction_pipeline.CallExtractionPipeline") as mock_pipeline, \
          patch("memory.call_repository.save_sms_extraction"), \
-         patch("lib.crm_connectors.factory.build_lead_data_from_db", return_value=mock_lead_data), \
          patch("lib.crm_connectors.factory.push_lead_to_crm") as mock_push:
 
         mock_pipeline.return_value.extract.return_value = mock_data
         extract_and_update_lead(lead_id="lead-001", client_id="client-1")
 
-    mock_push.assert_called_once()
+    mock_push.assert_not_called()
 
 
 def test_crm_type_email_cree_email_parsing_connector():

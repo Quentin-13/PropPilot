@@ -584,10 +584,31 @@ def _run_extraction(call_id: str, transcript: str) -> None:
 
 
 def _trigger_call_post_extraction_hooks(lead_id: str, client_id: str) -> None:
-    """Calcul next_action après extraction appel. Erreurs silencieuses.
-    Le push CRM est déclenché depuis extract_and_update_lead() — pas ici."""
+    """
+    Hooks post-extraction appel : calcul next_action PUIS push CRM.
+    L'ordre est intentionnel — le CRM reçoit toujours la prochaine action recalculée.
+    Si compute_next_action échoue (retourne None), les champs next_action sont vidés
+    dans le payload CRM pour éviter qu'une ancienne consigne contradictoire ne parte.
+    Erreurs silencieuses — ne bloque jamais le pipeline.
+    """
+    next_action_fresh = False
     try:
         from lib.lead_extraction.next_action import compute_next_action
-        compute_next_action(lead_id)
+        next_action_fresh = compute_next_action(lead_id) is not None
     except Exception as e:
         logger.warning("[Voice][PostExtraction] next_action lead_id=%s: %s", lead_id, e)
+
+    try:
+        from lib.crm_connectors.factory import build_lead_data_from_db, push_lead_to_crm
+        lead_data = build_lead_data_from_db(lead_id)
+        if lead_data:
+            if not next_action_fresh:
+                lead_data = dict(lead_data)
+                lead_data["next_action_label"] = ""
+                lead_data["next_action_reason"] = ""
+                logger.warning("[Voice][PostExtraction] next_action non recalculée — champs action neutralisés lead_id=%s", lead_id)
+            push_lead_to_crm(client_id=client_id, lead_data=lead_data)
+        else:
+            logger.warning("[Voice][PostExtraction] lead_data introuvable — push CRM skippé lead_id=%s", lead_id)
+    except Exception as e:
+        logger.warning("[Voice][PostExtraction] CRM push lead_id=%s: %s", lead_id, e)

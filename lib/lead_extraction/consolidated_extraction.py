@@ -58,16 +58,7 @@ def extract_and_update_lead(lead_id: str, client_id: str):
         lead_id, data.extraction_status, data.score_qualification,
     )
 
-    # Push CRM uniquement si extraction réussie et CRM configuré
-    if data.extraction_status != "failed":
-        try:
-            from lib.crm_connectors.factory import build_lead_data_from_db, push_lead_to_crm
-            lead_data = build_lead_data_from_db(lead_id)
-            if lead_data:
-                push_lead_to_crm(client_id=client_id, lead_data=lead_data)
-            else:
-                logger.warning("[CRM Push] lead_data introuvable — push skippé lead_id=%s", lead_id)
-        except Exception as crm_exc:
-            logger.warning("[Consolidated] CRM push lead_id=%s: %s", lead_id, crm_exc)
-
+    # Le push CRM est déclenché par les hooks post-extraction (server.py /
+    # twilio_voice.py), APRÈS compute_next_action(), pour garantir que la
+    # prochaine action recalculée est incluse dans le payload CRM.
     return data
