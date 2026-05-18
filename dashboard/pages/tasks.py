@@ -289,26 +289,33 @@ else:
 
 st.markdown('<div class="section-hd">Ce que PropPilot a fait</div>', unsafe_allow_html=True)
 
+# (icon, valeur, libellé, couleur, page_cible ou None si même page)
 _kpi_defs = [
-    ("📞", kpis["appels_captes"],      "Appels captés",       "#3b82f6"),
-    ("💬", kpis["sms_captes"],         "SMS captés",          "#8b5cf6"),
-    ("👤", kpis["leads_crees"],        "Leads créés",         "#10b981"),
-    ("✨", kpis["leads_enrichis"],     "Leads enrichis",      "#f59e0b"),
-    ("🔗", kpis["envois_crm"],         "Envois CRM réussis",  "#06b6d4"),
-    ("⚡", kpis["actions_recommandees"],"Actions recommandées","#a3e635"),
+    ("📞", kpis["appels_captes"],       "Appels captés",        "#3b82f6", "pages/calls.py"),
+    ("💬", kpis["sms_captes"],          "SMS captés",           "#8b5cf6", "pages/04_sms.py"),
+    ("👤", kpis["leads_crees"],         "Leads créés",          "#10b981", "pages/01_mes_leads.py"),
+    ("✨", kpis["leads_enrichis"],      "Leads enrichis",       "#f59e0b", "pages/01_mes_leads.py"),
+    ("🔗", kpis["envois_crm"],          "Envois CRM réussis",   "#06b6d4", "pages/06_parametres.py"),
+    ("⚡", kpis["actions_recommandees"],"Actions recommandées", "#a3e635", None),
 ]
 
-_kpi_html = '<div class="kpi-grid">'
-for icon, val, label, color in _kpi_defs:
-    _kpi_html += (
-        f'<div class="kpi-card" style="--accent:{color};">'
-        f'<span class="kpi-icon">{icon}</span>'
-        f'<div class="kpi-val">{val}</div>'
-        f'<div class="kpi-label">{label}</div>'
-        f'</div>'
-    )
-_kpi_html += '</div>'
-st.markdown(_kpi_html, unsafe_allow_html=True)
+for _row_start in (0, 3):
+    _cols = st.columns(3)
+    for _col, (_icon, _val, _lbl, _color, _target) in zip(_cols, _kpi_defs[_row_start:_row_start + 3]):
+        with _col:
+            st.markdown(
+                f'<div class="kpi-card" style="--accent:{_color};">'
+                f'<span class="kpi-icon">{_icon}</span>'
+                f'<div class="kpi-val">{_val}</div>'
+                f'<div class="kpi-label">{_lbl}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            if _target:
+                if st.button("Voir le détail →", key=f"kpi_{_lbl}", use_container_width=True):
+                    st.switch_page(_target)
+            else:
+                st.caption("↑ Voir ci-dessus")
 
 # ─── Informations détectées ───────────────────────────────────────────────────
 

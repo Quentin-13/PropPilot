@@ -466,7 +466,7 @@ def render_sidebar_logout() -> None:
 
         if not is_admin:
             # Navigation principale
-            if st.button("📋 Tâches du jour", use_container_width=True, key="_nav_tasks"):
+            if st.button("🏠 Tableau de bord", use_container_width=True, key="_nav_tasks"):
                 st.session_state["_close_sidebar_mobile"] = True
                 st.switch_page("pages/tasks.py")
             if st.button("👥 Mes leads", use_container_width=True, key="_nav_leads"):
