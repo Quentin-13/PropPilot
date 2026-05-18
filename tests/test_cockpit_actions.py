@@ -523,3 +523,101 @@ def test_get_detected_info_detail_exception_retourne_liste_vide():
         rows = get_detected_info_detail("client-001", "motivations", period_days=7)
 
     assert rows == []
+
+
+# ─── Tests anti-régression ambiguïté colonne ─────────────────────────────────
+
+def test_detail_sql_prefixe_ce_pour_colonnes_ambigues():
+    """
+    financement, motivation et type_bien existent dans leads ET dans
+    conversation_extractions. La requête de détail (qui joint les deux tables)
+    doit utiliser l'alias 'ce.' pour éviter 'column reference is ambiguous'.
+    """
+    from dashboard.lib.cockpit import get_detected_info_detail
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchall.return_value = []
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    for cat, col in (
+        ("financements", "ce.financement"),
+        ("motivations",  "ce.motivation"),
+        ("types_bien",   "ce.type_bien"),
+    ):
+        with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+            get_detected_info_detail("client-001", cat, period_days=30)
+
+        sql = mock_conn.execute.call_args[0][0]
+        assert col in sql, (
+            f"Catégorie '{cat}' : SQL doit contenir '{col}' pour éviter l'ambiguïté "
+            f"(la colonne existe aussi dans la table leads)"
+        )
+
+
+def test_detail_stats_utilisent_meme_filtre_financements():
+    """
+    Le filtre SQL pour 'financements' dans get_detected_info_detail doit contenir
+    le même prédicat que dans get_detected_info_stats : IS NOT NULL et <> '{}'.
+    """
+    from dashboard.lib.cockpit import get_detected_info_detail
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchall.return_value = []
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        get_detected_info_detail("client-001", "financements", period_days=30)
+
+    sql = mock_conn.execute.call_args[0][0]
+    assert "financement" in sql
+    assert "IS NOT NULL" in sql
+    # Le filtre exclut le financement vide
+    assert "'{}'" in sql or "!= '{}'" in sql or "<> '{}'" in sql
+
+
+def test_detail_periode_fallback_30_jours():
+    """La fonction get_detected_info_detail utilise 30 jours par défaut."""
+    import inspect
+    from dashboard.lib.cockpit import get_detected_info_detail
+
+    sig = inspect.signature(get_detected_info_detail)
+    default_period = sig.parameters["period_days"].default
+    assert default_period == 30, (
+        f"Fallback attendu : 30 jours, obtenu : {default_period}"
+    )
+
+
+def test_detail_financements_non_vide_retourne_lignes():
+    """
+    Un financement non vide est compté et retourné par le détail.
+    Scénario : 1 extraction avec financement = {"type_pret": "PTZ"}.
+    """
+    from dashboard.lib.cockpit import get_detected_info_detail
+
+    _fake_row = {
+        "lead_id": "lead-fin-1", "prenom": "Paul", "nom": "Moreau",
+        "telephone": "+33611223344", "score": 15,
+        "budget_min": None, "budget_max": None,
+        "zone_geographique": None, "type_bien": None,
+        "financement": '{"type_pret": "PTZ", "apport": 30000}',
+        "motivation": None, "points_attention": None,
+        "extracted_at": "2026-05-10 14:00:00",
+    }
+    mock_cursor = MagicMock()
+    mock_cursor.fetchall.return_value = [_fake_row]
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        rows = get_detected_info_detail("client-001", "financements", period_days=30)
+
+    assert len(rows) == 1
+    assert rows[0]["lead_id"] == "lead-fin-1"

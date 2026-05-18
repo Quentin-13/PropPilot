@@ -39,8 +39,8 @@ client_id = st.session_state.get("user_id", settings.agency_client_id)
 st.markdown("""
 <style>
 .main { background: #0f1117; }
-.block-container { padding-top: 1.5rem; }
-h1 { color: white !important; font-size: 1.6rem !important; }
+.block-container { padding-top: 2rem; max-width: 900px; }
+h2 { color: white !important; margin-bottom: 0 !important; }
 [data-testid="stSidebar"] { background: #1a3a5c; }
 [data-testid="stSidebar"] .stMarkdown,
 [data-testid="stSidebar"] label { color: white !important; }
@@ -63,29 +63,40 @@ h1 { color: white !important; font-size: 1.6rem !important; }
 
 # ─── Paramètres depuis session ────────────────────────────────────────────────
 
-_category    = st.session_state.get("detected_info_category", "budgets")
-_period_label = st.session_state.get("dash_period", "7 jours")
-_period_days  = {"7 jours": 7, "30 jours": 30, "Depuis le début": 3650}.get(_period_label, 7)
+_category     = st.session_state.get("detected_info_category", "budgets")
+_period_label = st.session_state.get("dash_period", "30 jours")   # fallback 30 j
+_period_days  = {"7 jours": 7, "30 jours": 30, "Depuis le début": 3650}.get(_period_label, 30)
+
+_PERIOD_DISPLAY = {
+    "7 jours":        "7 derniers jours",
+    "30 jours":       "30 derniers jours",
+    "Depuis le début":"depuis le début",
+}
+_period_display = _PERIOD_DISPLAY.get(_period_label, "30 derniers jours")
 
 _CATEGORY_META = {
-    "budgets":     ("💰", "Budgets"),
-    "zones":       ("📍", "Zones"),
-    "types_bien":  ("🏠", "Types de bien"),
-    "motivations": ("💡", "Motivations"),
-    "financements":("🏦", "Financements"),
-    "objections":  ("⚠️", "Points d'attention"),
+    "budgets":     ("💰", "Budgets détectés"),
+    "zones":       ("📍", "Zones détectées"),
+    "types_bien":  ("🏠", "Types de bien détectés"),
+    "motivations": ("💡", "Motivations détectées"),
+    "financements":("🏦", "Financements détectés"),
+    "objections":  ("⚠️", "Points d'attention détectés"),
 }
 _icon, _title = _CATEGORY_META.get(_category, ("🔍", _category.replace("_", " ").capitalize()))
 
-# ─── Titre + retour ───────────────────────────────────────────────────────────
+# ─── Bouton retour ───────────────────────────────────────────────────────────
 
-col_back, col_title = st.columns([1, 6])
-with col_back:
-    if st.button("← Tableau de bord"):
-        st.switch_page("pages/tasks.py")
-with col_title:
-    st.title(f"{_icon} {_title}")
-    st.caption(f"Leads avec cette information détectée · {_period_label}")
+if st.button("← Retour au tableau de bord"):
+    st.switch_page("pages/tasks.py")
+
+# ─── Titre + période ─────────────────────────────────────────────────────────
+
+st.markdown(f"## {_icon} {_title}")
+st.markdown(
+    f'<p style="color:#94a3b8;margin-top:-4px;margin-bottom:24px;">'
+    f'Période : {_period_display}</p>',
+    unsafe_allow_html=True,
+)
 
 # ─── Chargement des données ───────────────────────────────────────────────────
 
@@ -97,14 +108,13 @@ except Exception as exc:
     st.stop()
 
 if not rows:
-    st.info("Aucune information détectée pour cette catégorie sur la période sélectionnée.")
+    st.info("Aucune information détectée pour cette catégorie sur cette période.")
     st.stop()
 
 _plural = "s" if len(rows) > 1 else ""
 st.markdown(
     f'<p style="color:#94a3b8;margin-bottom:16px;">'
-    f'<strong style="color:white;">{len(rows)}</strong> lead{_plural} avec {_title.lower()} détecté{_plural}.'
-    f'</p>',
+    f'<strong style="color:white;">{len(rows)}</strong> lead{_plural} avec cette information détectée.</p>',
     unsafe_allow_html=True,
 )
 
@@ -124,31 +134,31 @@ def _format_value(row: dict, category: str) -> str:
         lo = row.get("budget_min")
         hi = row.get("budget_max")
         if lo and hi:
-            return f"{int(lo):,} € — {int(hi):,} €".replace(",", " ")
+            return f"{int(lo):,} € — {int(hi):,} €".replace(",", " ")
         if lo:
-            return f"à partir de {int(lo):,} €".replace(",", " ")
+            return f"à partir de {int(lo):,} €".replace(",", " ")
         if hi:
-            return f"jusqu'à {int(hi):,} €".replace(",", " ")
-        return "—"
+            return f"jusqu'à {int(hi):,} €".replace(",", " ")
+        return "Budget renseigné"
     if category == "zones":
-        return str(row.get("zone_geographique") or "—")
+        return str(row.get("zone_geographique") or "Zone renseignée")
     if category == "types_bien":
-        return str(row.get("type_bien") or "—")
+        return str(row.get("type_bien") or "Type renseigné")
     if category == "motivations":
-        return str(row.get("motivation") or "—")
+        return str(row.get("motivation") or "Motivation renseignée")
     if category == "financements":
         fin = row.get("financement")
         if not fin:
-            return "—"
+            return "Financement renseigné"
         try:
             d = json.loads(fin) if isinstance(fin, str) else fin
-            if not d:
-                return "—"
+            if not isinstance(d, dict) or not d:
+                return "Financement renseigné"
             parts = []
             if d.get("type_pret"):
                 parts.append(str(d["type_pret"]))
             if d.get("apport") is not None:
-                parts.append(f"apport {int(d['apport']):,} €".replace(",", " "))
+                parts.append(f"apport {int(d['apport']):,} €".replace(",", " "))
             if d.get("banque"):
                 parts.append(str(d["banque"]))
             return " · ".join(parts) if parts else "Financement renseigné"
@@ -157,28 +167,28 @@ def _format_value(row: dict, category: str) -> str:
     if category == "objections":
         pts = row.get("points_attention")
         if not pts:
-            return "—"
+            return "Point renseigné"
         try:
             items = json.loads(pts) if isinstance(pts, str) else pts
             if isinstance(items, list) and items:
                 return " · ".join(str(x) for x in items[:3])
-            return "—"
+            return "Point renseigné"
         except Exception:
-            return "—"
-    return "—"
+            return "Point renseigné"
+    return "Information renseignée"
 
 # ─── Rendu des cartes ─────────────────────────────────────────────────────────
 
 for row in rows:
-    lead_id     = row.get("lead_id") or ""
-    prenom      = (row.get("prenom") or "").strip()
-    nom         = (row.get("nom") or "").strip()
-    name        = f"{prenom} {nom}".strip() or (row.get("telephone") or "Prospect")
-    phone       = row.get("telephone") or ""
-    score       = row.get("score") or 0
+    lead_id      = row.get("lead_id") or ""
+    prenom       = (row.get("prenom") or "").strip()
+    nom          = (row.get("nom") or "").strip()
+    name         = f"{prenom} {nom}".strip() or (row.get("telephone") or "Prospect")
+    phone        = row.get("telephone") or ""
+    score        = row.get("score") or 0
     extracted_at = row.get("extracted_at")
-    value       = _format_value(row, _category)
-    date_str    = fmt_paris_datetime(extracted_at, "%d/%m à %H:%M") if extracted_at else "—"
+    value        = _format_value(row, _category)
+    date_str     = fmt_paris_datetime(extracted_at, "%d/%m à %H:%M") if extracted_at else "—"
 
     card_col, btn_col = st.columns([6, 1])
     with card_col:

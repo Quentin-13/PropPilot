@@ -162,12 +162,12 @@ def get_dashboard_kpis(client_id: str, period_days: int = 7) -> dict:
 
 
 _CATEGORY_FILTER: dict[str, str] = {
-    "budgets":     "budget_min IS NOT NULL OR budget_max IS NOT NULL",
-    "zones":       "zone_geographique IS NOT NULL AND zone_geographique != ''",
-    "types_bien":  "type_bien IS NOT NULL AND type_bien != ''",
-    "motivations": "motivation IS NOT NULL AND motivation != ''",
-    "financements":"financement IS NOT NULL AND financement <> '{}'::jsonb",
-    "objections":  "points_attention IS NOT NULL AND jsonb_array_length(points_attention) > 0",
+    "budgets":     "ce.budget_min IS NOT NULL OR ce.budget_max IS NOT NULL",
+    "zones":       "ce.zone_geographique IS NOT NULL AND ce.zone_geographique != ''",
+    "types_bien":  "ce.type_bien IS NOT NULL AND ce.type_bien != ''",
+    "motivations": "ce.motivation IS NOT NULL AND ce.motivation != ''",
+    "financements":"ce.financement IS NOT NULL AND ce.financement <> '{}'::jsonb",
+    "objections":  "ce.points_attention IS NOT NULL AND jsonb_array_length(ce.points_attention) > 0",
 }
 
 
