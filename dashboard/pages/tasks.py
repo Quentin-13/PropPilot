@@ -175,6 +175,8 @@ with _period_col:
         key="dash_period",
     )
 _period_days = {"7 jours": 7, "30 jours": 30, "Depuis le début": 3650}.get(_period_label, 7)
+# Clé explicite (non-widget) pour survivre au st.switch_page() vers la page détail.
+st.session_state["dash_period_selected"] = _period_label
 
 # ─── Chargement des données ───────────────────────────────────────────────────
 

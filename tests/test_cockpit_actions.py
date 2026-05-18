@@ -943,3 +943,38 @@ def test_get_detected_info_matrix_exception_retourne_liste_vide():
         result = get_detected_info_matrix("client-001", period_days=30)
 
     assert result == []
+
+
+# ─── Tests resolve_period_days — propagation période dashboard → détail ────────
+
+def test_resolve_period_days_7_jours():
+    """dash_period='7 jours' → detail utilise 7 jours."""
+    from dashboard.lib.cockpit import resolve_period_days
+    assert resolve_period_days("7 jours") == 7
+
+
+def test_resolve_period_days_30_jours():
+    """dash_period='30 jours' → detail utilise 30 jours."""
+    from dashboard.lib.cockpit import resolve_period_days
+    assert resolve_period_days("30 jours") == 30
+
+
+def test_resolve_period_days_depuis_le_debut():
+    """dash_period='Depuis le début' → detail utilise 3650 jours (comportement attendu)."""
+    from dashboard.lib.cockpit import resolve_period_days
+    assert resolve_period_days("Depuis le début") == 3650
+
+
+def test_resolve_period_days_absence_fallback_30():
+    """Absence de dash_period → fallback 30 jours."""
+    from dashboard.lib.cockpit import resolve_period_days
+    assert resolve_period_days(None) == 30
+    assert resolve_period_days("") == 30
+    assert resolve_period_days("valeur_inconnue") == 30
+
+
+def test_resolve_period_days_fallback_personnalisable():
+    """Le fallback peut être surchargé (tasks.py utilise fallback=7)."""
+    from dashboard.lib.cockpit import resolve_period_days
+    assert resolve_period_days(None, fallback=7) == 7
+    assert resolve_period_days("valeur_inconnue", fallback=7) == 7

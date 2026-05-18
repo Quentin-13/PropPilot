@@ -16,6 +16,7 @@ import streamlit as st
 from config.settings import get_settings
 from dashboard.auth_ui import require_auth, render_sidebar_logout
 from dashboard.lib.admin_auth import is_super_admin
+from dashboard.lib.cockpit import resolve_period_days
 from dashboard.utils.datetime_helpers import fmt_paris_datetime
 
 settings = get_settings()
@@ -63,9 +64,16 @@ h2 { color: white !important; margin-bottom: 0 !important; }
 
 # ─── Paramètres depuis session ────────────────────────────────────────────────
 
-_category     = st.session_state.get("detected_info_category", "budgets")
-_period_label = st.session_state.get("dash_period", "30 jours")   # fallback 30 j
-_period_days  = {"7 jours": 7, "30 jours": 30, "Depuis le début": 3650}.get(_period_label, 30)
+_category = st.session_state.get("detected_info_category", "budgets")
+# dash_period_selected est une clé explicite écrite par tasks.py à chaque render,
+# indépendante du cycle de vie du widget st.radio (qui peut être effacé au switch_page).
+# Fallback : dash_period (cas navigation directe), puis "30 jours".
+_period_label = (
+    st.session_state.get("dash_period_selected")
+    or st.session_state.get("dash_period")
+    or "30 jours"
+)
+_period_days = resolve_period_days(_period_label, fallback=30)
 
 _PERIOD_DISPLAY = {
     "7 jours":        "7 derniers jours",

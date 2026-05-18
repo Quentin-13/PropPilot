@@ -12,6 +12,19 @@ logger = logging.getLogger(__name__)
 
 _ACTIVE_STATUTS = "('entrant', 'qualifie', 'nurturing')"
 
+_PERIOD_DAYS_MAP: dict[str, int] = {
+    "7 jours": 7,
+    "30 jours": 30,
+    "Depuis le début": 3650,
+}
+
+
+def resolve_period_days(label: str | None, fallback: int = 30) -> int:
+    """Convertit un libellé dash_period en nombre de jours pour les requêtes cockpit.
+    Retourne fallback si label est absent ou non reconnu.
+    """
+    return _PERIOD_DAYS_MAP.get(label or "", fallback)
+
 
 def get_priority_actions(client_id: str) -> list[dict]:
     """
