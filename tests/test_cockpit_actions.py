@@ -978,3 +978,43 @@ def test_resolve_period_days_fallback_personnalisable():
     from dashboard.lib.cockpit import resolve_period_days
     assert resolve_period_days(None, fallback=7) == 7
     assert resolve_period_days("valeur_inconnue", fallback=7) == 7
+
+
+# ─── Tests format_lead_status — labels UI propres ─────────────────────────────
+
+def test_format_lead_status_en_qualification():
+    from dashboard.utils.lead_formatters import format_lead_status
+    assert format_lead_status("en_qualification") == "À qualifier"
+
+
+def test_format_lead_status_rdv_booke():
+    from dashboard.utils.lead_formatters import format_lead_status
+    assert format_lead_status("rdv_booke") == "RDV planifié"
+
+
+def test_format_lead_status_mandat():
+    from dashboard.utils.lead_formatters import format_lead_status
+    assert format_lead_status("mandat") == "Opportunité avancée"
+
+
+def test_format_lead_status_mapping_complet():
+    """Tous les statuts LeadStatus ont un label défini (pas de fallback sur valeur brute)."""
+    from dashboard.utils.lead_formatters import format_lead_status, _LEAD_STATUS_LABELS
+    known_statuts = [
+        "entrant", "en_qualification", "qualifie", "rdv_propose",
+        "rdv_booke", "mandat", "vendu", "perdu", "nurturing",
+    ]
+    for s in known_statuts:
+        label = format_lead_status(s)
+        assert label in _LEAD_STATUS_LABELS.values(), (
+            f"'{s}' → '{label}' n'est pas dans les labels définis"
+        )
+        assert "_" not in label, f"Label '{label}' contient encore un underscore"
+
+
+def test_format_lead_status_valeur_inconnue_pas_crash():
+    """Une valeur inconnue retourne la valeur brute — jamais crash."""
+    from dashboard.utils.lead_formatters import format_lead_status
+    assert format_lead_status("statut_inexistant") == "statut_inexistant"
+    assert format_lead_status(None) == "—"
+    assert format_lead_status("") == "—"

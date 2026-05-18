@@ -15,6 +15,7 @@ from datetime import datetime
 
 from config.settings import get_settings
 from dashboard.utils.datetime_helpers import fmt_paris_datetime
+from dashboard.utils.lead_formatters import format_lead_status
 from memory.lead_repository import (
     get_leads_by_client,
     get_pipeline_stats,
@@ -102,11 +103,13 @@ with col_f1:
     )
 
 with col_f2:
-    filter_statut = st.selectbox(
+    _STATUT_FILTER = {"Tous": None, **{format_lead_status(s.value): s.value for s in LeadStatus}}
+    filter_statut_label = st.selectbox(
         "Statut",
-        options=["Tous"] + [s.value for s in LeadStatus],
+        options=list(_STATUT_FILTER.keys()),
         key="filter_statut",
     )
+    filter_statut = _STATUT_FILTER[filter_statut_label]
 
 with col_f3:
     filter_score_min = st.slider("Score minimum (/24)", 0, 24, 0, key="filter_score_min")
@@ -129,7 +132,7 @@ with col_f5:
 
 leads = get_leads_by_client(
     client_id=client_id,
-    statut=filter_statut if filter_statut != "Tous" else None,
+    statut=filter_statut,
     score_min=filter_score_min if filter_score_min > 0 else None,
     limit=200,
 )
@@ -192,7 +195,7 @@ else:
             "Projet": lead.projet.value.capitalize(),
             "Budget": lead.budget or "—",
             "Localisation": lead.localisation or "—",
-            "Statut": lead.statut.value.replace("_", " ").capitalize(),
+            "Statut": format_lead_status(lead.statut.value),
             "Source": lead.source.value.capitalize(),
             "Action recommandée": f"{na_icon} {na_label}",
             "Prochain suivi": fmt_paris_datetime(lead.prochain_followup, "%d/%m %H:%M"),
@@ -266,7 +269,7 @@ else:
 
             with detail_col1:
                 st.markdown(f"**Score :** {selected_lead.score}/24 ({selected_lead.score_label})")
-                st.markdown(f"**Statut :** {selected_lead.statut.value}")
+                st.markdown(f"**Statut :** {format_lead_status(selected_lead.statut.value)}")
                 st.markdown(f"**Projet :** {selected_lead.projet.value}")
                 st.markdown(f"**Canal :** {selected_lead.source.value}")
 
@@ -350,7 +353,7 @@ else:
                             st.success("Action marquée comme effectuée.")
                             st.rerun()
                         else:
-                            st.info(f"Statut actuel : {selected_lead.statut.value}")
+                            st.info(f"Statut actuel : {format_lead_status(selected_lead.statut.value)}")
 
             # Lien discret vers la conversation
             if selected_lead.telephone:

@@ -15,6 +15,7 @@ from datetime import datetime
 
 from config.settings import get_settings
 from dashboard.utils.datetime_helpers import fmt_paris_datetime
+from dashboard.utils.lead_formatters import format_lead_status
 
 settings = get_settings()
 
@@ -70,7 +71,7 @@ for lead_dict in leads_raw:
     resume = lead_dict.get("resume") or ""
 
     with st.expander(
-        f"**{nom_complet}** · {telephone} · créé {created_str} · statut: {statut}",
+        f"**{nom_complet}** · {telephone} · créé {created_str} · {format_lead_status(statut)}",
         expanded=False,
     ):
         col_info, col_actions = st.columns([2, 1])
@@ -126,13 +127,16 @@ for lead_dict in leads_raw:
                 options=["acheteur", "vendeur", "locataire"],
                 key=f"type_{lead_id}",
             )
-            manual_statut = st.selectbox(
+            _statut_values  = [s.value for s in LeadStatus]
+            _statut_display = [format_lead_status(s.value) for s in LeadStatus]
+            _statut_idx = _statut_values.index(statut) if statut in _statut_values else 0
+            _manual_statut_label = st.selectbox(
                 "Statut",
-                options=[s.value for s in LeadStatus],
-                index=[s.value for s in LeadStatus].index(statut)
-                if statut in [s.value for s in LeadStatus] else 0,
+                options=_statut_display,
+                index=_statut_idx,
                 key=f"statut_{lead_id}",
             )
+            manual_statut = _statut_values[_statut_display.index(_manual_statut_label)]
 
             if st.button("💾 Sauvegarder", key=f"save_{lead_id}"):
                 try:
