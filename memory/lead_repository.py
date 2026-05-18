@@ -126,6 +126,44 @@ def get_leads_by_client(
     return [_row_to_lead(dict(row)) for row in rows]
 
 
+def search_leads_by_text(
+    client_id: str,
+    query: str,
+    statut: Optional[str] = None,
+    score_min: Optional[int] = None,
+    limit: int = 500,
+) -> list[Lead]:
+    """Recherche plein-texte sur les champs principaux des leads — sans limite de 200.
+
+    Utilise ILIKE (PostgreSQL, case-insensitive). Requêtes 100 % paramétrées.
+    Champs couverts : prenom, nom, telephone, email, localisation, budget,
+    motivation, resume, notes_agent, projet, next_action_label, next_action_reason.
+    """
+    q = f"%{query.strip()}%"
+    _search_cols = (
+        "prenom", "nom", "telephone", "email", "localisation",
+        "budget", "motivation", "resume", "notes_agent", "projet",
+        "next_action_label", "next_action_reason",
+    )
+    search_clause = " OR ".join(f"{col} ILIKE ?" for col in _search_cols)
+    sql = f"SELECT * FROM leads WHERE client_id = ? AND ({search_clause})"
+    params: list = [client_id] + [q] * len(_search_cols)
+
+    if statut:
+        sql += " AND statut = ?"
+        params.append(statut)
+    if score_min is not None:
+        sql += " AND score >= ?"
+        params.append(score_min)
+
+    sql += " ORDER BY score DESC, created_at DESC LIMIT ?"
+    params.append(limit)
+
+    with get_connection() as conn:
+        rows = conn.execute(sql, params).fetchall()
+    return [_row_to_lead(dict(row)) for row in rows]
+
+
 def update_lead(lead: Lead) -> Lead:
     """Met à jour un lead existant."""
     lead.updated_at = datetime.now()

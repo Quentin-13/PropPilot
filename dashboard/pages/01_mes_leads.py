@@ -18,6 +18,7 @@ from dashboard.utils.datetime_helpers import fmt_paris_datetime
 from dashboard.utils.lead_formatters import format_lead_status
 from memory.lead_repository import (
     get_leads_by_client,
+    search_leads_by_text,
     get_pipeline_stats,
     get_pilot_kpis,
     update_lead,
@@ -93,7 +94,15 @@ st.markdown("---")
 # ─── Filtres ────────────────────────────────────────────────────────────────
 
 st.markdown("### Filtres")
-col_f1, col_f2, col_f3, col_f4, col_f5 = st.columns(5)
+
+search_query = st.text_input(
+    "Recherche",
+    placeholder="Rechercher un lead, une ville, un budget, une objection…",
+    key="search_query",
+    label_visibility="collapsed",
+)
+
+col_f1, col_f2, col_f3 = st.columns(3)
 
 with col_f1:
     filter_type = st.selectbox(
@@ -103,39 +112,49 @@ with col_f1:
     )
 
 with col_f2:
-    _STATUT_FILTER = {"Tous": None, **{format_lead_status(s.value): s.value for s in LeadStatus}}
-    filter_statut_label = st.selectbox(
-        "Statut",
-        options=list(_STATUT_FILTER.keys()),
-        key="filter_statut",
-    )
-    filter_statut = _STATUT_FILTER[filter_statut_label]
-
-with col_f3:
     filter_score_min = st.slider("Score minimum (/24)", 0, 24, 0, key="filter_score_min")
 
-with col_f4:
-    filter_source = st.selectbox(
-        "Source",
-        options=["Toutes", "sms", "whatsapp", "email", "web", "seloger", "leboncoin", "manuel"],
-        key="filter_source",
-    )
-
-with col_f5:
+with col_f3:
     filter_projet = st.selectbox(
         "Projet",
         options=["Tous", "achat", "vente", "location", "estimation", "inconnu"],
         key="filter_projet",
     )
 
+with st.expander("Filtres avancés"):
+    adv_col1, adv_col2 = st.columns(2)
+    with adv_col1:
+        _STATUT_FILTER = {"Tous": None, **{format_lead_status(s.value): s.value for s in LeadStatus}}
+        filter_statut_label = st.selectbox(
+            "Statut",
+            options=list(_STATUT_FILTER.keys()),
+            key="filter_statut",
+        )
+        filter_statut = _STATUT_FILTER[filter_statut_label]
+    with adv_col2:
+        filter_source = st.selectbox(
+            "Source",
+            options=["Toutes", "sms", "whatsapp", "email", "web", "seloger", "leboncoin", "manuel"],
+            key="filter_source",
+        )
+
 # ─── Chargement leads ────────────────────────────────────────────────────────
 
-leads = get_leads_by_client(
-    client_id=client_id,
-    statut=filter_statut,
-    score_min=filter_score_min if filter_score_min > 0 else None,
-    limit=200,
-)
+if search_query:
+    # Recherche SQL sur tous les leads du client — pas limitée aux 200 premiers
+    leads = search_leads_by_text(
+        client_id=client_id,
+        query=search_query,
+        statut=filter_statut,
+        score_min=filter_score_min if filter_score_min > 0 else None,
+    )
+else:
+    leads = get_leads_by_client(
+        client_id=client_id,
+        statut=filter_statut,
+        score_min=filter_score_min if filter_score_min > 0 else None,
+        limit=200,
+    )
 
 # Filtrage côté Python (type, source, projet)
 if filter_type != "Tous":
@@ -145,6 +164,24 @@ if filter_source != "Toutes":
 if filter_projet != "Tous":
     leads = [l for l in leads if l.projet.value == filter_projet]
 
+# next_actions chargé ici pour que la recherche texte puisse filtrer sur label/raison
+_next_actions: dict[str, dict] = {}
+if leads:
+    try:
+        from memory.database import get_connection as _gc_na
+        _lead_ids = [l.id for l in leads]
+        _placeholders = ",".join(["?"] * len(_lead_ids))
+        with _gc_na() as _conn_na:
+            _na_rows = _conn_na.execute(
+                f"SELECT id, next_action_label, next_action_priority, next_action_reason, next_action_deadline "
+                f"FROM leads WHERE id IN ({_placeholders})",
+                _lead_ids,
+            ).fetchall()
+        for _r in _na_rows:
+            _next_actions[_r["id"]] = dict(_r)
+    except Exception:
+        pass
+
 st.markdown(f"**{len(leads)} leads** correspondant aux filtres")
 
 # ─── Tableau leads ───────────────────────────────────────────────────────────
@@ -152,24 +189,6 @@ st.markdown(f"**{len(leads)} leads** correspondant aux filtres")
 if not leads:
     st.info("Aucun lead trouvé. Les leads apparaissent ici dès que vos premiers contacts seront reçus via votre numéro PropPilot.")
 else:
-    # Chargement des next_action depuis la DB
-    _next_actions: dict[str, dict] = {}
-    try:
-        from memory.database import get_connection as _gc_na
-        _lead_ids = [l.id for l in leads]
-        if _lead_ids:
-            _placeholders = ",".join(["?"] * len(_lead_ids))
-            with _gc_na() as _conn_na:
-                _na_rows = _conn_na.execute(
-                    f"SELECT id, next_action_label, next_action_priority, next_action_reason, next_action_deadline "
-                    f"FROM leads WHERE id IN ({_placeholders})",
-                    _lead_ids,
-                ).fetchall()
-            for _r in _na_rows:
-                _next_actions[_r["id"]] = dict(_r)
-    except Exception:
-        pass
-
     # Conversion en DataFrame
     _TYPE_ICONS = {"vendeur": "🏠", "acheteur": "🔑", "locataire": "🏢"}
     _PRIORITY_ICONS = {"haute": "🔴", "moyenne": "🟡", "basse": "🔵"}

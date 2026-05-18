@@ -1018,3 +1018,170 @@ def test_format_lead_status_valeur_inconnue_pas_crash():
     assert format_lead_status("statut_inexistant") == "statut_inexistant"
     assert format_lead_status(None) == "—"
     assert format_lead_status("") == "—"
+
+
+# ─── Tests filter_leads_by_search ─────────────────────────────────────────────
+
+def _make_lead_fixture(**kwargs):
+    """Crée un Lead de test avec des valeurs par défaut."""
+    from memory.models import Lead, Canal, ProjetType, LeadStatus
+    defaults = dict(
+        client_id="client-001",
+        prenom="", nom="", telephone="", email="",
+        localisation="", budget="", motivation="", resume="",
+        notes_agent="", financement="", timeline="",
+        source=Canal.SMS, projet=ProjetType.ACHAT, statut=LeadStatus.ENTRANT,
+    )
+    defaults.update(kwargs)
+    return Lead(**defaults)
+
+
+def test_search_par_prenom():
+    """Recherche 'Claire' retourne Claire Martin."""
+    from dashboard.utils.lead_formatters import filter_leads_by_search
+    claire = _make_lead_fixture(prenom="Claire", nom="Martin")
+    other  = _make_lead_fixture(prenom="Thomas", nom="Dupont")
+    result = filter_leads_by_search([claire, other], {}, "Claire")
+    assert len(result) == 1
+    assert result[0].prenom == "Claire"
+
+
+def test_search_par_ville():
+    """Recherche 'Toulouse' retourne les leads localisés à Toulouse."""
+    from dashboard.utils.lead_formatters import filter_leads_by_search
+    toulouse = _make_lead_fixture(prenom="Alice", localisation="Toulouse centre")
+    paris    = _make_lead_fixture(prenom="Bob",   localisation="Paris 15e")
+    result = filter_leads_by_search([toulouse, paris], {}, "Toulouse")
+    assert len(result) == 1
+    assert result[0].localisation == "Toulouse centre"
+
+
+def test_search_dans_resume():
+    """Recherche 'travaux' retourne les leads dont le résumé contient 'travaux'."""
+    from dashboard.utils.lead_formatters import filter_leads_by_search
+    lead_travaux = _make_lead_fixture(prenom="Marc", resume="Besoin de travaux importants avant achat")
+    lead_propre  = _make_lead_fixture(prenom="Julie", resume="Appartement clé en main")
+    result = filter_leads_by_search([lead_travaux, lead_propre], {}, "travaux")
+    assert len(result) == 1
+    assert result[0].prenom == "Marc"
+
+
+def test_search_telephone_partiel():
+    """Recherche partielle sur téléphone retourne le bon lead."""
+    from dashboard.utils.lead_formatters import filter_leads_by_search
+    lead = _make_lead_fixture(prenom="Sophie", telephone="+33612345678")
+    other = _make_lead_fixture(prenom="Luc", telephone="+33698765432")
+    result = filter_leads_by_search([lead, other], {}, "1234")
+    assert len(result) == 1
+    assert result[0].prenom == "Sophie"
+
+
+def test_search_vide_retourne_tous():
+    """Une recherche vide retourne tous les leads."""
+    from dashboard.utils.lead_formatters import filter_leads_by_search
+    leads = [_make_lead_fixture(prenom=n) for n in ["Alice", "Bob", "Carole"]]
+    assert filter_leads_by_search(leads, {}, "") == leads
+    assert filter_leads_by_search(leads, {}, "   ") == leads
+
+
+def test_search_isolation_client_id():
+    """filter_leads_by_search ne filtre pas par client_id (déjà fait en DB)
+    — mais les résultats n'incluent que les leads passés en paramètre."""
+    from dashboard.utils.lead_formatters import filter_leads_by_search
+    lead_a = _make_lead_fixture(client_id="client-A", prenom="Eve", localisation="Lyon")
+    lead_b = _make_lead_fixture(client_id="client-B", prenom="Frank", localisation="Lille")
+    # On ne passe que les leads de client-A
+    result = filter_leads_by_search([lead_a], {}, "Lyon")
+    assert len(result) == 1
+    assert result[0].client_id == "client-A"
+    # lead-B n'est jamais dans les résultats car il n'est pas dans la liste
+    result_b = filter_leads_by_search([lead_a], {}, "Lille")
+    assert result_b == []
+
+
+def test_search_dans_next_action():
+    """Recherche dans next_action_label et next_action_reason via le dict next_actions."""
+    from dashboard.utils.lead_formatters import filter_leads_by_search
+    lead = _make_lead_fixture(prenom="Paul")
+    na = {lead.id: {"next_action_label": "Rappeler — objection budget", "next_action_reason": "Craint les travaux"}}
+    result_label  = filter_leads_by_search([lead], na, "budget")
+    result_reason = filter_leads_by_search([lead], na, "travaux")
+    result_absent = filter_leads_by_search([lead], na, "hypothèque")
+    assert len(result_label) == 1
+    assert len(result_reason) == 1
+    assert result_absent == []
+
+
+# ─── Tests search_leads_by_text — recherche SQL sans limite 200 ────────────────
+
+def test_search_leads_by_text_limite_superieure_200():
+    """La limite par défaut de search_leads_by_text est > 200 (pas limitée aux 200 premiers)."""
+    import inspect
+    from memory.lead_repository import search_leads_by_text
+    default_limit = inspect.signature(search_leads_by_text).parameters["limit"].default
+    assert default_limit > 200, f"Limite attendue > 200, obtenu {default_limit}"
+
+
+def test_search_leads_by_text_utilise_ilike():
+    """La requête SQL contient ILIKE pour la recherche texte case-insensitive."""
+    from memory.lead_repository import search_leads_by_text
+    mock_cursor = MagicMock()
+    mock_cursor.fetchall.return_value = []
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+    with patch("memory.lead_repository.get_connection", return_value=mock_conn):
+        search_leads_by_text("client-001", "Toulouse")
+    sql = mock_conn.execute.call_args[0][0]
+    assert "ILIKE" in sql, "SQL doit utiliser ILIKE pour la recherche case-insensitive"
+
+
+def test_search_leads_by_text_client_id_parametre():
+    """client_id est transmis comme paramètre SQL — pas interpolé dans la chaîne."""
+    from memory.lead_repository import search_leads_by_text
+    mock_cursor = MagicMock()
+    mock_cursor.fetchall.return_value = []
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+    with patch("memory.lead_repository.get_connection", return_value=mock_conn):
+        search_leads_by_text("client-SECRET", "Paris")
+    params = mock_conn.execute.call_args[0][1]
+    assert "client-SECRET" in params, "client_id doit être un paramètre SQL (isolation multi-tenant)"
+    sql = mock_conn.execute.call_args[0][0]
+    assert "client-SECRET" not in sql, "client_id ne doit pas être interpolé dans le SQL"
+
+
+def test_search_leads_by_text_query_encapsulee():
+    """La valeur de recherche est encapsulée en %query% dans les paramètres."""
+    from memory.lead_repository import search_leads_by_text
+    mock_cursor = MagicMock()
+    mock_cursor.fetchall.return_value = []
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+    with patch("memory.lead_repository.get_connection", return_value=mock_conn):
+        search_leads_by_text("client-001", "Claire")
+    params = mock_conn.execute.call_args[0][1]
+    assert "%Claire%" in params, "La requête doit être encapsulée en %Claire% pour le ILIKE"
+
+
+def test_search_leads_by_text_couvre_champs_principaux():
+    """La requête SQL couvre les 12 champs prioritaires demandés."""
+    from memory.lead_repository import search_leads_by_text
+    mock_cursor = MagicMock()
+    mock_cursor.fetchall.return_value = []
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+    with patch("memory.lead_repository.get_connection", return_value=mock_conn):
+        search_leads_by_text("client-001", "test")
+    sql = mock_conn.execute.call_args[0][0]
+    for col in ("prenom", "nom", "telephone", "email", "localisation",
+                "budget", "motivation", "resume", "notes_agent",
+                "next_action_label", "next_action_reason"):
+        assert col in sql, f"Colonne '{col}' absente de la requête SQL"
