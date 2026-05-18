@@ -220,3 +220,181 @@ def test_get_cockpit_kpis_structure():
 
     assert set(kpis.keys()) == {"chauds", "tiedes", "nouveaux", "actions"}
     assert all(isinstance(v, int) for v in kpis.values())
+
+
+# ─── Test 8 : get_dashboard_kpis — structure et 6 clés ───────────────────────
+
+def test_get_dashboard_kpis_structure():
+    from dashboard.lib.cockpit import get_dashboard_kpis
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = [4]
+
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        kpis = get_dashboard_kpis("client-001", period_days=7)
+
+    expected_keys = {"appels_captes", "sms_captes", "leads_crees",
+                     "leads_enrichis", "envois_crm", "actions_recommandees"}
+    assert set(kpis.keys()) == expected_keys
+    assert all(isinstance(v, int) for v in kpis.values())
+
+
+def test_sms_captes_compte_messages_pas_leads():
+    """
+    SMS captés = COUNT(*) de messages entrants, pas COUNT(DISTINCT lead_id).
+    Scénario : lead A a 3 SMS, lead B a 2 SMS → KPI = 5.
+    """
+    from dashboard.lib.cockpit import get_dashboard_kpis
+
+    # Séquence de retours fetchone() pour les 6 requêtes exécutées :
+    # appels=0, sms=5, leads_crees=0, leads_enrichis=0, envois_crm=0, actions=0
+    _side_effects = [
+        MagicMock(**{"__getitem__": lambda s, k: 0}),  # appels
+        MagicMock(**{"__getitem__": lambda s, k: 5}),  # sms → 5 messages
+        MagicMock(**{"__getitem__": lambda s, k: 0}),  # leads_crees
+        MagicMock(**{"__getitem__": lambda s, k: 0}),  # leads_enrichis
+        MagicMock(**{"__getitem__": lambda s, k: 0}),  # envois_crm
+        MagicMock(**{"__getitem__": lambda s, k: 0}),  # actions
+    ]
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.side_effect = _side_effects
+
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        kpis = get_dashboard_kpis("client-001", period_days=7)
+
+    assert kpis["sms_captes"] == 5
+
+    # Vérifie que le SQL utilise COUNT(*) et non COUNT(DISTINCT lead_id)
+    sms_call = mock_conn.execute.call_args_list[1]  # 2e requête = SMS
+    sql = sms_call[0][0]
+    assert "COUNT(*)" in sql
+    assert "DISTINCT" not in sql
+
+
+def test_get_dashboard_kpis_etat_vide():
+    """Aucune donnée → tous les KPIs à 0."""
+    from dashboard.lib.cockpit import get_dashboard_kpis
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = [0]
+
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        kpis = get_dashboard_kpis("client-vide", period_days=7)
+
+    assert all(v == 0 for v in kpis.values())
+
+
+def test_get_dashboard_kpis_passe_client_id():
+    """client_id est bien transmis à chaque requête SQL."""
+    from dashboard.lib.cockpit import get_dashboard_kpis
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = [0]
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        get_dashboard_kpis("client-XYZ", period_days=7)
+
+    for call_args in mock_conn.execute.call_args_list:
+        params = call_args[0][1] if len(call_args[0]) > 1 else ()
+        if params:
+            assert "client-XYZ" in params, f"client_id absent des params : {params}"
+
+
+# ─── Test 9 : get_crm_export_stats lit crm_sync_log ──────────────────────────
+
+def test_get_crm_export_stats_structure():
+    from dashboard.lib.cockpit import get_crm_export_stats
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = MagicMock(**{"__getitem__": lambda s, k: 5 if k == 0 else None})
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        stats = get_crm_export_stats("client-001", period_days=7)
+
+    assert "success_count" in stats
+    assert "last_push_at" in stats
+    # Vérifie que crm_sync_log est bien la table interrogée
+    calls_sql = [c[0][0] for c in mock_conn.execute.call_args_list]
+    assert any("crm_sync_log" in sql for sql in calls_sql)
+
+
+def test_get_crm_export_stats_etat_vide():
+    """Pas de push CRM → success_count=0, last_push_at=None."""
+    from dashboard.lib.cockpit import get_crm_export_stats
+
+    _none_row = MagicMock()
+    _none_row.__getitem__ = lambda s, k: None
+    _none_row.get = lambda k, d=None: None
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = _none_row
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        stats = get_crm_export_stats("client-vide", period_days=7)
+
+    assert stats["last_push_at"] is None
+
+
+# ─── Test 10 : get_detected_info_stats — structure ───────────────────────────
+
+def test_get_detected_info_stats_structure():
+    from dashboard.lib.cockpit import get_detected_info_stats
+
+    _row = MagicMock()
+    _row.__getitem__ = lambda s, k: 3
+    _row.get = lambda k, d=0: 3
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = _row
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        stats = get_detected_info_stats("client-001", period_days=7)
+
+    expected_keys = {"budgets", "zones", "types_bien", "motivations", "financements", "objections"}
+    assert set(stats.keys()) == expected_keys
+
+
+def test_get_detected_info_stats_exception_retourne_zeros():
+    """Si la DB lève une erreur, retourne des zéros proprement."""
+    from dashboard.lib.cockpit import get_detected_info_stats
+
+    mock_conn = MagicMock()
+    mock_conn.execute.side_effect = Exception("table introuvable")
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        stats = get_detected_info_stats("client-001", period_days=7)
+
+    assert all(v == 0 for v in stats.values())
