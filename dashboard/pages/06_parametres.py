@@ -401,33 +401,6 @@ if _selected_push_type != "none" or _current_type != "none":
         st.caption("Statistiques indisponibles.")
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SECTION 5 — Préférences d'assistant
-# ══════════════════════════════════════════════════════════════════════════════
-
-st.markdown("---")
-with st.expander("Préférences PropPilot", expanded=False):
-    st.caption(
-        "Personnalisez le nom et le rôle utilisés par votre assistant dans les échanges automatiques."
-    )
-    with st.form("assistant_prefs_form"):
-        conseiller_prenom = st.text_input(
-            "Prénom de l'assistant",
-            value=st.session_state.get("config_conseiller_prenom", "Léa"),
-            placeholder="ex: Léa",
-        )
-        conseiller_titre = st.text_input(
-            "Titre de l'assistant",
-            value=st.session_state.get("config_conseiller_titre", "conseillère immobilier"),
-            placeholder="ex: conseillère immobilier",
-        )
-        prefs_save = st.form_submit_button("Enregistrer", type="primary")
-
-    if prefs_save:
-        st.session_state["config_conseiller_prenom"] = conseiller_prenom
-        st.session_state["config_conseiller_titre"] = conseiller_titre
-        st.success("Préférences PropPilot mises à jour.")
-
-# ══════════════════════════════════════════════════════════════════════════════
 # SECTION — Notifications SMS prospect
 # ══════════════════════════════════════════════════════════════════════════════
 
