@@ -74,7 +74,7 @@ _kpi_cards = [
     (kpi_col1, "🔥 À rappeler",        kpis["a_rappeler"],      "#ef4444", "leads chauds en cours"),
     (kpi_col2, "🏠 Vendeurs chauds",   kpis["vendeurs_chauds"], "#f59e0b", "score ≥ 18/24"),
     (kpi_col3, "🔑 Acheteurs chauds",  kpis["acheteurs_chauds"], "#3b82f6", "score ≥ 18/24"),
-    (kpi_col4, "⚠️ À vérifier",        kpis["a_verifier"],      "#6b7280", "extraction échouée"),
+    (kpi_col4, "⚠️ À vérifier",        kpis["a_verifier"],      "#6b7280", "nécessite votre attention"),
 ]
 for col, label, value, color, subtitle in _kpi_cards:
     with col:

@@ -33,8 +33,8 @@ tier = st.session_state.get("plan", settings.agency_tier)
 
 st.title("⚠️ Leads à vérifier manuellement")
 st.caption(
-    "Ces leads n'ont pas pu être analysés automatiquement (extraction IA échouée après 3 tentatives). "
-    "Consultez leur transcript et saisissez les informations clés."
+    "Certains leads nécessitent votre attention. "
+    "Consultez leur historique et complétez les informations manquantes."
 )
 
 # ─── Chargement ──────────────────────────────────────────────────────────────
@@ -77,7 +77,6 @@ for lead_dict in leads_raw:
 
         with col_info:
             st.markdown(f"**Score actuel :** {score}/24")
-            st.markdown(f"**Statut extraction :** `{extraction_status}`")
             if resume:
                 st.markdown(f"**Résumé disponible :** {resume}")
 
@@ -109,7 +108,7 @@ for lead_dict in leads_raw:
                     raw_resume = ext.get("resume_appel") or ""
                     if raw_resume:
                         src = ext.get("source", "call")
-                        st.markdown(f"**Résumé extraction ({src}) :** {raw_resume[:500]}")
+                        st.markdown(f"**Résumé de l'appel :** {raw_resume[:500]}")
 
             except Exception as exc:
                 st.caption(f"Transcript indisponible : {exc}")

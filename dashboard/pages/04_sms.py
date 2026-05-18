@@ -253,8 +253,8 @@ with col_right:
                         "queued": " ⏳",
                         "sent": " ✓",
                         "delivered": " ✓✓",
-                        "failed": " ❌",
-                        "undelivered": " ❌",
+                        "failed": " —",
+                        "undelivered": " —",
                     }
                     meta_html += status_icons.get(status, "")
 

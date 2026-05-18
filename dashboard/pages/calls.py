@@ -182,10 +182,10 @@ def _status_label(call: dict) -> str:
         "extracted": "✅ Extrait",
         "completed": "✅ Terminé",
         "no_answer": "⚫ Sans réponse",
-        "failed": "🔴 Échec",
+        "failed": "🟡 Non abouti",
         "voicemail": "📭 Messagerie",
         "abandoned_legal_notice": "⚫ Abandon",
-        "transcription_failed": "🔴 Transcription échouée",
+        "transcription_failed": "🟡 En cours de traitement",
     }
     return labels.get(status, status)
 
@@ -370,7 +370,7 @@ if not transcript:
     if status in ("initiated", "ringing", "answered", "recorded"):
         st.info("Transcription en cours de traitement…")
     elif status == "transcription_failed":
-        st.error("La transcription a échoué (3 tentatives épuisées).")
+        st.info("La transcription de cet appel sera disponible prochainement.")
     else:
         st.info("Aucune transcription disponible pour cet appel.")
 else:
@@ -486,7 +486,7 @@ else:
     elif status == "transcription_failed":
         pass  # message déjà affiché dans la section transcription
     else:
-        st.caption("Aucune extraction disponible pour cet appel.")
+        st.caption("Aucune analyse disponible pour cet appel.")
 
 # Pagination en bas
 st.markdown("---")

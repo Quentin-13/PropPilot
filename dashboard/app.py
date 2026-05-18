@@ -220,7 +220,7 @@ st.markdown(f"""
 if _leads_to_verify > 0:
     st.warning(
         f"⚠️ **{_leads_to_verify} lead{'s' if _leads_to_verify > 1 else ''} à vérifier manuellement** "
-        f"— extraction IA échouée. Consultez la page **Mes Leads** pour les traiter.",
+        f"— ces leads nécessitent une vérification rapide. Consultez la page **Mes Leads** pour les traiter.",
         icon=None,
     )
 
