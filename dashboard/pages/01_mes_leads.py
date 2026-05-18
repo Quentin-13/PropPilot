@@ -221,10 +221,11 @@ else:
 
     # ─── Panel détail + actions ───────────────────────────────────────────────
 
+    _preselected_id = st.session_state.pop("selected_lead_id", None)
     selected_rows = selected_indices.selection.rows if selected_indices.selection else []
-    if selected_rows:
-        idx = selected_rows[0]
-        lead_id = rows[idx]["_lead_id"]
+    _active_lead_id = rows[selected_rows[0]]["_lead_id"] if selected_rows else _preselected_id
+    if _active_lead_id:
+        lead_id = _active_lead_id
         selected_lead = next((l for l in leads if l.id == lead_id), None)
 
         if selected_lead:

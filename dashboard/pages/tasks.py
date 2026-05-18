@@ -319,31 +319,34 @@ for _row_start in (0, 3):
 
 # ─── Informations détectées ───────────────────────────────────────────────────
 
-_info_total = sum(info_stats.values())
-if _info_total > 0:
+_info_defs = [
+    ("💰", info_stats["budgets"],      "Budgets",            "budgets"),
+    ("📍", info_stats["zones"],        "Zones",              "zones"),
+    ("🏠", info_stats["types_bien"],   "Types de bien",      "types_bien"),
+    ("💡", info_stats["motivations"],  "Motivations",        "motivations"),
+    ("🏦", info_stats["financements"], "Financements",       "financements"),
+    ("⚠️", info_stats["objections"],   "Points d'attention", "objections"),
+]
+_shown = [(ic, v, lb, cat) for ic, v, lb, cat in _info_defs if v > 0]
+
+if _shown:
     st.markdown('<div class="section-hd">Informations détectées</div>', unsafe_allow_html=True)
-
-    _info_defs = [
-        ("💰", info_stats["budgets"],      "Budgets"),
-        ("📍", info_stats["zones"],        "Zones"),
-        ("🏠", info_stats["types_bien"],   "Types de bien"),
-        ("💡", info_stats["motivations"],  "Motivations"),
-        ("🏦", info_stats["financements"], "Financements"),
-        ("⚠️", info_stats["objections"],   "Points d'attention"),
-    ]
-    _shown = [(ic, v, lb) for ic, v, lb in _info_defs if v > 0]
-
-    _info_html = '<div class="info-grid">'
-    for icon, val, label in _shown:
-        _info_html += (
-            f'<div class="info-card">'
-            f'<span style="font-size:1.4rem;">{icon}</span>'
-            f'<div><div class="info-val">{val}</div>'
-            f'<div class="info-label">{label}</div></div>'
-            f'</div>'
-        )
-    _info_html += '</div>'
-    st.markdown(_info_html, unsafe_allow_html=True)
+    for _row_start in range(0, len(_shown), 3):
+        _row = _shown[_row_start:_row_start + 3]
+        _cols = st.columns(3)
+        for _col, (icon, val, label, cat) in zip(_cols, _row):
+            with _col:
+                st.markdown(
+                    f'<div class="info-card">'
+                    f'<span style="font-size:1.4rem;">{icon}</span>'
+                    f'<div><div class="info-val">{val}</div>'
+                    f'<div class="info-label">{label}</div></div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+                if st.button("Voir le détail →", key=f"info_{cat}", use_container_width=True):
+                    st.session_state["detected_info_category"] = cat
+                    st.switch_page("pages/07_infos_detectees.py")
 
 # ─── CRM alimenté ─────────────────────────────────────────────────────────────
 

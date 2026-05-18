@@ -398,3 +398,128 @@ def test_get_detected_info_stats_exception_retourne_zeros():
         stats = get_detected_info_stats("client-001", period_days=7)
 
     assert all(v == 0 for v in stats.values())
+
+
+def test_get_detected_info_stats_compte_leads_distincts():
+    """
+    Les compteurs utilisent COUNT(DISTINCT lead_id), pas COUNT(*).
+    Un même lead avec 3 extractions budget doit être compté 1 fois.
+    """
+    from dashboard.lib.cockpit import get_detected_info_stats
+
+    _row = MagicMock()
+    _row.__getitem__ = lambda s, k: 2
+    _row.get = lambda k, d=0: 2
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = _row
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        get_detected_info_stats("client-001", period_days=7)
+
+    sql = mock_conn.execute.call_args[0][0]
+    assert "DISTINCT" in sql, "SQL doit utiliser COUNT(DISTINCT lead_id)"
+    assert "COUNT(*)" not in sql, "SQL ne doit pas utiliser COUNT(*) pour les infos détectées"
+
+
+# ─── Tests get_detected_info_detail ──────────────────────────────────────────
+
+def test_get_detected_info_detail_structure():
+    """Retourne une liste de dicts avec les clés attendues."""
+    from dashboard.lib.cockpit import get_detected_info_detail
+
+    _fake_row = {
+        "lead_id": "lead-1", "prenom": "Alice", "nom": "Dupont",
+        "telephone": "+33600000001", "score": 20,
+        "budget_min": 200000, "budget_max": 300000,
+        "zone_geographique": None, "type_bien": None,
+        "financement": None, "motivation": None,
+        "points_attention": None, "extracted_at": "2026-05-01 10:00:00",
+    }
+    mock_row = MagicMock()
+    mock_row.__iter__ = MagicMock(return_value=iter(_fake_row.items()))
+    mock_row.keys = MagicMock(return_value=_fake_row.keys())
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchall.return_value = [_fake_row]
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        rows = get_detected_info_detail("client-001", "budgets", period_days=7)
+
+    assert isinstance(rows, list)
+    assert len(rows) == 1
+    assert "lead_id" in rows[0]
+    assert "budget_min" in rows[0]
+
+
+def test_get_detected_info_detail_categorie_inconnue():
+    """Une catégorie inconnue retourne une liste vide sans requête DB."""
+    from dashboard.lib.cockpit import get_detected_info_detail
+
+    mock_conn = MagicMock()
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn) as mock_gc:
+        rows = get_detected_info_detail("client-001", "categorie_inconnue", period_days=7)
+
+    assert rows == []
+    mock_gc.assert_not_called()
+
+
+def test_get_detected_info_detail_etat_vide():
+    """Aucune extraction sur la période → liste vide."""
+    from dashboard.lib.cockpit import get_detected_info_detail
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchall.return_value = []
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        rows = get_detected_info_detail("client-001", "budgets", period_days=7)
+
+    assert rows == []
+
+
+def test_get_detected_info_detail_passe_client_id():
+    """client_id est transmis à la requête SQL (isolation multi-tenant)."""
+    from dashboard.lib.cockpit import get_detected_info_detail
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchall.return_value = []
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value = mock_cursor
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        get_detected_info_detail("client-SECRET", "zones", period_days=30)
+
+    params = mock_conn.execute.call_args[0][1]
+    assert "client-SECRET" in params
+
+
+def test_get_detected_info_detail_exception_retourne_liste_vide():
+    """Erreur DB → retourne [] sans lever d'exception."""
+    from dashboard.lib.cockpit import get_detected_info_detail
+
+    mock_conn = MagicMock()
+    mock_conn.execute.side_effect = Exception("connexion perdue")
+    mock_conn.__enter__ = MagicMock(return_value=mock_conn)
+    mock_conn.__exit__ = MagicMock(return_value=False)
+
+    with patch("dashboard.lib.cockpit.get_connection", return_value=mock_conn):
+        rows = get_detected_info_detail("client-001", "motivations", period_days=7)
+
+    assert rows == []

@@ -161,9 +161,19 @@ def get_dashboard_kpis(client_id: str, period_days: int = 7) -> dict:
                 "leads_enrichis": 0, "envois_crm": 0, "actions_recommandees": 0}
 
 
+_CATEGORY_FILTER: dict[str, str] = {
+    "budgets":     "budget_min IS NOT NULL OR budget_max IS NOT NULL",
+    "zones":       "zone_geographique IS NOT NULL AND zone_geographique != ''",
+    "types_bien":  "type_bien IS NOT NULL AND type_bien != ''",
+    "motivations": "motivation IS NOT NULL AND motivation != ''",
+    "financements":"financement IS NOT NULL AND financement <> '{}'::jsonb",
+    "objections":  "points_attention IS NOT NULL AND jsonb_array_length(points_attention) > 0",
+}
+
+
 def get_detected_info_stats(client_id: str, period_days: int = 7) -> dict:
     """
-    Compte les informations clés extraites sur la période.
+    Compte les leads distincts ayant une information clé extraite sur la période.
     Source : conversation_extractions (extraction_status='ok').
     """
     since = datetime.now() - timedelta(days=period_days)
@@ -171,17 +181,17 @@ def get_detected_info_stats(client_id: str, period_days: int = 7) -> dict:
         with get_connection() as conn:
             row = conn.execute(
                 """SELECT
-                     COUNT(*) FILTER (WHERE budget_min IS NOT NULL
+                     COUNT(DISTINCT lead_id) FILTER (WHERE budget_min IS NOT NULL
                                          OR budget_max IS NOT NULL) AS budgets,
-                     COUNT(*) FILTER (WHERE zone_geographique IS NOT NULL
+                     COUNT(DISTINCT lead_id) FILTER (WHERE zone_geographique IS NOT NULL
                                          AND zone_geographique != '') AS zones,
-                     COUNT(*) FILTER (WHERE type_bien IS NOT NULL
+                     COUNT(DISTINCT lead_id) FILTER (WHERE type_bien IS NOT NULL
                                          AND type_bien != '') AS types_bien,
-                     COUNT(*) FILTER (WHERE motivation IS NOT NULL
+                     COUNT(DISTINCT lead_id) FILTER (WHERE motivation IS NOT NULL
                                          AND motivation != '') AS motivations,
-                     COUNT(*) FILTER (WHERE financement IS NOT NULL
+                     COUNT(DISTINCT lead_id) FILTER (WHERE financement IS NOT NULL
                                          AND financement <> '{}'::jsonb) AS financements,
-                     COUNT(*) FILTER (WHERE points_attention IS NOT NULL
+                     COUNT(DISTINCT lead_id) FILTER (WHERE points_attention IS NOT NULL
                                          AND jsonb_array_length(points_attention) > 0) AS objections
                    FROM conversation_extractions
                    WHERE client_id = ? AND extraction_status = 'ok' AND extracted_at >= ?""",
@@ -193,6 +203,37 @@ def get_detected_info_stats(client_id: str, period_days: int = 7) -> dict:
     except Exception as e:
         logger.warning("[Cockpit] get_detected_info_stats: %s", e)
     return {"budgets": 0, "zones": 0, "types_bien": 0, "motivations": 0, "financements": 0, "objections": 0}
+
+
+def get_detected_info_detail(client_id: str, category: str, period_days: int = 30) -> list[dict]:
+    """
+    Retourne un enregistrement par lead distinct (extraction la plus récente sur la période).
+    category : budgets | zones | types_bien | motivations | financements | objections
+    """
+    cat_filter = _CATEGORY_FILTER.get(category)
+    if not cat_filter:
+        return []
+    since = datetime.now() - timedelta(days=period_days)
+    try:
+        with get_connection() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT DISTINCT ON (ce.lead_id)
+                    l.id AS lead_id, l.prenom, l.nom, l.telephone, l.score,
+                    ce.budget_min, ce.budget_max, ce.zone_geographique, ce.type_bien,
+                    ce.financement, ce.motivation, ce.points_attention, ce.extracted_at
+                FROM conversation_extractions ce
+                LEFT JOIN leads l ON l.id = ce.lead_id
+                WHERE ce.client_id = ? AND ce.extraction_status = 'ok' AND ce.extracted_at >= ?
+                  AND ({cat_filter})
+                ORDER BY ce.lead_id, ce.extracted_at DESC
+                """,
+                (client_id, since),
+            ).fetchall()
+        return [dict(r) for r in rows]
+    except Exception as e:
+        logger.warning("[Cockpit] get_detected_info_detail: %s", e)
+        return []
 
 
 def get_crm_export_stats(client_id: str, period_days: int = 7) -> dict:
