@@ -50,7 +50,8 @@ ctx = get_client_welcome_context(client_id)
 phone_number  = ctx["phone_number"]
 crm_label     = ctx["crm_label"]
 crm_status    = ctx["crm_status"]
-crm_last_sync = ctx["crm_last_sync_at"]
+from lib.crm_connectors.factory import get_push_stats_7d as _get_crm_stats
+crm_last_sync = _get_crm_stats(client_id).get("last_sync")
 
 # ─── CSS ─────────────────────────────────────────────────────────────────────
 
@@ -202,11 +203,8 @@ st.markdown(
 
 if crm_status == "active":
     from dashboard.utils.datetime_helpers import fmt_paris_datetime
-    sync_str = fmt_paris_datetime(crm_last_sync, "%d/%m à %H:%M") if crm_last_sync else ""
-    sync_span = (
-        f'<span style="color:#64748b;font-size:0.85rem;">· Dernière sync {sync_str}</span>'
-        if sync_str else ""
-    )
+    sync_str = fmt_paris_datetime(crm_last_sync, "%d/%m à %H:%M") if crm_last_sync else "Aucun récemment"
+    sync_span = f'<span style="color:#64748b;font-size:0.85rem;">· Dernier envoi CRM {sync_str}</span>'
     st.markdown(
         f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
         f'<span style="color:#10b981;font-weight:700;">&#9679; Remontée CRM active</span>'

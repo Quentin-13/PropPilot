@@ -65,6 +65,7 @@ def get_push_stats_7d(client_id: str) -> dict:
     """
     Statistiques de push sur 7 jours pour l'affichage dashboard.
     Retourne {"total": int, "success": int, "error": int, "last_error": str, "last_sync": datetime}
+    Source de vérité : crm_sync_log (écrit par _log_sync à chaque push).
     """
     try:
         from memory.database import get_connection
@@ -77,16 +78,22 @@ def get_push_stats_7d(client_id: str) -> dict:
                    GROUP BY status""",
                 (client_id,),
             ).fetchall()
+            row_last = conn.execute(
+                """SELECT MAX(sent_at) AS last_push_at
+                   FROM crm_sync_log
+                   WHERE client_id = ? AND status = 'success'""",
+                (client_id,),
+            ).fetchone()
 
         success = sum(r["cnt"] for r in rows if r["status"] == "success")
         error = sum(r["cnt"] for r in rows if r["status"] == "error")
+        last_sync = row_last["last_push_at"] if row_last else None
 
         with get_connection() as conn:
             row = conn.execute(
-                "SELECT crm_last_sync_at, crm_last_error FROM users WHERE id = ?",
+                "SELECT crm_last_error FROM users WHERE id = ?",
                 (client_id,),
             ).fetchone()
-        last_sync = row["crm_last_sync_at"] if row else None
         last_error = row["crm_last_error"] if row else None
 
         return {

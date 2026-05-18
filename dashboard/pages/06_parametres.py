@@ -19,6 +19,7 @@ settings = get_settings()
 st.set_page_config(page_title="Mes paramètres — PropPilot", layout="wide", page_icon="⚙️")
 
 from dashboard.auth_ui import require_auth, render_sidebar_logout, require_non_demo
+from dashboard.utils.datetime_helpers import fmt_paris_datetime
 require_auth()
 require_non_demo()
 render_sidebar_logout()
@@ -386,14 +387,14 @@ if _selected_push_type != "none" or _current_type != "none":
         _stats = get_push_stats_7d(client_id)
         _st_col1, _st_col2, _st_col3 = st.columns(3)
         with _st_col1:
-            _last_sync = _crm_push_current.get("crm_last_sync_at")
-            _sync_str  = _last_sync.strftime("%d/%m %H:%M") if _last_sync else "Jamais"
-            st.metric("Dernière sync", _sync_str)
+            _last_sync = _stats.get("last_sync")
+            _sync_str  = fmt_paris_datetime(_last_sync, "%d/%m %H:%M") if _last_sync else "Aucun récemment"
+            st.metric("Dernier envoi CRM", _sync_str)
         with _st_col2:
             st.metric("Leads transmis (7 j)", _stats.get("success", 0))
         with _st_col3:
             st.metric("Erreurs (7 j)", _stats.get("error", 0))
-        _last_err = _crm_push_current.get("crm_last_error")
+        _last_err = _stats.get("last_error")
         if _last_err:
             st.warning(f"Dernière erreur : {_last_err[:200]}")
     except Exception:
