@@ -8,6 +8,8 @@ Couverture :
   4. Anti-spam : deux appels rapides sur le même lead → une seule notification
   5. notifications désactivées (sms_notif_enabled=False) → pas d'envoi
   6. Cooldown expiré → notification autorisée à nouveau
+  7. Deep-link avec lead_id → corps contient ?lead_id=<lead_id>
+  8. Sans lead_id → fallback dashboard général (pas de ?lead_id=)
 """
 from __future__ import annotations
 
@@ -316,3 +318,69 @@ def test_cooldown_expired_allows_resend():
                     dashboard_url="https://app.proppilot.fr",
                 )
                 mock_send.assert_called_once()
+
+
+# ─── 7. Deep-link avec lead_id → corps contient ?lead_id= ────────────────────
+
+def test_sms_body_contains_deep_link():
+    """La notification doit contenir un deep-link direct vers la conversation."""
+    from lib.agent_notifier import notify_agent_sms
+    from tools import twilio_tool
+
+    row = _make_db_row(phone="+33612345678", twilio_sms_number="+33700000001")
+    settings_ok = _make_settings(twilio_sid="ACxxx", twilio_token="tok")
+    sent_bodies: list[str] = []
+
+    def _capture(to, body, from_number=None):
+        sent_bodies.append(body)
+        return {"success": True, "sid": "SMdeep", "mock": False}
+
+    with patch("memory.database.get_connection", return_value=_mock_conn(row)):
+        with patch("config.settings.get_settings", return_value=settings_ok):
+            with patch.object(twilio_tool.TwilioTool, "send_sms", side_effect=_capture):
+                notify_agent_sms(
+                    client_id="client-test",
+                    lead_id="lead-xyz-123",
+                    lead_name="Jean Dupont",
+                    from_number="+33611111111",
+                    dashboard_url="https://app.proppilot.fr",
+                )
+
+    assert len(sent_bodies) == 1
+    body = sent_bodies[0]
+    assert "?lead_id=lead-xyz-123" in body
+    assert "https://app.proppilot.fr/sms?lead_id=lead-xyz-123" in body
+    assert "Répondez depuis PropPilot" in body
+
+
+# ─── 8. Sans lead_id → fallback dashboard général ────────────────────────────
+
+def test_sms_body_fallback_without_lead_id():
+    """Sans lead_id, le lien pointe vers le dashboard général (pas de ?lead_id=)."""
+    from lib.agent_notifier import notify_agent_sms
+    from tools import twilio_tool
+
+    row = _make_db_row(phone="+33612345678", twilio_sms_number="+33700000001")
+    settings_ok = _make_settings(twilio_sid="ACxxx", twilio_token="tok")
+    sent_bodies: list[str] = []
+
+    def _capture(to, body, from_number=None):
+        sent_bodies.append(body)
+        return {"success": True, "sid": "SMfb", "mock": False}
+
+    with patch("memory.database.get_connection", return_value=_mock_conn(row)):
+        with patch("config.settings.get_settings", return_value=settings_ok):
+            with patch.object(twilio_tool.TwilioTool, "send_sms", side_effect=_capture):
+                notify_agent_sms(
+                    client_id="client-test",
+                    lead_id="",
+                    lead_name="Jean Dupont",
+                    from_number="+33611111111",
+                    dashboard_url="https://app.proppilot.fr",
+                )
+
+    assert len(sent_bodies) == 1
+    body = sent_bodies[0]
+    assert "?lead_id=" not in body
+    assert "https://app.proppilot.fr" in body
+    assert "Répondez depuis PropPilot" in body

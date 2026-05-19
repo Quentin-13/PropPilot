@@ -94,13 +94,18 @@ def notify_agent_sms(
 
     # Composer le message
     display_name = lead_name or from_number
+    link = (
+        f"{dashboard_url.rstrip('/')}/sms?lead_id={lead_id}"
+        if lead_id
+        else dashboard_url
+    )
     lines = [
         "Nouveau SMS prospect reçu sur PropPilot.",
         f"Lead : {display_name}",
     ]
     if next_action:
         lines.append(f"Action : {next_action}")
-    lines.append(f"Répondez depuis PropPilot : {dashboard_url}")
+    lines.append(f"Répondez depuis PropPilot : {link}")
     body = "\n".join(lines)
 
     # Envoi via Twilio

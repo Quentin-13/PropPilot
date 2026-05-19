@@ -33,6 +33,7 @@ client_id = st.session_state.get("user_id", settings.agency_client_id)
 
 st.session_state.setdefault("sms_skip_next_refresh", False)
 st.session_state.setdefault("sms_thread_opened_at", 0.0)
+st.session_state.setdefault("last_deeplink_lead_id", "")
 
 _autorefresh_ok = False
 try:
@@ -95,6 +96,24 @@ try:
 except Exception as exc:
     st.error(f"Impossible de charger les conversations SMS : {exc}")
     st.stop()
+
+# ─── Deep-link : ?lead_id=<lead_id> ──────────────────────────────────────────
+# Remplace la sélection active si lead_id est nouveau (pas encore traité ce cycle).
+# last_deeplink_lead_id évite de boucler sur le même paramètre à chaque rerun.
+# lead_id invalide ou appartenant à un autre client → sélection inchangée.
+_qp_lead_id = st.query_params.get("lead_id", "")
+if _qp_lead_id and _qp_lead_id != st.session_state.get("last_deeplink_lead_id"):
+    try:
+        if get_thread_messages(client_id, _qp_lead_id):
+            st.session_state["selected_lead_id"] = _qp_lead_id
+            st.session_state["last_deeplink_lead_id"] = _qp_lead_id
+            st.session_state["sms_thread_opened_at"] = time.time()
+            try:
+                mark_thread_as_read(client_id, _qp_lead_id)
+            except Exception:
+                pass
+    except Exception:
+        pass
 
 # ─── Layout WhatsApp Web ──────────────────────────────────────────────────────
 
