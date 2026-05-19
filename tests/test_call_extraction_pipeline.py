@@ -128,3 +128,102 @@ def test_real_extraction_calls_claude(monkeypatch):
     assert result.source == "claude"
 
     get_settings.cache_clear()
+
+
+# ── Tests règle budget vs prix annonce ────────────────────────────────────────
+
+class TestBudgetVsPrixAnnonce:
+    """Test 1 & 2 — le prix d'une annonce ne doit pas être confondu avec le budget réel."""
+
+    def _from_json(self, overrides: dict):
+        from lib.call_extraction_pipeline import CallExtractionData
+        base = {
+            "lead_type": "acheteur",
+            "type_projet": "achat",
+            "budget_min": None,
+            "budget_max": None,
+            "zone_geographique": None,
+            "type_bien": None,
+            "surface_min": None,
+            "surface_max": None,
+            "criteres": {},
+            "timing": {},
+            "financement": {"type": None, "detail": None},
+            "motivation": None,
+            "score_qualification": "froid",
+            "prochaine_action_suggeree": None,
+            "resume_appel": "Test.",
+            "points_attention": [],
+        }
+        base.update(overrides)
+        return CallExtractionData.from_json(base, model="test", cost_usd=0.0)
+
+    def test_prix_annonce_ne_compte_pas_comme_budget(self):
+        """Test 1 — prospect appelle pour un bien affiché à 400k : budget doit rester null."""
+        result = self._from_json({"budget_min": None, "budget_max": None})
+        assert result.budget_min is None
+        assert result.budget_max is None
+
+    def test_budget_reel_prospect_extrait(self):
+        """Test 2 — prospect dit 'mon budget est 400k' : budget extrait correctement."""
+        result = self._from_json({"budget_min": 380000, "budget_max": 430000})
+        assert result.budget_min == 380000
+        assert result.budget_max == 430000
+
+
+# ── Tests _normalize_financement ──────────────────────────────────────────────
+
+class TestNormalizeFinancement:
+    """Test 3 & 4 — financement non évoqué → {} ; financement réel → conservé."""
+
+    def test_financement_type_null_normalise_vers_vide(self):
+        """Test 3 — {'type': null, 'detail': null} → {} (non compté comme financement)."""
+        from lib.call_extraction_pipeline import _normalize_financement
+        assert _normalize_financement({"type": None, "detail": None}) == {}
+        assert _normalize_financement({"type": "null", "detail": None}) == {}
+
+    def test_financement_generique_normalise_vers_vide(self):
+        """Test 3 — valeurs génériques → {}."""
+        from lib.call_extraction_pipeline import _normalize_financement
+        for val in ["non évoqué", "à qualifier", "inconnu", "non renseigné", "à demander", "pas précisé"]:
+            assert _normalize_financement({"type": val}) == {}, f"Attendu {{}} pour type={val!r}"
+
+    def test_financement_reel_conserve(self):
+        """Test 4 — accord bancaire et apport → conservé tel quel."""
+        from lib.call_extraction_pipeline import _normalize_financement
+        fin = {"type": "accord_bancaire", "detail": "60k apport"}
+        assert _normalize_financement(fin) == fin
+
+    def test_from_json_financement_null_type_donne_vide(self):
+        """Test 3 — from_json avec financement null type → financement == {}."""
+        from lib.call_extraction_pipeline import CallExtractionData
+        data = {
+            "lead_type": "acheteur", "type_projet": "achat",
+            "budget_min": None, "budget_max": None,
+            "zone_geographique": None, "type_bien": None,
+            "surface_min": None, "surface_max": None,
+            "criteres": {}, "timing": {},
+            "financement": {"type": None, "detail": None},
+            "motivation": None, "score_qualification": "froid",
+            "prochaine_action_suggeree": None,
+            "resume_appel": "Test.", "points_attention": [],
+        }
+        result = CallExtractionData.from_json(data, model="test", cost_usd=0.0)
+        assert result.financement == {}, "financement avec type=null doit être normalisé vers {}"
+
+    def test_from_json_financement_reel_conserve(self):
+        """Test 4 — from_json avec accord bancaire → financement conservé."""
+        from lib.call_extraction_pipeline import CallExtractionData
+        data = {
+            "lead_type": "acheteur", "type_projet": "achat",
+            "budget_min": None, "budget_max": None,
+            "zone_geographique": None, "type_bien": None,
+            "surface_min": None, "surface_max": None,
+            "criteres": {}, "timing": {},
+            "financement": {"type": "accord_bancaire", "detail": "60k apport"},
+            "motivation": None, "score_qualification": "chaud",
+            "prochaine_action_suggeree": None,
+            "resume_appel": "Test.", "points_attention": [],
+        }
+        result = CallExtractionData.from_json(data, model="test", cost_usd=0.0)
+        assert result.financement.get("type") == "accord_bancaire"

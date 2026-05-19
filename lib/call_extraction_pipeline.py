@@ -34,9 +34,16 @@ def _build_call_prompt(transcript: str) -> str:
         + "\n\nRÈGLES GÉNÉRALES :\n"
         "- Si une information n'est pas mentionnée, retourne null pour ce champ\n"
         "- Ne déduis pas ce qui n'est pas dit explicitement\n"
-        "- budget_min et budget_max sont des entiers en euros (ex: 350000)\n"
+        "- budget_min et budget_max = budget RÉEL du prospect (sa capacité, son enveloppe, ce qu'il peut dépenser)\n"
+        "  NE PAS confondre avec le prix d'une annonce ou d'un bien visité\n"
+        "  Exemples NON-budget (→ null) : 'j'appelle pour le bien à 400 000€', 'la maison est à 350 000€'\n"
+        "  Exemples BUDGET (→ à extraire) : 'mon budget est 400 000€', 'on peut aller jusqu'à 430 000€'\n"
+        "- financement : extraire UNIQUEMENT si le prospect évoque un vrai élément de financement\n"
+        "  (accord bancaire, apport, simulation faite, courtier consulté, vente en cours, paiement comptant)\n"
+        "  Si le financement n'est pas évoqué → retourner {\"type\": null, \"detail\": null}\n"
+        "  NE PAS inventer 'non évoqué', 'à qualifier', 'inconnu' dans le champ type\n"
         "- surface_min et surface_max sont des entiers en m²\n"
-        "- criteres, timing, financement sont des objets JSON\n"
+        "- criteres et timing sont des objets JSON\n"
         + SCORING_INSTRUCTIONS
         + _FEW_SHOT_EXAMPLES
         + "\nRetourne UNIQUEMENT un JSON valide, sans texte autour :\n"
@@ -196,7 +203,7 @@ class CallExtractionData:
             surface_max=_to_int(data.get("surface_max")),
             criteres=data.get("criteres") or {},
             timing=data.get("timing") or {},
-            financement=data.get("financement") or {},
+            financement=_normalize_financement(data.get("financement")),
             motivation=data.get("motivation"),
             prochaine_action_suggeree=data.get("prochaine_action_suggeree"),
             resume_appel=data.get("resume_appel"),
@@ -214,6 +221,23 @@ class CallExtractionData:
         if llm_label in ("chaud", "tiede", "froid"):
             obj.score_qualification = llm_label
         return obj
+
+
+_FINANCEMENT_VIDE = {
+    None, "", "null", "non évoqué", "non evoque", "à qualifier", "a qualifier",
+    "inconnu", "non renseigné", "non renseigne", "à demander", "a demander",
+    "pas précisé", "pas precise", "non précisé", "non precise",
+}
+
+
+def _normalize_financement(raw) -> dict:
+    """Retourne {} si le financement est absent/générique, sinon le dict nettoyé."""
+    if not raw or not isinstance(raw, dict):
+        return {}
+    fin_type = (raw.get("type") or "").lower().strip()
+    if fin_type in _FINANCEMENT_VIDE:
+        return {}
+    return raw
 
 
 def _to_int(v) -> Optional[int]:

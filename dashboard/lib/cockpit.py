@@ -202,6 +202,12 @@ _CATEGORY_FILTER: dict[str, str] = {
     ),
     "financements": (
         "ce.financement IS NOT NULL AND ce.financement <> '{}'::jsonb"
+        " AND ce.financement->>'type' IS NOT NULL"
+        " AND lower(ce.financement->>'type') NOT IN"
+        " ('null', 'non évoqué', 'non evoque', 'à qualifier', 'a qualifier',"
+        " 'inconnu', 'non renseigné', 'non renseigne',"
+        " 'à demander', 'a demander', 'pas précisé', 'pas precise',"
+        " 'non précisé', 'non precise', '')"
     ),
     "objections": (
         "ce.points_attention IS NOT NULL AND jsonb_array_length(ce.points_attention) > 0"

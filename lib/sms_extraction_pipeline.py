@@ -34,9 +34,16 @@ def _build_sms_prompt(thread: str) -> str:
         + "\n\nRÈGLES GÉNÉRALES :\n"
         "- Si une information n'est pas mentionnée explicitement, retourne null\n"
         "- Ne déduis pas ce qui n'est pas dit\n"
-        "- budget_min et budget_max sont des entiers en euros (ex: 350000)\n"
+        "- budget_min et budget_max = budget RÉEL du prospect (sa capacité, son enveloppe, ce qu'il peut dépenser)\n"
+        "  NE PAS confondre avec le prix d'une annonce ou d'un bien visité\n"
+        "  Exemples NON-budget (→ null) : 'j'appelle pour le bien à 400 000€', 'la maison est à 350 000€'\n"
+        "  Exemples BUDGET (→ à extraire) : 'mon budget est 400 000€', 'on peut aller jusqu'à 430 000€'\n"
+        "- financement : extraire UNIQUEMENT si le prospect évoque un vrai élément de financement\n"
+        "  (accord bancaire, apport, simulation faite, courtier consulté, vente en cours, paiement comptant)\n"
+        "  Si le financement n'est pas évoqué → retourner {\"type\": null, \"detail\": null}\n"
+        "  NE PAS inventer 'non évoqué', 'à qualifier', 'inconnu' dans le champ type\n"
         "- surface_min et surface_max sont des entiers en m²\n"
-        "- criteres, timing, financement sont des objets JSON\n"
+        "- criteres et timing sont des objets JSON\n"
         + SCORING_INSTRUCTIONS
         + _FEW_SHOT_EXAMPLES
         + "\nRetourne UNIQUEMENT un JSON valide, sans texte autour :\n"

@@ -479,12 +479,23 @@ def _increment_queue_attempts(queue_id: int, error: str) -> None:
         logger.warning("[CRM Factory] _increment_queue_attempts id=%s: %s", queue_id, e)
 
 
+_FINANCEMENT_GENERIQUES = {
+    "", "null", "non évoqué", "non evoque", "à qualifier", "a qualifier",
+    "inconnu", "non renseigné", "non renseigne", "à demander", "a demander",
+    "pas précisé", "pas precise", "non précisé", "non precise",
+}
+
+
 def _format_financement(fin) -> str:
     if not fin:
         return ""
     if isinstance(fin, str):
-        return fin.strip()
+        val = fin.strip()
+        return "" if val.lower() in _FINANCEMENT_GENERIQUES else val
     if isinstance(fin, dict):
+        fin_type = (fin.get("type") or "").lower().strip()
+        if fin_type in _FINANCEMENT_GENERIQUES:
+            return ""
         parts = []
         if fin.get("type"):
             parts.append(fin["type"])

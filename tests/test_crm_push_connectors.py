@@ -397,3 +397,38 @@ class TestNextAction:
         assert result is not None
         assert result.from_cache is True
         assert result.label == "Rappeler maintenant"
+
+
+# ── Tests _format_financement — Test 5 : CRM payload ─────────────────────────
+
+class TestFormatFinancement:
+    """Test 5 — le CRM ne doit pas recevoir 'non évoqué / à qualifier'."""
+
+    def _fmt(self, fin):
+        from lib.crm_connectors.factory import _format_financement
+        return _format_financement(fin)
+
+    def test_financement_absent_retourne_vide(self):
+        assert self._fmt(None) == ""
+        assert self._fmt({}) == ""
+
+    def test_financement_type_null_retourne_vide(self):
+        assert self._fmt({"type": None, "detail": None}) == ""
+
+    def test_financement_generique_retourne_vide(self):
+        for val in ["non évoqué", "à qualifier", "inconnu", "non renseigné", "à demander", "pas précisé"]:
+            result = self._fmt({"type": val})
+            assert result == "", f"Attendu '' pour type={val!r}, obtenu {result!r}"
+
+    def test_financement_reel_retourne_type(self):
+        assert self._fmt({"type": "accord_bancaire", "detail": "Pré-accord obtenu"}) == "accord_bancaire, detail Pré-accord obtenu"
+
+    def test_financement_apport_fort_retourne_type(self):
+        assert self._fmt({"type": "apport_fort"}) == "apport_fort"
+
+    def test_financement_string_generique_retourne_vide(self):
+        assert self._fmt("non évoqué") == ""
+        assert self._fmt("à qualifier") == ""
+
+    def test_financement_string_reel_conserve(self):
+        assert self._fmt("accord bancaire obtenu") == "accord bancaire obtenu"
