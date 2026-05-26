@@ -466,13 +466,13 @@ def render_sidebar_logout() -> None:
 
         if not is_admin:
             # Navigation principale
-            if st.button("🏠 Tableau de bord", use_container_width=True, key="_nav_tasks"):
+            if st.button("🏠 Accueil", use_container_width=True, key="_nav_tasks"):
                 st.session_state["_close_sidebar_mobile"] = True
                 st.switch_page("pages/tasks.py")
             if st.button("👥 Mes leads", use_container_width=True, key="_nav_leads"):
                 st.session_state["_close_sidebar_mobile"] = True
                 st.switch_page("pages/01_mes_leads.py")
-            if st.button("📞 Appels capturés", use_container_width=True, key="_nav_calls"):
+            if st.button("📞 Appels", use_container_width=True, key="_nav_calls"):
                 st.session_state["_close_sidebar_mobile"] = True
                 st.switch_page("pages/calls.py")
             _sms_unread = 0
@@ -483,23 +483,10 @@ def render_sidebar_logout() -> None:
                     _sms_unread = _get_unread_sms(_sms_cid)
             except Exception:
                 pass
-            _sms_btn_label = f"💬 SMS ({_sms_unread})" if _sms_unread > 0 else "💬 SMS"
-            _token   = st.session_state.get("token", "")
-            _api_url = get_settings().api_url
-            st.markdown(
-                f"""
-                <a href="{_api_url}/sms?token={_token}" target="_self"
-                   style="display:block; width:100%; padding:0.5rem 1rem; margin:0.25rem 0 0.5rem 0;
-                          background-color:rgb(240,242,246); color:rgb(49,51,63) !important;
-                          border:1px solid rgba(49,51,63,0.2); border-radius:0.5rem;
-                          text-decoration:none; text-align:center; font-weight:400;
-                          font-size:1rem; cursor:pointer; box-sizing:border-box;
-                          line-height:1.5;">
-                    {_sms_btn_label}
-                </a>
-                """,
-                unsafe_allow_html=True,
-            )
+            _sms_btn_label = f"💬 Conversations ({_sms_unread})" if _sms_unread > 0 else "💬 Conversations"
+            if st.button(_sms_btn_label, use_container_width=True, key="_nav_sms"):
+                st.session_state["_close_sidebar_mobile"] = True
+                st.switch_page("pages/04_sms.py")
 
             st.markdown("---")
 
