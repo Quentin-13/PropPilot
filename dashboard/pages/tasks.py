@@ -23,11 +23,12 @@ from config.settings import get_settings
 from dashboard.auth_ui import require_auth, render_sidebar_logout
 from dashboard.lib.admin_auth import is_super_admin
 from dashboard.utils.datetime_helpers import fmt_paris_datetime, to_paris_tz
+from dashboard.utils.call_helpers import render_call_button
 
 settings = get_settings()
 
 st.set_page_config(
-    page_title="Tableau de bord — PropPilot",
+    page_title="Accueil — PropPilot",
     layout="wide",
     page_icon="🏠",
 )
@@ -159,23 +160,19 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ─── Sélecteur de période ─────────────────────────────────────────────────────
+# ─── Titre + période (depuis session_state) ───────────────────────────────────
 
 _now_paris = datetime.now(ZoneInfo("Europe/Paris"))
 
-st.title("Tableau de bord")
+st.title("Accueil")
+st.markdown(
+    '<p style="color:#94a3b8;margin-top:-8px;margin-bottom:20px;">'
+    "Les actions à traiter aujourd'hui.</p>",
+    unsafe_allow_html=True,
+)
 
-_period_col, _ = st.columns([2, 4])
-with _period_col:
-    _period_label = st.radio(
-        "Période",
-        options=["7 jours", "30 jours", "Depuis le début"],
-        horizontal=True,
-        label_visibility="collapsed",
-        key="dash_period",
-    )
-_period_days = {"7 jours": 7, "30 jours": 30, "Depuis le début": 3650}.get(_period_label, 7)
-# Clé explicite (non-widget) pour survivre au st.switch_page() vers la page détail.
+_period_label = st.session_state.get("dash_period", "30 jours")
+_period_days = {"7 jours": 7, "30 jours": 30, "Depuis le début": 3650}.get(_period_label, 30)
 st.session_state["dash_period_selected"] = _period_label
 
 # ─── Chargement des données ───────────────────────────────────────────────────
@@ -274,131 +271,147 @@ else:
             f'</div>',
             unsafe_allow_html=True,
         )
-        _btn_col, _link_col = st.columns([1.5, 4])
-        with _btn_col:
-            if st.button("Marquer comme fait", key=f"done_{lead_id}_{i}"):
+        _tel = row.get("telephone") or ""
+        _c1, _c2, _c3, _c4 = st.columns(4)
+        with _c1:
+            render_call_button(
+                lead_id=lead_id,
+                lead_phone=_tel or None,
+                client_id=client_id,
+                api_url=settings.api_url,
+                key=f"call_{lead_id}_{i}",
+            )
+        with _c2:
+            if st.button("SMS", key=f"sms_{lead_id}_{i}", use_container_width=True):
+                st.session_state["selected_lead_id"] = lead_id
+                st.switch_page("pages/04_sms.py")
+        with _c3:
+            if st.button("Marquer fait", key=f"done_{lead_id}_{i}", use_container_width=True):
                 try:
                     mark_action_done(lead_id, client_id)
                     st.rerun()
                 except Exception as e:
                     st.error(str(e))
-        with _link_col:
-            if st.button(f"Voir la fiche →", key=f"link_{lead_id}_{i}"):
+        with _c4:
+            if st.button("Voir fiche", key=f"link_{lead_id}_{i}", use_container_width=True):
                 st.session_state["selected_lead_id"] = lead_id
                 st.switch_page("pages/01_mes_leads.py")
 
-# ─── KPI principaux ───────────────────────────────────────────────────────────
+# ─── Vue agence (KPI + activité) ─────────────────────────────────────────────
 
-st.markdown('<div class="section-hd">Ce que PropPilot a fait</div>', unsafe_allow_html=True)
+with st.expander("Voir l'activité de l'agence", expanded=False):
+    _period_col, _ = st.columns([2, 4])
+    with _period_col:
+        _period_label = st.radio(
+            "Période",
+            options=["7 jours", "30 jours", "Depuis le début"],
+            horizontal=True,
+            label_visibility="collapsed",
+            key="dash_period",
+        )
 
-# (icon, valeur, libellé, couleur, page_cible ou None si même page)
-_kpi_defs = [
-    ("📞", kpis["appels_captes"],       "Appels captés",        "#3b82f6", "pages/calls.py"),
-    ("💬", kpis["sms_captes"],          "SMS captés",           "#8b5cf6", "pages/04_sms.py"),
-    ("👤", kpis["leads_crees"],         "Leads créés",          "#10b981", "pages/01_mes_leads.py"),
-    ("✨", kpis["leads_enrichis"],      "Leads enrichis",       "#f59e0b", "pages/01_mes_leads.py"),
-    ("🔗", kpis["envois_crm"],          "Envois CRM réussis",   "#06b6d4", "pages/06_parametres.py"),
-    ("⚡", kpis["actions_recommandees"],"Actions recommandées", "#a3e635", None),
-]
+    st.markdown('<div class="section-hd">Ce que PropPilot a fait</div>', unsafe_allow_html=True)
 
-for _row_start in (0, 3):
-    _cols = st.columns(3)
-    for _col, (_icon, _val, _lbl, _color, _target) in zip(_cols, _kpi_defs[_row_start:_row_start + 3]):
-        with _col:
-            st.markdown(
-                f'<div class="kpi-card" style="--accent:{_color};">'
-                f'<span class="kpi-icon">{_icon}</span>'
-                f'<div class="kpi-val">{_val}</div>'
-                f'<div class="kpi-label">{_lbl}</div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-            if _target:
-                if st.button("Voir le détail →", key=f"kpi_{_lbl}", use_container_width=True):
-                    st.switch_page(_target)
-            else:
-                st.caption("↑ Voir ci-dessus")
+    _kpi_defs = [
+        ("📞", kpis["appels_captes"],       "Appels captés",        "#3b82f6", "pages/calls.py"),
+        ("💬", kpis["sms_captes"],          "SMS captés",           "#8b5cf6", "pages/04_sms.py"),
+        ("👤", kpis["leads_crees"],         "Leads créés",          "#10b981", "pages/01_mes_leads.py"),
+        ("✨", kpis["leads_enrichis"],      "Leads enrichis",       "#f59e0b", "pages/01_mes_leads.py"),
+        ("🔗", kpis["envois_crm"],          "Envois CRM réussis",   "#06b6d4", "pages/06_parametres.py"),
+        ("⚡", kpis["actions_recommandees"],"Actions recommandées", "#a3e635", None),
+    ]
 
-# ─── Informations détectées ───────────────────────────────────────────────────
-
-_info_defs = [
-    ("💰", info_stats["budgets"],      "Budgets",            "budgets"),
-    ("📍", info_stats["zones"],        "Zones",              "zones"),
-    ("🏠", info_stats["types_bien"],   "Types de bien",      "types_bien"),
-    ("💡", info_stats["motivations"],  "Motivations",        "motivations"),
-    ("🏦", info_stats["financements"], "Financements",       "financements"),
-    ("⚠️", info_stats["objections"],   "Points d'attention", "objections"),
-]
-_shown = [(ic, v, lb, cat) for ic, v, lb, cat in _info_defs if v > 0]
-
-if _shown:
-    st.markdown('<div class="section-hd">Informations détectées</div>', unsafe_allow_html=True)
-    for _row_start in range(0, len(_shown), 3):
-        _row = _shown[_row_start:_row_start + 3]
+    for _row_start in (0, 3):
         _cols = st.columns(3)
-        for _col, (icon, val, label, cat) in zip(_cols, _row):
+        for _col, (_icon, _val, _lbl, _color, _target) in zip(_cols, _kpi_defs[_row_start:_row_start + 3]):
             with _col:
                 st.markdown(
-                    f'<div class="info-card">'
-                    f'<span style="font-size:1.4rem;">{icon}</span>'
-                    f'<div><div class="info-val">{val}</div>'
-                    f'<div class="info-label">{label}</div></div>'
+                    f'<div class="kpi-card" style="--accent:{_color};">'
+                    f'<span class="kpi-icon">{_icon}</span>'
+                    f'<div class="kpi-val">{_val}</div>'
+                    f'<div class="kpi-label">{_lbl}</div>'
                     f'</div>',
                     unsafe_allow_html=True,
                 )
-                if st.button("Voir le détail →", key=f"info_{cat}", use_container_width=True):
-                    st.session_state["detected_info_category"] = cat
-                    st.switch_page("pages/07_infos_detectees.py")
+                if _target:
+                    if st.button("Voir le détail →", key=f"kpi_{_lbl}", use_container_width=True):
+                        st.switch_page(_target)
+                else:
+                    st.caption("↑ Voir ci-dessus")
 
-# ─── CRM alimenté ─────────────────────────────────────────────────────────────
+    _info_defs = [
+        ("💰", info_stats["budgets"],      "Budgets",            "budgets"),
+        ("📍", info_stats["zones"],        "Zones",              "zones"),
+        ("🏠", info_stats["types_bien"],   "Types de bien",      "types_bien"),
+        ("💡", info_stats["motivations"],  "Motivations",        "motivations"),
+        ("🏦", info_stats["financements"], "Financements",       "financements"),
+        ("⚠️", info_stats["objections"],   "Points d'attention", "objections"),
+    ]
+    _shown = [(ic, v, lb, cat) for ic, v, lb, cat in _info_defs if v > 0]
 
-_crm_configured = False
-try:
-    from memory.database import get_connection as _gc
-    with _gc() as _c:
-        _crm_row = _c.execute(
-            "SELECT crm_type FROM users WHERE id = ?", (client_id,)
-        ).fetchone()
-    _crm_configured = bool(_crm_row and (_crm_row.get("crm_type") or "none") != "none")
-except Exception:
-    pass
+    if _shown:
+        st.markdown('<div class="section-hd">Informations détectées</div>', unsafe_allow_html=True)
+        for _row_start in range(0, len(_shown), 3):
+            _row = _shown[_row_start:_row_start + 3]
+            _cols = st.columns(3)
+            for _col, (icon, val, label, cat) in zip(_cols, _row):
+                with _col:
+                    st.markdown(
+                        f'<div class="info-card">'
+                        f'<span style="font-size:1.4rem;">{icon}</span>'
+                        f'<div><div class="info-val">{val}</div>'
+                        f'<div class="info-label">{label}</div></div>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+                    if st.button("Voir le détail →", key=f"info_{cat}", use_container_width=True):
+                        st.session_state["detected_info_category"] = cat
+                        st.switch_page("pages/07_infos_detectees.py")
 
-if _crm_configured:
-    st.markdown('<div class="section-hd">CRM alimenté</div>', unsafe_allow_html=True)
+    _crm_configured = False
+    try:
+        from memory.database import get_connection as _gc
+        with _gc() as _c:
+            _crm_row = _c.execute(
+                "SELECT crm_type FROM users WHERE id = ?", (client_id,)
+            ).fetchone()
+        _crm_configured = bool(_crm_row and (_crm_row.get("crm_type") or "none") != "none")
+    except Exception:
+        pass
 
-    _last_push_str = (
-        fmt_paris_datetime(crm_stats["last_push_at"], "%d/%m à %H:%M")
-        if crm_stats["last_push_at"] else "Aucun récemment"
-    )
-    _crm_html = (
-        '<div class="crm-grid">'
-        f'<div class="crm-card">'
-        f'<div class="crm-val">{crm_stats["success_count"]}</div>'
-        f'<div class="crm-label">Leads transmis ({_period_label})</div>'
-        f'</div>'
-        f'<div class="crm-card">'
-        f'<div class="crm-val" style="font-size:1rem;">{_last_push_str}</div>'
-        f'<div class="crm-label">Dernier envoi CRM</div>'
-        f'</div>'
-        '</div>'
-    )
-    st.markdown(_crm_html, unsafe_allow_html=True)
+    if _crm_configured:
+        st.markdown('<div class="section-hd">CRM alimenté</div>', unsafe_allow_html=True)
+        _last_push_str = (
+            fmt_paris_datetime(crm_stats["last_push_at"], "%d/%m à %H:%M")
+            if crm_stats["last_push_at"] else "Aucun récemment"
+        )
+        _crm_html = (
+            '<div class="crm-grid">'
+            f'<div class="crm-card">'
+            f'<div class="crm-val">{crm_stats["success_count"]}</div>'
+            f'<div class="crm-label">Leads transmis ({_period_label})</div>'
+            f'</div>'
+            f'<div class="crm-card">'
+            f'<div class="crm-val" style="font-size:1rem;">{_last_push_str}</div>'
+            f'<div class="crm-label">Dernier envoi CRM</div>'
+            f'</div>'
+            '</div>'
+        )
+        st.markdown(_crm_html, unsafe_allow_html=True)
 
-# ─── Activité récente ─────────────────────────────────────────────────────────
+    if activity:
+        def _fmt_dt(val) -> str:
+            if not val:
+                return "—"
+            try:
+                v = to_paris_tz(val if hasattr(val, "tzinfo") else val)
+                if v.date() == _now_paris.date():
+                    return f"Aujourd'hui {v.strftime('%H:%M')}"
+                return v.strftime("%d/%m %H:%M")
+            except Exception:
+                return str(val)[:16]
 
-if activity:
-    def _fmt_dt(val) -> str:
-        if not val:
-            return "—"
-        try:
-            v = to_paris_tz(val if hasattr(val, "tzinfo") else val)
-            if v.date() == _now_paris.date():
-                return f"Aujourd'hui {v.strftime('%H:%M')}"
-            return v.strftime("%d/%m %H:%M")
-        except Exception:
-            return str(val)[:16]
-
-    with st.expander("Activité récente", expanded=False):
+        st.markdown('<div class="section-hd">Activité récente</div>', unsafe_allow_html=True)
         _rows_html = ""
         for ev in activity:
             _rows_html += (

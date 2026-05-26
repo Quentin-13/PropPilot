@@ -18,11 +18,12 @@ import streamlit as st
 from config.settings import get_settings
 from dashboard.auth_ui import require_auth, render_sidebar_logout
 from dashboard.utils.datetime_helpers import fmt_paris_datetime
+from dashboard.utils.call_helpers import render_call_button
 
 settings = get_settings()
 
 st.set_page_config(
-    page_title="Appels capturés — PropPilot",
+    page_title="Appels — PropPilot",
     layout="wide",
     page_icon="📞",
 )
@@ -65,8 +66,67 @@ client_id = st.session_state.get("user_id", settings.agency_client_id)
 
 # ─── Header ───────────────────────────────────────────────────────────────────
 
-st.title("📞 Appels capturés")
-st.markdown("Tous les appels entrants et sortants capturés et analysés par PropPilot.")
+st.title("Appels")
+
+# ─── À rappeler ───────────────────────────────────────────────────────────────
+
+try:
+    from dashboard.lib.cockpit import get_priority_actions as _get_actions
+
+    def _a_score_badge(score) -> str:
+        s = int(score or 0)
+        if s >= 18:
+            return '<span style="color:#ef4444;font-size:0.8rem;font-weight:700;">● Chaud</span>'
+        if s >= 11:
+            return '<span style="color:#f59e0b;font-size:0.8rem;font-weight:700;">● Tiède</span>'
+        return '<span style="color:#64748b;font-size:0.8rem;">● Froid</span>'
+
+    _priority_actions = _get_actions(client_id)
+    if _priority_actions:
+        st.markdown(
+            '<div style="font-size:0.9rem;font-weight:700;color:#94a3b8;'
+            'text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">'
+            'À rappeler</div>',
+            unsafe_allow_html=True,
+        )
+        for _pa in _priority_actions[:4]:
+            _pa_tel = _pa.get("telephone") or ""
+            _pa_name = (f"{_pa.get('prenom') or ''} {_pa.get('nom') or ''}".strip()
+                        or _pa_tel or "Prospect")
+            st.markdown(
+                f'<div style="background:#1e2130;border-radius:8px;padding:12px 14px;'
+                f'margin-bottom:6px;border-left:3px solid #a3e635;">'
+                f'<div style="display:flex;justify-content:space-between;align-items:center;">'
+                f'<span style="color:white;font-weight:600;">{_pa_name}</span>'
+                f'{_a_score_badge(_pa.get("score"))}</div>'
+                f'<div style="color:#94a3b8;font-size:0.84rem;margin-top:4px;">'
+                f'{_pa.get("next_action_label") or "—"}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            _pa_c1, _pa_c2 = st.columns(2)
+            with _pa_c1:
+                _pa_id = _pa["id"]
+                render_call_button(
+                    lead_id=_pa_id,
+                    lead_phone=_pa_tel or None,
+                    client_id=client_id,
+                    api_url=settings.api_url,
+                    key=f"pa_call_{_pa_id}",
+                )
+            with _pa_c2:
+                if st.button("SMS", key=f"pa_sms_{_pa['id']}", use_container_width=True):
+                    st.session_state["selected_lead_id"] = _pa["id"]
+                    st.switch_page("pages/04_sms.py")
+        st.markdown("---")
+        st.markdown(
+            '<div style="font-size:0.9rem;font-weight:700;color:#94a3b8;'
+            'text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">'
+            'Historique des appels</div>',
+            unsafe_allow_html=True,
+        )
+except Exception:
+    pass
 
 # ─── Filtres ──────────────────────────────────────────────────────────────────
 
@@ -174,18 +234,18 @@ def _direction_label(direction: Optional[str]) -> str:
 def _status_label(call: dict) -> str:
     status = call.get("status") or call.get("statut") or "—"
     labels = {
-        "initiated": "🔵 Initié",
-        "ringing": "🟡 Sonnerie",
-        "answered": "🟢 Décroché",
-        "recorded": "🟢 Enregistré",
-        "transcribed": "🟢 Transcrit",
-        "extracted": "✅ Extrait",
-        "completed": "✅ Terminé",
-        "no_answer": "⚫ Sans réponse",
-        "failed": "🟡 Non abouti",
-        "voicemail": "📭 Messagerie",
-        "abandoned_legal_notice": "⚫ Abandon",
-        "transcription_failed": "🟡 En cours de traitement",
+        "initiated": "En cours",
+        "ringing": "En cours",
+        "answered": "Décroché",
+        "recorded": "Traité",
+        "transcribed": "Traité",
+        "extracted": "Traité",
+        "completed": "Terminé",
+        "no_answer": "Sans réponse",
+        "failed": "Non abouti",
+        "voicemail": "Messagerie",
+        "abandoned_legal_notice": "Abandonné",
+        "transcription_failed": "En cours de traitement",
     }
     return labels.get(status, status)
 

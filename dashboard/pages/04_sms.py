@@ -17,11 +17,12 @@ import streamlit as st
 
 from config.settings import get_settings
 from dashboard.auth_ui import require_auth, render_sidebar_logout
+from dashboard.utils.call_helpers import render_call_button
 
 settings = get_settings()
 
 st.set_page_config(
-    page_title="SMS — PropPilot",
+    page_title="Conversations — PropPilot",
     layout="wide",
     page_icon="💬",
 )
@@ -117,7 +118,7 @@ if _qp_lead_id and _qp_lead_id != st.session_state.get("last_deeplink_lead_id"):
 
 # ─── Layout WhatsApp Web ──────────────────────────────────────────────────────
 
-st.title("💬 SMS")
+st.title("Conversations")
 
 col_left, col_right = st.columns([1, 2])
 
@@ -160,31 +161,24 @@ with col_left:
                     f'padding:1px 7px;font-size:0.72rem;font-weight:700;">{nb_unread}</span>'
                 )
 
-            extra_html = ""
-            extraction = thread.get("extraction_resume")
-            if extraction:
-                parts = []
-                if extraction.get("budget"):
-                    parts.append(f"💰 {_escape(str(extraction['budget']))}")
-                if extraction.get("type_bien"):
-                    parts.append(f"🏠 {_escape(str(extraction['type_bien']))}")
-                if extraction.get("zone"):
-                    parts.append(f"📍 {_escape(str(extraction['zone']))}")
-                if parts:
-                    extra_html = (
-                        f'<div style="color:#64748b;font-size:0.74rem;margin-top:3px;">'
-                        f'{"&nbsp;·&nbsp;".join(parts)}</div>'
-                    )
+            score_raw = thread.get("score") or 0
+            if score_raw >= 18:
+                level_html = '<span style="color:#ef4444;font-size:0.72rem;font-weight:700;">● Chaud</span>'
+            elif score_raw >= 11:
+                level_html = '<span style="color:#f59e0b;font-size:0.72rem;font-weight:700;">● Tiède</span>'
+            else:
+                level_html = '<span style="color:#64748b;font-size:0.72rem;">● Froid</span>'
 
             st.markdown(
                 f'<div style="background:{bg_color};border-radius:8px;padding:10px 12px;'
                 f'margin-bottom:4px;border-left:3px solid {border_color};">'
-                f'<div style="font-weight:700;color:white;font-size:0.92rem;">'
-                f'{_escape(name)}{badge_html}</div>'
+                f'<div style="display:flex;justify-content:space-between;align-items:center;">'
+                f'<span style="font-weight:700;color:white;font-size:0.92rem;">'
+                f'{_escape(name)}{badge_html}</span>'
+                f'{level_html}</div>'
                 f'<div style="color:#94a3b8;font-size:0.82rem;white-space:nowrap;'
                 f'overflow:hidden;text-overflow:ellipsis;">{_escape(preview)}</div>'
                 f'<div style="color:#64748b;font-size:0.74rem;">{time_str}</div>'
-                f'{extra_html}'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -236,18 +230,46 @@ with col_right:
         lead_prenom = lead.get("prenom") or ""
         lead_nom = lead.get("nom") or ""
         lead_name = f"{lead_prenom} {lead_nom}".strip() or lead.get("telephone") or selected_id[:8]
-        lead_tel = lead.get("telephone") or "—"
-        lead_score = lead.get("score")
-        score_str = f"{lead_score}/24" if lead_score is not None else "—"
+        lead_tel = lead.get("telephone") or ""
+        lead_score = lead.get("score") or 0
+        if lead_score >= 18:
+            level_label = "Chaud"
+            level_color = "#ef4444"
+        elif lead_score >= 11:
+            level_label = "Tiède"
+            level_color = "#f59e0b"
+        else:
+            level_label = "Froid"
+            level_color = "#64748b"
 
-        st.markdown(
-            f'<div style="background:#1e2130;border-radius:8px;padding:12px 16px;margin-bottom:12px;">'
-            f'<div style="font-weight:700;color:white;font-size:1.05rem;">{_escape(lead_name)}</div>'
-            f'<div style="color:#94a3b8;font-size:0.84rem;">'
-            f'{_escape(lead_tel)}&nbsp;·&nbsp;Score&nbsp;{score_str}'
-            f'</div></div>',
-            unsafe_allow_html=True,
-        )
+        _hdr_col, _call_col = st.columns([4, 1])
+        with _hdr_col:
+            st.markdown(
+                f'<div style="background:#1e2130;border-radius:8px;padding:12px 16px;margin-bottom:4px;">'
+                f'<div style="font-weight:700;color:white;font-size:1.05rem;">{_escape(lead_name)}</div>'
+                f'<div style="color:#94a3b8;font-size:0.84rem;">'
+                f'{_escape(lead_tel or "—")}&nbsp;·&nbsp;'
+                f'<span style="color:{level_color};font-weight:600;">{level_label}</span>'
+                f'</div></div>',
+                unsafe_allow_html=True,
+            )
+        with _call_col:
+            render_call_button(
+                lead_id=selected_id,
+                lead_phone=lead_tel or None,
+                client_id=client_id,
+                api_url=settings.api_url,
+                key="conv_call_btn",
+            )
+
+        lead_resume = lead.get("resume") or ""
+        if lead_resume:
+            with st.expander("Contexte du lead", expanded=False):
+                st.markdown(
+                    f'<div style="color:#e2e8f0;font-size:0.88rem;line-height:1.5;">{_escape(lead_resume)}</div>',
+                    unsafe_allow_html=True,
+                )
+        st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
 
         # ── Messages ──────────────────────────────────────────────────────────
         if not messages:

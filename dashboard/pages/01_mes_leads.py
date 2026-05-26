@@ -16,11 +16,10 @@ from datetime import datetime
 from config.settings import get_settings
 from dashboard.utils.datetime_helpers import fmt_paris_datetime
 from dashboard.utils.lead_formatters import format_lead_status
+from dashboard.utils.call_helpers import render_call_button
 from memory.lead_repository import (
     get_leads_by_client,
     search_leads_by_text,
-    get_pipeline_stats,
-    get_pilot_kpis,
     update_lead,
     add_conversation_message,
 )
@@ -60,69 +59,19 @@ client_id = st.session_state.get("user_id", settings.agency_client_id)
 tier = st.session_state.get("plan", settings.agency_tier)
 agency_name = st.session_state.get("agency_name", settings.agency_name)
 
-st.title("👥 Mes leads")
-st.markdown(f"**{agency_name}** · Forfait {tier}")
+st.title("Mes leads")
 
-# ─── KPIs Pilot ─────────────────────────────────────────────────────────────
-
-try:
-    kpis = get_pilot_kpis(client_id)
-except Exception:
-    kpis = {"a_rappeler": 0, "vendeurs_chauds": 0, "acheteurs_chauds": 0, "a_verifier": 0}
-
-kpi_col1, kpi_col2, kpi_col3, kpi_col4 = st.columns(4)
-
-_kpi_cards = [
-    (kpi_col1, "🔥 À rappeler",        kpis["a_rappeler"],      "#ef4444", "leads chauds en cours"),
-    (kpi_col2, "🏠 Vendeurs chauds",   kpis["vendeurs_chauds"], "#f59e0b", "score ≥ 18/24"),
-    (kpi_col3, "🔑 Acheteurs chauds",  kpis["acheteurs_chauds"], "#3b82f6", "score ≥ 18/24"),
-    (kpi_col4, "⚠️ À vérifier",        kpis["a_verifier"],      "#6b7280", "nécessite votre attention"),
-]
-for col, label, value, color, subtitle in _kpi_cards:
-    with col:
-        st.markdown(f"""
-        <div style="background:#1e2130;border-radius:10px;padding:16px 20px;
-                    border-left:4px solid {color};">
-          <div style="font-size:0.82rem;color:#8892a4;margin-bottom:6px;">{label}</div>
-          <div style="font-size:2rem;font-weight:800;color:white;">{value}</div>
-          <div style="font-size:0.75rem;color:#64748b;margin-top:2px;">{subtitle}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-st.markdown("---")
-
-# ─── Filtres ────────────────────────────────────────────────────────────────
-
-st.markdown("### Filtres")
+# ─── Recherche + filtres ─────────────────────────────────────────────────────
 
 search_query = st.text_input(
     "Recherche",
-    placeholder="Rechercher un lead, une ville, un budget, une objection…",
+    placeholder="Rechercher un lead, une ville, un budget…",
     key="search_query",
     label_visibility="collapsed",
 )
 
-col_f1, col_f2, col_f3 = st.columns(3)
-
-with col_f1:
-    filter_type = st.selectbox(
-        "Type de lead",
-        options=["Tous", "acheteur", "vendeur", "locataire"],
-        key="filter_type",
-    )
-
-with col_f2:
-    filter_score_min = st.slider("Score minimum (/24)", 0, 24, 0, key="filter_score_min")
-
-with col_f3:
-    filter_projet = st.selectbox(
-        "Projet",
-        options=["Tous", "achat", "vente", "location", "estimation", "inconnu"],
-        key="filter_projet",
-    )
-
-with st.expander("Filtres avancés"):
-    adv_col1, adv_col2 = st.columns(2)
+with st.expander("Filtres"):
+    adv_col1, adv_col2, adv_col3, adv_col4 = st.columns(4)
     with adv_col1:
         _STATUT_FILTER = {"Tous": None, **{format_lead_status(s.value): s.value for s in LeadStatus}}
         filter_statut_label = st.selectbox(
@@ -137,6 +86,20 @@ with st.expander("Filtres avancés"):
             options=["Toutes", "sms", "whatsapp", "email", "web", "seloger", "leboncoin", "manuel"],
             key="filter_source",
         )
+    with adv_col3:
+        filter_type = st.selectbox(
+            "Type",
+            options=["Tous", "acheteur", "vendeur", "locataire"],
+            key="filter_type",
+        )
+    with adv_col4:
+        filter_projet = st.selectbox(
+            "Projet",
+            options=["Tous", "achat", "vente", "location", "estimation", "inconnu"],
+            key="filter_projet",
+        )
+
+filter_score_min = 0
 
 # ─── Chargement leads ────────────────────────────────────────────────────────
 
@@ -194,7 +157,12 @@ else:
     _PRIORITY_ICONS = {"haute": "🔴", "moyenne": "🟡", "basse": "🔵"}
     rows = []
     for lead in leads:
-        score_emoji = "🔴" if lead.score >= 18 else "🟠" if lead.score >= 11 else "🔵"
+        if lead.score >= 18:
+            score_label = "Chaud"
+        elif lead.score >= 11:
+            score_label = "Tiède"
+        else:
+            score_label = "Froid"
         lead_type = getattr(lead, "lead_type", "acheteur") or "acheteur"
         type_icon = _TYPE_ICONS.get(lead_type, "🔑")
         na = _next_actions.get(lead.id, {})
@@ -207,7 +175,7 @@ else:
             "Type": f"{type_icon} {lead_type.capitalize()}",
             "Nom": lead.display_label,
             "Téléphone": lead.telephone,
-            "Score": f"{score_emoji} {lead.score}/24",
+            "Niveau": score_label,
             "_score_raw": lead.score,
             "_priority": na_priority,
             "_deadline": na.get("next_action_deadline"),
@@ -215,7 +183,6 @@ else:
             "Budget": lead.budget or "—",
             "Localisation": lead.localisation or "—",
             "Statut": format_lead_status(lead.statut.value),
-            "Source": lead.source.value.capitalize(),
             "Action recommandée": f"{na_icon} {na_label}",
             "Prochain suivi": fmt_paris_datetime(lead.prochain_followup, "%d/%m %H:%M"),
             "Créé le": fmt_paris_datetime(lead.created_at, "%d/%m/%Y"),
@@ -229,7 +196,7 @@ else:
     ))
 
     df = pd.DataFrame(rows)
-    display_cols = ["Type", "Nom", "Score", "Action recommandée", "Projet", "Budget", "Localisation", "Statut", "Source", "Prochain suivi", "Créé le"]
+    display_cols = ["Niveau", "Nom", "Action recommandée", "Projet", "Budget", "Localisation", "Statut", "Prochain suivi", "Créé le"]
 
     # Sélection lead pour actions
     selected_indices = st.dataframe(
@@ -284,88 +251,24 @@ else:
                     unsafe_allow_html=True,
                 )
 
-            detail_col1, detail_col2, detail_col3 = st.columns(3)
-
-            with detail_col1:
-                st.markdown(f"**Score :** {selected_lead.score}/24 ({selected_lead.score_label})")
-                st.markdown(f"**Statut :** {format_lead_status(selected_lead.statut.value)}")
-                st.markdown(f"**Projet :** {selected_lead.projet.value}")
-                st.markdown(f"**Canal :** {selected_lead.source.value}")
-
-            with detail_col2:
-                st.markdown(f"**Téléphone :** {selected_lead.telephone or '—'}")
-                st.markdown(f"**Email :** {selected_lead.email or '—'}")
-                st.markdown(f"**Budget :** {selected_lead.budget or '—'}")
-                st.markdown(f"**Localisation :** {selected_lead.localisation or '—'}")
-
-            with detail_col3:
-                st.markdown(f"**Timeline :** {selected_lead.timeline or '—'}")
-                st.markdown(f"**Financement :** {selected_lead.financement or '—'}")
-                st.markdown(f"**Motivation :** {selected_lead.motivation or '—'}")
-                st.markdown(f"**Séquence :** {selected_lead.nurturing_sequence.value if selected_lead.nurturing_sequence else '—'}")
-
-            if selected_lead.resume:
-                st.markdown(f"**Résumé automatique :** *{selected_lead.resume}*")
-
-            # ── Actions ───────────────────────────────────────────────────────
-            act_col1, act_col2 = st.columns(2)
-
-            # Numéro agent — lu une seule fois
-            _agent_phone = None
-            try:
-                from memory.database import get_connection as _gc
-                with _gc() as _conn:
-                    _row = _conn.execute(
-                        "SELECT phone FROM users WHERE id = %s LIMIT 1",
-                        (client_id,),
-                    ).fetchone()
-                    if _row:
-                        _agent_phone = _row.get("phone")
-            except Exception:
-                pass
-
-            with act_col1:
-                if not _agent_phone:
-                    st.button(
-                        "Appeler",
-                        key=f"call_{lead_id}",
-                        disabled=True,
-                        help="Configurez votre numéro dans Mes paramètres pour activer le click-to-call.",
-                    )
-                    st.caption(
-                        "Numéro agent non configuré. "
-                        "Rendez-vous dans [Mes paramètres](/06_parametres) pour l'ajouter."
-                    )
-                elif not selected_lead.telephone:
-                    st.button("Appeler", key=f"call_{lead_id}", disabled=True)
-                    st.caption("Numéro du lead inconnu.")
-                else:
-                    if st.button("Appeler", key=f"call_{lead_id}", type="primary"):
-                        try:
-                            import httpx
-                            token = st.session_state.get("token", "")
-                            resp = httpx.post(
-                                f"{settings.api_url}/api/calls/outbound",
-                                json={
-                                    "lead_id": lead_id,
-                                    "agent_id": client_id,
-                                    "lead_phone": selected_lead.telephone,
-                                },
-                                headers={"Authorization": f"Bearer {token}"},
-                                timeout=10.0,
-                            )
-                            if resp.status_code == 200:
-                                data = resp.json()
-                                st.success(f"Appel initié. {data.get('message', '')}")
-                            else:
-                                st.error(f"Erreur : {resp.json().get('detail', resp.text)}")
-                        except Exception as exc:
-                            st.error(f"Impossible de joindre l'API : {exc}")
-
-            with act_col2:
-                # Bouton actif uniquement si une prochaine action est définie
+            # ── Boutons d'action ──────────────────────────────────────────────
+            _lead_tel = selected_lead.telephone or ""
+            _act_c1, _act_c2, _act_c3 = st.columns(3)
+            with _act_c1:
+                render_call_button(
+                    lead_id=lead_id,
+                    lead_phone=_lead_tel or None,
+                    client_id=client_id,
+                    api_url=settings.api_url,
+                    key=f"call_{lead_id}",
+                )
+            with _act_c2:
+                if st.button("SMS", key=f"sms_{lead_id}", use_container_width=True):
+                    st.session_state["selected_lead_id"] = lead_id
+                    st.switch_page("pages/04_sms.py")
+            with _act_c3:
                 if _na.get("next_action_label"):
-                    if st.button("Marquer comme fait", key=f"done_{lead_id}"):
+                    if st.button("Marquer fait", key=f"done_{lead_id}", use_container_width=True):
                         if selected_lead.statut.value in ("entrant", "nurturing"):
                             selected_lead.statut = LeadStatus.QUALIFIE
                             update_lead(selected_lead)
@@ -374,15 +277,36 @@ else:
                         else:
                             st.info(f"Statut actuel : {format_lead_status(selected_lead.statut.value)}")
 
-            # Lien discret vers la conversation
-            if selected_lead.telephone:
-                if st.button(
-                    "Voir la conversation",
-                    key=f"voir_conv_{lead_id}",
-                    type="secondary",
-                ):
-                    st.session_state["selected_lead_id"] = lead_id
-                    st.switch_page("pages/04_sms.py")
+            # ── Résumé ────────────────────────────────────────────────────────
+            if selected_lead.resume:
+                st.markdown(
+                    f'<div style="background:#1e2130;border-radius:8px;padding:12px 16px;'
+                    f'margin:10px 0;border-left:3px solid #334155;color:#e2e8f0;'
+                    f'font-size:0.9rem;font-style:italic;">{selected_lead.resume}</div>',
+                    unsafe_allow_html=True,
+                )
+
+            # ── Informations ──────────────────────────────────────────────────
+            with st.expander("Informations", expanded=False):
+                detail_col1, detail_col2 = st.columns(2)
+                with detail_col1:
+                    if selected_lead.score >= 18:
+                        _lvl = "Chaud"
+                    elif selected_lead.score >= 11:
+                        _lvl = "Tiède"
+                    else:
+                        _lvl = "Froid"
+                    st.markdown(f"**Niveau :** {_lvl}")
+                    st.markdown(f"**Statut :** {format_lead_status(selected_lead.statut.value)}")
+                    st.markdown(f"**Téléphone :** {selected_lead.telephone or '—'}")
+                    st.markdown(f"**Email :** {selected_lead.email or '—'}")
+                    st.markdown(f"**Budget :** {selected_lead.budget or '—'}")
+                with detail_col2:
+                    st.markdown(f"**Projet :** {selected_lead.projet.value}")
+                    st.markdown(f"**Localisation :** {selected_lead.localisation or '—'}")
+                    st.markdown(f"**Timeline :** {selected_lead.timeline or '—'}")
+                    st.markdown(f"**Financement :** {selected_lead.financement or '—'}")
+                    st.markdown(f"**Motivation :** {selected_lead.motivation or '—'}")
 
             # Notes agent
             st.markdown("#### Notes agent")
