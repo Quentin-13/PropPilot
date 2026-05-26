@@ -138,22 +138,37 @@ h1, h2, h3 { color: white !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ─── Auth ──────────────────────────────────────────────────────────────────────
-from dashboard.auth_ui import render_sidebar_logout, require_auth
+# ─── Auth + Navigation ────────────────────────────────────────────────────────
+from dashboard.auth_ui import require_auth
 from dashboard.lib.admin_auth import is_super_admin
 
 require_auth()
 
-# Redirect super-admin → dashboard admin dédié
-if is_super_admin(st.session_state.get("email", "")):
-    st.switch_page("pages/99_admin.py")
+_email    = st.session_state.get("email", "")
+_is_admin = st.session_state.get("is_admin", False)
 
-# Redirect admin agence → tableau de bord propriétaire
-if st.session_state.get("is_admin", False):
-    st.switch_page("pages/00_proprietaire.py")
+if is_super_admin(_email):
+    _pages = [st.Page("pages/99_admin.py", title="Admin", icon="🔧", default=True)]
+elif _is_admin:
+    _pages = [
+        st.Page("pages/00_proprietaire.py", title="Dashboard",  icon="📊", default=True),
+        st.Page("pages/00_bienvenue.py",    title="Bienvenue",  icon="👋"),
+        st.Page("pages/99_admin.py",        title="Admin",      icon="🔧"),
+    ]
+else:
+    _pages = [
+        st.Page("pages/tasks.py",          title="Accueil",       icon="🏠", default=True),
+        st.Page("pages/01_mes_leads.py",   title="Mes leads",     icon="👥"),
+        st.Page("pages/04_sms.py",         title="Conversations", icon="💬"),
+        st.Page("pages/calls.py",          title="Appels",        icon="📞"),
+        st.Page("pages/06_parametres.py",  title="Paramètres",    icon="⚙️"),
+        st.Page("pages/00_bienvenue.py",   title="Bienvenue",     icon="👋"),
+        st.Page("pages/09_facturation.py", title="Facturation",   icon="💳"),
+    ]
 
-# Redirect clients → page d'accueil par défaut (Mes tâches du jour)
-st.switch_page("pages/tasks.py")
+pg = st.navigation(_pages)
+pg.run()
+st.stop()
 
 # ─── Données de session ────────────────────────────────────────────────────────
 client_id  = st.session_state.get("user_id", settings.agency_client_id)

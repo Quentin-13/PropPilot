@@ -167,64 +167,38 @@ _now_paris = datetime.now(ZoneInfo("Europe/Paris"))
 st.title("Accueil")
 st.markdown(
     '<p style="color:#94a3b8;margin-top:-8px;margin-bottom:20px;">'
-    "Les actions à traiter aujourd'hui.</p>",
+    "Vos actions et échanges à traiter.</p>",
     unsafe_allow_html=True,
 )
-
-_period_label = st.session_state.get("dash_period", "30 jours")
-_period_days = {"7 jours": 7, "30 jours": 30, "Depuis le début": 3650}.get(_period_label, 30)
-st.session_state["dash_period_selected"] = _period_label
 
 # ─── Chargement des données ───────────────────────────────────────────────────
 
 try:
     from dashboard.lib.cockpit import (
         get_priority_actions,
-        get_dashboard_kpis,
-        get_detected_info_stats,
-        get_crm_export_stats,
         get_recent_activity,
         mark_action_done,
     )
     actions  = get_priority_actions(client_id)
-    kpis     = get_dashboard_kpis(client_id, _period_days)
-    info_stats = get_detected_info_stats(client_id, _period_days)
-    crm_stats  = get_crm_export_stats(client_id, _period_days)
-    activity   = get_recent_activity(client_id, limit=5)
+    activity = get_recent_activity(client_id, limit=5)
 except Exception as exc:
     st.error(f"Impossible de charger le tableau de bord : {exc}")
     st.stop()
 
 # ─── Bandeau dynamique ────────────────────────────────────────────────────────
 
-_n_actions   = len(actions)
-_n_enrichis  = kpis["leads_enrichis"]
-_n_appels    = kpis["appels_captes"]
-_n_sms       = kpis["sms_captes"]
+_n_actions = len(actions)
 
 if _n_actions > 0:
     _pluriel = "s" if _n_actions > 1 else ""
     _verb    = "nécessitent" if _n_actions > 1 else "nécessite"
     _banner_color  = "#a3e635"
     _banner_border = "#a3e635"
-    _banner_text   = (
-        f"{_n_actions} lead{_pluriel} {_verb} votre attention aujourd'hui."
-    )
-elif _n_enrichis > 0 or _n_appels > 0 or _n_sms > 0:
-    _parts = []
-    if _n_enrichis:
-        _parts.append(f"enrichi {_n_enrichis} lead{'s' if _n_enrichis > 1 else ''}")
-    if _n_appels:
-        _parts.append(f"capté {_n_appels} appel{'s' if _n_appels > 1 else ''}")
-    if _n_sms:
-        _parts.append(f"traité {_n_sms} conversation{'s' if _n_sms > 1 else ''} SMS")
-    _banner_color  = "#10b981"
-    _banner_border = "#10b981"
-    _banner_text   = "Cette semaine, PropPilot a " + " et ".join(_parts) + "."
+    _banner_text   = f"{_n_actions} lead{_pluriel} {_verb} votre attention."
 else:
     _banner_color  = "#3b82f6"
     _banner_border = "#3b82f6"
-    _banner_text   = "PropPilot est prêt à capter vos premiers appels et SMS prospects."
+    _banner_text   = "Aucune action en attente. PropPilot surveille vos leads."
 
 st.markdown(
     f'<div class="banner" style="background:#1c1f2e;border-left:4px solid {_banner_border};">'
@@ -297,132 +271,114 @@ else:
                 st.session_state["selected_lead_id"] = lead_id
                 st.switch_page("pages/01_mes_leads.py")
 
-# ─── Vue agence (KPI + activité) ─────────────────────────────────────────────
+# ─── Helpers temps ────────────────────────────────────────────────────────────
 
-with st.expander("Voir l'activité de l'agence", expanded=False):
-    _period_col, _ = st.columns([2, 4])
-    with _period_col:
-        _period_label = st.radio(
-            "Période",
-            options=["7 jours", "30 jours", "Depuis le début"],
-            horizontal=True,
-            label_visibility="collapsed",
-            key="dash_period",
-        )
-
-    st.markdown('<div class="section-hd">Ce que PropPilot a fait</div>', unsafe_allow_html=True)
-
-    _kpi_defs = [
-        ("📞", kpis["appels_captes"],       "Appels captés",        "#3b82f6", "pages/calls.py"),
-        ("💬", kpis["sms_captes"],          "SMS captés",           "#8b5cf6", "pages/04_sms.py"),
-        ("👤", kpis["leads_crees"],         "Leads créés",          "#10b981", "pages/01_mes_leads.py"),
-        ("✨", kpis["leads_enrichis"],      "Leads enrichis",       "#f59e0b", "pages/01_mes_leads.py"),
-        ("🔗", kpis["envois_crm"],          "Envois CRM réussis",   "#06b6d4", "pages/06_parametres.py"),
-        ("⚡", kpis["actions_recommandees"],"Actions recommandées", "#a3e635", None),
-    ]
-
-    for _row_start in (0, 3):
-        _cols = st.columns(3)
-        for _col, (_icon, _val, _lbl, _color, _target) in zip(_cols, _kpi_defs[_row_start:_row_start + 3]):
-            with _col:
-                st.markdown(
-                    f'<div class="kpi-card" style="--accent:{_color};">'
-                    f'<span class="kpi-icon">{_icon}</span>'
-                    f'<div class="kpi-val">{_val}</div>'
-                    f'<div class="kpi-label">{_lbl}</div>'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
-                if _target:
-                    if st.button("Voir le détail →", key=f"kpi_{_lbl}", use_container_width=True):
-                        st.switch_page(_target)
-                else:
-                    st.caption("↑ Voir ci-dessus")
-
-    _info_defs = [
-        ("💰", info_stats["budgets"],      "Budgets",            "budgets"),
-        ("📍", info_stats["zones"],        "Zones",              "zones"),
-        ("🏠", info_stats["types_bien"],   "Types de bien",      "types_bien"),
-        ("💡", info_stats["motivations"],  "Motivations",        "motivations"),
-        ("🏦", info_stats["financements"], "Financements",       "financements"),
-        ("⚠️", info_stats["objections"],   "Points d'attention", "objections"),
-    ]
-    _shown = [(ic, v, lb, cat) for ic, v, lb, cat in _info_defs if v > 0]
-
-    if _shown:
-        st.markdown('<div class="section-hd">Informations détectées</div>', unsafe_allow_html=True)
-        for _row_start in range(0, len(_shown), 3):
-            _row = _shown[_row_start:_row_start + 3]
-            _cols = st.columns(3)
-            for _col, (icon, val, label, cat) in zip(_cols, _row):
-                with _col:
-                    st.markdown(
-                        f'<div class="info-card">'
-                        f'<span style="font-size:1.4rem;">{icon}</span>'
-                        f'<div><div class="info-val">{val}</div>'
-                        f'<div class="info-label">{label}</div></div>'
-                        f'</div>',
-                        unsafe_allow_html=True,
-                    )
-                    if st.button("Voir le détail →", key=f"info_{cat}", use_container_width=True):
-                        st.session_state["detected_info_category"] = cat
-                        st.switch_page("pages/07_infos_detectees.py")
-
-    _crm_configured = False
+def _fmt_dt(val) -> str:
+    if not val:
+        return "—"
     try:
-        from memory.database import get_connection as _gc
-        with _gc() as _c:
-            _crm_row = _c.execute(
-                "SELECT crm_type FROM users WHERE id = ?", (client_id,)
-            ).fetchone()
-        _crm_configured = bool(_crm_row and (_crm_row.get("crm_type") or "none") != "none")
+        v = to_paris_tz(val if hasattr(val, "tzinfo") else val)
+        if v.date() == _now_paris.date():
+            return f"Aujourd'hui {v.strftime('%H:%M')}"
+        return v.strftime("%d/%m %H:%M")
     except Exception:
-        pass
+        return str(val)[:16]
 
-    if _crm_configured:
-        st.markdown('<div class="section-hd">CRM alimenté</div>', unsafe_allow_html=True)
-        _last_push_str = (
-            fmt_paris_datetime(crm_stats["last_push_at"], "%d/%m à %H:%M")
-            if crm_stats["last_push_at"] else "Aucun récemment"
+# ─── Messages récents ─────────────────────────────────────────────────────────
+
+st.markdown('<div class="section-hd">Messages récents</div>', unsafe_allow_html=True)
+_sms_threads: list = []
+try:
+    from memory.sms_repository import get_sms_threads
+    _sms_threads = get_sms_threads(client_id)[:3]
+except Exception:
+    pass
+
+if not _sms_threads:
+    st.markdown(
+        '<div style="color:#64748b;padding:8px 0;text-align:center;">'
+        'Aucun message récent.</div>',
+        unsafe_allow_html=True,
+    )
+else:
+    for _t in _sms_threads:
+        _tlid     = _t["lead_id"]
+        _tprenom  = _t.get("prenom") or ""
+        _tnom     = _t.get("nom") or ""
+        _tname    = f"{_tprenom} {_tnom}".strip() or _t.get("telephone") or "Prospect"
+        _tpreview = (_t.get("dernier_message") or "")[:60]
+        _tnb      = _t.get("nb_non_lus") or 0
+        _tbadge   = (
+            f' <span style="background:#ef4444;color:white;border-radius:10px;'
+            f'padding:1px 6px;font-size:0.72rem;font-weight:700;">{_tnb}</span>'
+            if _tnb > 0 else ""
         )
-        _crm_html = (
-            '<div class="crm-grid">'
-            f'<div class="crm-card">'
-            f'<div class="crm-val">{crm_stats["success_count"]}</div>'
-            f'<div class="crm-label">Leads transmis ({_period_label})</div>'
-            f'</div>'
-            f'<div class="crm-card">'
-            f'<div class="crm-val" style="font-size:1rem;">{_last_push_str}</div>'
-            f'<div class="crm-label">Dernier envoi CRM</div>'
-            f'</div>'
-            '</div>'
-        )
-        st.markdown(_crm_html, unsafe_allow_html=True)
-
-    if activity:
-        def _fmt_dt(val) -> str:
-            if not val:
-                return "—"
-            try:
-                v = to_paris_tz(val if hasattr(val, "tzinfo") else val)
-                if v.date() == _now_paris.date():
-                    return f"Aujourd'hui {v.strftime('%H:%M')}"
-                return v.strftime("%d/%m %H:%M")
-            except Exception:
-                return str(val)[:16]
-
-        st.markdown('<div class="section-hd">Activité récente</div>', unsafe_allow_html=True)
-        _rows_html = ""
-        for ev in activity:
-            _rows_html += (
-                f'<div class="activity-row">'
-                f'<span class="activity-icon">{ev["icon"]}</span>'
-                f'<span class="activity-label">'
-                f'<b>{ev["label"]}</b> — {ev["name"]}</span>'
-                f'<span class="activity-time">{_fmt_dt(ev["at"])}</span>'
-                f'</div>'
+        _sc1, _sc2 = st.columns([4, 1])
+        with _sc1:
+            st.markdown(
+                f'<div style="background:#1e2130;border-radius:8px;padding:10px 14px;margin-bottom:4px;">'
+                f'<div style="font-weight:600;color:white;font-size:0.92rem;">{_tname}{_tbadge}</div>'
+                f'<div style="color:#94a3b8;font-size:0.82rem;white-space:nowrap;overflow:hidden;'
+                f'text-overflow:ellipsis;">{_tpreview}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
             )
-        st.markdown(_rows_html, unsafe_allow_html=True)
+        with _sc2:
+            if st.button("Ouvrir →", key=f"smsh_{_tlid}", use_container_width=True):
+                st.session_state["selected_lead_id"] = _tlid
+                st.switch_page("pages/04_sms.py")
+
+# ─── Appels récents ───────────────────────────────────────────────────────────
+
+st.markdown('<div class="section-hd">Appels récents</div>', unsafe_allow_html=True)
+_recent_calls: list = []
+try:
+    from memory.call_repository import get_calls_by_client
+    _recent_calls = get_calls_by_client(client_id, limit=3)
+except Exception:
+    pass
+
+if not _recent_calls:
+    st.markdown(
+        '<div style="color:#64748b;padding:8px 0;text-align:center;">'
+        'Aucun appel récent.</div>',
+        unsafe_allow_html=True,
+    )
+else:
+    for _call in _recent_calls:
+        _cprenom   = _call.get("prenom") or ""
+        _cnom      = _call.get("nom") or ""
+        _cname     = f"{_cprenom} {_cnom}".strip() or _call.get("lead_telephone") or "Inconnu"
+        _cdir      = _call.get("direction") or "inbound"
+        _cdir_lbl  = "↙ Entrant" if _cdir == "inbound" else "↗ Sortant"
+        _cdur      = _call.get("duration_seconds") or 0
+        _cdur_str  = f"{_cdur // 60}:{_cdur % 60:02d}" if _cdur else "—"
+        st.markdown(
+            f'<div style="background:#1e2130;border-radius:8px;padding:10px 14px;margin-bottom:4px;">'
+            f'<div style="display:flex;justify-content:space-between;align-items:center;">'
+            f'<span style="font-weight:600;color:white;">📞 {_cname}</span>'
+            f'<span style="color:#64748b;font-size:0.78rem;">{_fmt_dt(_call.get("created_at"))}</span>'
+            f'</div>'
+            f'<div style="color:#94a3b8;font-size:0.82rem;">{_cdir_lbl} · {_cdur_str}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+# ─── Mon activité récente ─────────────────────────────────────────────────────
+
+if activity:
+    st.markdown('<div class="section-hd">Mon activité récente</div>', unsafe_allow_html=True)
+    _rows_html = ""
+    for ev in activity:
+        _rows_html += (
+            f'<div class="activity-row">'
+            f'<span class="activity-icon">{ev["icon"]}</span>'
+            f'<span class="activity-label">'
+            f'<b>{ev["label"]}</b> — {ev["name"]}</span>'
+            f'<span class="activity-time">{_fmt_dt(ev["at"])}</span>'
+            f'</div>'
+        )
+    st.markdown(_rows_html, unsafe_allow_html=True)
 
 # ─── Rappels planifiés (fonctionnalité préservée) ─────────────────────────────
 

@@ -388,7 +388,7 @@ def get_recent_activity(client_id: str, limit: int = 5) -> list[dict]:
                    ORDER BY s.sent_at DESC LIMIT ?""",
                 (client_id, limit),
             ).fetchall():
-                events.append({"icon": "🔗", "label": "CRM alimenté", "name": _lead_name(row), "at": row["at"]})
+                events.append({"icon": "🔗", "label": "Lead transmis au CRM", "name": _lead_name(row), "at": row["at"]})
 
     except Exception as e:
         logger.warning("[Cockpit] get_recent_activity: %s", e)
