@@ -1,5 +1,5 @@
 """
-Page Leads — Pipeline + tableau + actions rapides.
+Page Leads — Mode agent-first : liste cartes → fiche détail → retour.
 """
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
 import streamlit as st
-import pandas as pd
 from datetime import datetime
 
 from config.settings import get_settings
@@ -40,7 +39,6 @@ st.markdown("""
 h1, h2, h3, h4, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 { color: white !important; }
 p, .stMarkdown p, .stMarkdown li { color: #e2e8f0; }
 label, .stSelectbox label, .stSlider label { color: #cbd5e1 !important; }
-/* Boutons contenu principal uniquement (pas sidebar) */
 [data-testid="stMain"] .stButton > button {
     background: #1e2130 !important;
     color: #e2e8f0 !important;
@@ -52,6 +50,36 @@ label, .stSelectbox label, .stSlider label { color: #cbd5e1 !important; }
     border: none !important;
 }
 [data-testid="stMain"] .stButton > button:hover { opacity: 0.85; }
+/* Lead cards */
+.lead-card {
+    background: #1a1f35;
+    border: 1px solid #2d3748;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 4px;
+}
+.lead-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.lead-card-name { color: white; font-weight: 600; font-size: 1rem; }
+.lead-card-action { color: #94a3b8; font-size: 0.82rem; }
+.lead-card-meta { color: #64748b; font-size: 0.78rem; margin-top: 4px; }
+.badge-chaud { background:#7f1d1d; color:#fca5a5; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:600; white-space:nowrap; }
+.badge-tiede { background:#78350f; color:#fcd34d; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:600; white-space:nowrap; }
+.badge-froid { background:#1e3a5f; color:#93c5fd; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:600; white-space:nowrap; }
+/* Detail panel */
+.detail-header {
+    background: #1a1f35;
+    border: 1px solid #2d3748;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+}
+.detail-name { color: white; font-weight: 700; font-size: 1.2rem; }
+.detail-phone { color: #94a3b8; font-size: 0.9rem; margin-top: 2px; }
+/* Mobile */
+@media (max-width: 768px) {
+    .block-container { padding-left: 0.8rem !important; padding-right: 0.8rem !important; }
+    .detail-header { padding: 14px 14px; }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -59,52 +87,72 @@ client_id = st.session_state.get("user_id", settings.agency_client_id)
 tier = st.session_state.get("plan", settings.agency_tier)
 agency_name = st.session_state.get("agency_name", settings.agency_name)
 
-st.title("Mes leads")
+# ─── Navigation pre-sélection (depuis page SMS) ──────────────────────────────
 
-# ─── Recherche + filtres ─────────────────────────────────────────────────────
+if "selected_lead_id" in st.session_state:
+    _nav_id = st.session_state.pop("selected_lead_id")
+    st.session_state["detail_lead_id"] = _nav_id
+    st.query_params["lead"] = _nav_id
+elif not st.session_state.get("detail_lead_id") and st.query_params.get("lead"):
+    # Récupération après location.reload() : session_state perdu, query_param conservé
+    st.session_state["detail_lead_id"] = st.query_params["lead"]
 
-search_query = st.text_input(
-    "Recherche",
-    placeholder="Rechercher un lead, une ville, un budget…",
-    key="search_query",
-    label_visibility="collapsed",
-)
+_in_detail = bool(st.session_state.get("detail_lead_id"))
 
-with st.expander("Filtres"):
-    adv_col1, adv_col2, adv_col3, adv_col4 = st.columns(4)
-    with adv_col1:
-        _STATUT_FILTER = {"Tous": None, **{format_lead_status(s.value): s.value for s in LeadStatus}}
-        filter_statut_label = st.selectbox(
-            "Statut",
-            options=list(_STATUT_FILTER.keys()),
-            key="filter_statut",
-        )
-        filter_statut = _STATUT_FILTER[filter_statut_label]
-    with adv_col2:
-        filter_source = st.selectbox(
-            "Source",
-            options=["Toutes", "sms", "whatsapp", "email", "web", "seloger", "leboncoin", "manuel"],
-            key="filter_source",
-        )
-    with adv_col3:
-        filter_type = st.selectbox(
-            "Type",
-            options=["Tous", "acheteur", "vendeur", "locataire"],
-            key="filter_type",
-        )
-    with adv_col4:
-        filter_projet = st.selectbox(
-            "Projet",
-            options=["Tous", "achat", "vente", "location", "estimation", "inconnu"],
-            key="filter_projet",
-        )
+# ─── Recherche + filtres (toujours lus, affichés seulement en mode liste) ──────
+
+_STATUT_FILTER = {"Tous": None, **{format_lead_status(s.value): s.value for s in LeadStatus}}
+
+if not _in_detail:
+    st.title("Mes leads")
+
+    search_query = st.text_input(
+        "Recherche",
+        placeholder="Rechercher un lead, une ville, un budget…",
+        key="search_query",
+        label_visibility="collapsed",
+    )
+
+    with st.expander("Filtres"):
+        adv_col1, adv_col2, adv_col3, adv_col4 = st.columns(4)
+        with adv_col1:
+            filter_statut_label = st.selectbox(
+                "Statut",
+                options=list(_STATUT_FILTER.keys()),
+                key="filter_statut",
+            )
+            filter_statut = _STATUT_FILTER[filter_statut_label]
+        with adv_col2:
+            filter_source = st.selectbox(
+                "Source",
+                options=["Toutes", "sms", "whatsapp", "email", "web", "seloger", "leboncoin", "manuel"],
+                key="filter_source",
+            )
+        with adv_col3:
+            filter_type = st.selectbox(
+                "Type",
+                options=["Tous", "acheteur", "vendeur", "locataire"],
+                key="filter_type",
+            )
+        with adv_col4:
+            filter_projet = st.selectbox(
+                "Projet",
+                options=["Tous", "achat", "vente", "location", "estimation", "inconnu"],
+                key="filter_projet",
+            )
+else:
+    # Mode détail — lire les valeurs sans recréer les widgets
+    search_query = st.session_state.get("search_query", "")
+    filter_statut = _STATUT_FILTER.get(st.session_state.get("filter_statut", "Tous"))
+    filter_source = st.session_state.get("filter_source", "Toutes")
+    filter_type = st.session_state.get("filter_type", "Tous")
+    filter_projet = st.session_state.get("filter_projet", "Tous")
 
 filter_score_min = 0
 
-# ─── Chargement leads ────────────────────────────────────────────────────────
+# ─── Chargement leads ─────────────────────────────────────────────────────────
 
 if search_query:
-    # Recherche SQL sur tous les leads du client — pas limitée aux 200 premiers
     leads = search_leads_by_text(
         client_id=client_id,
         query=search_query,
@@ -119,7 +167,6 @@ else:
         limit=200,
     )
 
-# Filtrage côté Python (type, source, projet)
 if filter_type != "Tous":
     leads = [l for l in leads if getattr(l, "lead_type", "acheteur") == filter_type]
 if filter_source != "Toutes":
@@ -127,7 +174,6 @@ if filter_source != "Toutes":
 if filter_projet != "Tous":
     leads = [l for l in leads if l.projet.value == filter_projet]
 
-# next_actions chargé ici pour que la recherche texte puisse filtrer sur label/raison
 _next_actions: dict[str, dict] = {}
 if leads:
     try:
@@ -145,171 +191,193 @@ if leads:
     except Exception:
         pass
 
-st.markdown(f"**{len(leads)} leads** correspondant aux filtres")
+# ─── Helpers ──────────────────────────────────────────────────────────────────
 
-# ─── Tableau leads ───────────────────────────────────────────────────────────
+_TYPE_ICONS = {"vendeur": "🏠", "acheteur": "🔑", "locataire": "🏢"}
+_PRIORITY_ICONS = {"haute": "🔴", "moyenne": "🟡", "basse": "🔵"}
+_PRIORITY_ORDER = {"haute": 0, "moyenne": 1, "basse": 2}
 
-if not leads:
-    st.info("Aucun lead trouvé. Les leads apparaissent ici dès que vos premiers contacts seront reçus via votre numéro PropPilot.")
-else:
-    # Conversion en DataFrame
-    _TYPE_ICONS = {"vendeur": "🏠", "acheteur": "🔑", "locataire": "🏢"}
-    _PRIORITY_ICONS = {"haute": "🔴", "moyenne": "🟡", "basse": "🔵"}
-    rows = []
-    for lead in leads:
-        if lead.score >= 18:
-            score_label = "Chaud"
-        elif lead.score >= 11:
-            score_label = "Tiède"
-        else:
-            score_label = "Froid"
-        lead_type = getattr(lead, "lead_type", "acheteur") or "acheteur"
-        type_icon = _TYPE_ICONS.get(lead_type, "🔑")
-        na = _next_actions.get(lead.id, {})
-        na_label = na.get("next_action_label") or "—"
-        na_priority = na.get("next_action_priority") or "basse"
-        na_icon = _PRIORITY_ICONS.get(na_priority, "⚪")
-        rows.append({
-            "ID": lead.id[:8],
-            "_lead_id": lead.id,
-            "Type": f"{type_icon} {lead_type.capitalize()}",
-            "Nom": lead.display_label,
-            "Téléphone": lead.telephone,
-            "Niveau": score_label,
-            "_score_raw": lead.score,
-            "_priority": na_priority,
-            "_deadline": na.get("next_action_deadline"),
-            "Projet": lead.projet.value.capitalize(),
-            "Budget": lead.budget or "—",
-            "Localisation": lead.localisation or "—",
-            "Statut": format_lead_status(lead.statut.value),
-            "Action recommandée": f"{na_icon} {na_label}",
-            "Prochain suivi": fmt_paris_datetime(lead.prochain_followup, "%d/%m %H:%M"),
-            "Créé le": fmt_paris_datetime(lead.created_at, "%d/%m/%Y"),
-        })
 
-    # Tri par priorité haute en premier, puis deadline croissante
-    _PRIORITY_ORDER = {"haute": 0, "moyenne": 1, "basse": 2}
-    rows.sort(key=lambda r: (
-        _PRIORITY_ORDER.get(r["_priority"], 2),
-        r["_deadline"] or datetime.max,
-    ))
+def _score_level(score: int) -> tuple[str, str]:
+    if score >= 18:
+        return "Chaud", "badge-chaud"
+    elif score >= 11:
+        return "Tiède", "badge-tiede"
+    return "Froid", "badge-froid"
 
-    df = pd.DataFrame(rows)
-    display_cols = ["Niveau", "Nom", "Action recommandée", "Projet", "Budget", "Localisation", "Statut", "Prochain suivi", "Créé le"]
 
-    # Sélection lead pour actions
-    selected_indices = st.dataframe(
-        df[display_cols],
-        use_container_width=True,
-        hide_index=True,
-        selection_mode="single-row",
-        on_select="rerun",
-        key="leads_table",
-    )
+# ─── MODE DÉTAIL ──────────────────────────────────────────────────────────────
 
-    # ─── Panel détail + actions ───────────────────────────────────────────────
+if _in_detail:
+    lead_id = st.session_state["detail_lead_id"]
 
-    _preselected_id = st.session_state.pop("selected_lead_id", None)
-    selected_rows = selected_indices.selection.rows if selected_indices.selection else []
-    _active_lead_id = rows[selected_rows[0]]["_lead_id"] if selected_rows else _preselected_id
-    if _active_lead_id:
-        lead_id = _active_lead_id
-        selected_lead = next((l for l in leads if l.id == lead_id), None)
+    # Bouton retour (en premier, visible immédiatement)
+    if st.button("← Retour aux leads", key="back_btn"):
+        del st.session_state["detail_lead_id"]
+        if "lead" in st.query_params:
+            del st.query_params["lead"]
+        st.rerun()
 
-        if selected_lead:
-            st.markdown("---")
-            st.markdown(f"### Détail — {selected_lead.nom_complet}")
+    selected_lead = next((l for l in leads if l.id == lead_id), None)
 
-            # ── Action recommandée (bloc prioritaire) ─────────────────────────
-            _na = _next_actions.get(selected_lead.id, {})
-            _na_label = _na.get("next_action_label")
+    # Fallback : lead hors filtres (navigation depuis SMS par exemple)
+    if not selected_lead:
+        try:
+            _all = get_leads_by_client(client_id=client_id, limit=1000)
+            selected_lead = next((l for l in _all if l.id == lead_id), None)
+        except Exception:
+            pass
+
+    # Charger next_action si absent (lead hors filtres)
+    if selected_lead and lead_id not in _next_actions:
+        try:
+            from memory.database import get_connection as _gc2
+            with _gc2() as _conn2:
+                _r2 = _conn2.execute(
+                    "SELECT id, next_action_label, next_action_priority, next_action_reason, next_action_deadline "
+                    "FROM leads WHERE id = ?",
+                    [lead_id],
+                ).fetchone()
+                if _r2:
+                    _next_actions[lead_id] = dict(_r2)
+        except Exception:
+            pass
+
+    if not selected_lead:
+        st.warning("Lead introuvable. Il a peut-être été supprimé ou n'est pas dans les résultats actuels.")
+    else:
+        _na = _next_actions.get(selected_lead.id, {})
+        _na_label = _na.get("next_action_label")
+        _na_prio = _na.get("next_action_priority") or "moyenne"
+        _na_reason = _na.get("next_action_reason") or ""
+        _na_deadline = _na.get("next_action_deadline")
+        _level, _badge_cls = _score_level(selected_lead.score)
+        _prio_colors = {"haute": "#ef4444", "moyenne": "#f59e0b", "basse": "#3b82f6"}
+        _prio_color = _prio_colors.get(_na_prio, "#6b7280")
+
+        # 1. Header — nom / téléphone / niveau
+        st.markdown(
+            f'<div class="detail-header">'
+            f'<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
+            f'<div>'
+            f'<div class="detail-name">{selected_lead.nom_complet}</div>'
+            f'<div class="detail-phone">{selected_lead.telephone or "Pas de téléphone"}</div>'
+            f'</div>'
+            f'<span class="{_badge_cls}">{_level}</span>'
+            f'</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+        # 2. Bloc action — prochaine action + raison
+        if _na_label:
+            _deadline_str = ""
+            if _na_deadline:
+                _dl = _na_deadline
+                if isinstance(_dl, str):
+                    try:
+                        _dl = datetime.fromisoformat(_dl)
+                    except Exception:
+                        _dl = None
+                if _dl:
+                    _deadline_str = f" · Avant le {_dl.strftime('%d/%m/%Y %H:%M')}"
+            st.markdown(
+                f'<div style="background:#1e2130;border-radius:8px;padding:14px 18px;'
+                f'border-left:4px solid {_prio_color};margin-bottom:12px;">'
+                f'<div style="color:#94a3b8;font-size:0.78rem;margin-bottom:4px;">'
+                f'ACTION RECOMMANDÉE · Priorité {_na_prio.upper()}{_deadline_str}</div>'
+                f'<div style="color:white;font-weight:600;font-size:1rem;">{_na_label}</div>'
+                + (f'<div style="color:#94a3b8;font-size:0.82rem;margin-top:6px;">{_na_reason}</div>' if _na_reason else "")
+                + '</div>',
+                unsafe_allow_html=True,
+            )
+
+        # 3. Boutons — Appeler / SMS / Marquer fait
+        _lead_tel = selected_lead.telephone or ""
+        _act_c1, _act_c2, _act_c3 = st.columns(3)
+        with _act_c1:
+            render_call_button(
+                lead_id=lead_id,
+                lead_phone=_lead_tel or None,
+                client_id=client_id,
+                api_url=settings.api_url,
+                key=f"call_{lead_id}",
+            )
+        with _act_c2:
+            if st.button("SMS / Conversation", key=f"sms_{lead_id}", use_container_width=True):
+                st.session_state["selected_lead_id"] = lead_id
+                st.switch_page("pages/04_sms.py")
+        with _act_c3:
             if _na_label:
-                _na_prio = _na.get("next_action_priority") or "moyenne"
-                _na_reason = _na.get("next_action_reason") or ""
-                _na_deadline = _na.get("next_action_deadline")
-                _prio_colors = {"haute": "#ef4444", "moyenne": "#f59e0b", "basse": "#3b82f6"}
-                _prio_color = _prio_colors.get(_na_prio, "#6b7280")
-                _deadline_str = ""
-                if _na_deadline:
-                    _dl = _na_deadline
-                    if isinstance(_dl, str):
-                        try:
-                            _dl = datetime.fromisoformat(_dl)
-                        except Exception:
-                            _dl = None
-                    if _dl:
-                        _deadline_str = f" · Avant le {_dl.strftime('%d/%m/%Y %H:%M')}"
-                st.markdown(
-                    f'<div style="background:#1e2130;border-radius:8px;padding:14px 18px;'
-                    f'border-left:4px solid {_prio_color};margin-bottom:12px;">'
-                    f'<div style="color:#94a3b8;font-size:0.78rem;margin-bottom:4px;">'
-                    f'ACTION RECOMMANDÉE · Priorité {_na_prio.upper()}{_deadline_str}</div>'
-                    f'<div style="color:white;font-weight:600;font-size:1rem;">{_na_label}</div>'
-                    + (f'<div style="color:#94a3b8;font-size:0.82rem;margin-top:6px;">{_na_reason}</div>' if _na_reason else "")
-                    + '</div>',
-                    unsafe_allow_html=True,
-                )
-
-            # ── Boutons d'action ──────────────────────────────────────────────
-            _lead_tel = selected_lead.telephone or ""
-            _act_c1, _act_c2, _act_c3 = st.columns(3)
-            with _act_c1:
-                render_call_button(
-                    lead_id=lead_id,
-                    lead_phone=_lead_tel or None,
-                    client_id=client_id,
-                    api_url=settings.api_url,
-                    key=f"call_{lead_id}",
-                )
-            with _act_c2:
-                if st.button("SMS", key=f"sms_{lead_id}", use_container_width=True):
-                    st.session_state["selected_lead_id"] = lead_id
-                    st.switch_page("pages/04_sms.py")
-            with _act_c3:
-                if _na.get("next_action_label"):
-                    if st.button("Marquer fait", key=f"done_{lead_id}", use_container_width=True):
-                        if selected_lead.statut.value in ("entrant", "nurturing"):
-                            selected_lead.statut = LeadStatus.QUALIFIE
-                            update_lead(selected_lead)
-                            st.success("Action marquée comme effectuée.")
-                            st.rerun()
-                        else:
-                            st.info(f"Statut actuel : {format_lead_status(selected_lead.statut.value)}")
-
-            # ── Résumé ────────────────────────────────────────────────────────
-            if selected_lead.resume:
-                st.markdown(
-                    f'<div style="background:#1e2130;border-radius:8px;padding:12px 16px;'
-                    f'margin:10px 0;border-left:3px solid #334155;color:#e2e8f0;'
-                    f'font-size:0.9rem;font-style:italic;">{selected_lead.resume}</div>',
-                    unsafe_allow_html=True,
-                )
-
-            # ── Informations ──────────────────────────────────────────────────
-            with st.expander("Informations", expanded=False):
-                detail_col1, detail_col2 = st.columns(2)
-                with detail_col1:
-                    if selected_lead.score >= 18:
-                        _lvl = "Chaud"
-                    elif selected_lead.score >= 11:
-                        _lvl = "Tiède"
+                if st.button("Marquer fait", key=f"done_{lead_id}", use_container_width=True):
+                    if selected_lead.statut.value in ("entrant", "nurturing"):
+                        selected_lead.statut = LeadStatus.QUALIFIE
+                        update_lead(selected_lead)
+                        st.success("Action marquée comme effectuée.")
+                        st.rerun()
                     else:
-                        _lvl = "Froid"
-                    st.markdown(f"**Niveau :** {_lvl}")
-                    st.markdown(f"**Statut :** {format_lead_status(selected_lead.statut.value)}")
-                    st.markdown(f"**Téléphone :** {selected_lead.telephone or '—'}")
-                    st.markdown(f"**Email :** {selected_lead.email or '—'}")
-                    st.markdown(f"**Budget :** {selected_lead.budget or '—'}")
-                with detail_col2:
-                    st.markdown(f"**Projet :** {selected_lead.projet.value}")
-                    st.markdown(f"**Localisation :** {selected_lead.localisation or '—'}")
-                    st.markdown(f"**Timeline :** {selected_lead.timeline or '—'}")
-                    st.markdown(f"**Financement :** {selected_lead.financement or '—'}")
-                    st.markdown(f"**Motivation :** {selected_lead.motivation or '—'}")
+                        st.info(f"Statut actuel : {format_lead_status(selected_lead.statut.value)}")
 
+        # 4. Résumé automatique
+        if selected_lead.resume:
+            st.markdown(
+                f'<div style="background:#1e2130;border-radius:8px;padding:12px 16px;'
+                f'margin:10px 0;border-left:3px solid #334155;color:#e2e8f0;'
+                f'font-size:0.9rem;font-style:italic;">{selected_lead.resume}</div>',
+                unsafe_allow_html=True,
+            )
+
+        # 5. Informations utiles — visible sans expander
+        try:
+            from memory.call_repository import get_latest_extraction_for_lead
+            _last_ext = get_latest_extraction_for_lead(lead_id)
+        except Exception:
+            _last_ext = None
+
+        _zone = (_last_ext.get("zone_geographique") if _last_ext else None) or selected_lead.localisation or "—"
+        _type_bien = (_last_ext.get("type_bien") if _last_ext else None) or "—"
+        _motivation = (_last_ext.get("motivation") if _last_ext else None) or selected_lead.motivation or "—"
+        _pts_attn = (_last_ext.get("points_attention") if _last_ext else None) or []
+
+        _pts_html = ""
+        if _pts_attn:
+            _pts_list = _pts_attn if isinstance(_pts_attn, list) else [str(_pts_attn)]
+            _pts_items = "".join(
+                f'<div style="color:#e2e8f0;font-size:0.85rem;margin-top:3px;">• {pt}</div>'
+                for pt in _pts_list
+            )
+            _pts_html = (
+                f'<div style="margin-top:10px;padding-top:8px;border-top:1px solid #2d3748;">'
+                f'<span style="color:#f59e0b;font-size:0.78rem;">⚠️ POINTS D\'ATTENTION</span>'
+                f'{_pts_items}</div>'
+            )
+
+        st.markdown(
+            f'<div style="background:#1a1f35;border:1px solid #2d3748;border-radius:10px;'
+            f'padding:16px 18px;margin:10px 0;">'
+            f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;">'
+            f'<div><span style="color:#94a3b8;font-size:0.75rem;text-transform:uppercase;">Projet</span>'
+            f'<div style="color:#e2e8f0;margin-top:2px;">{selected_lead.projet.value.capitalize()}</div></div>'
+            f'<div><span style="color:#94a3b8;font-size:0.75rem;text-transform:uppercase;">Budget</span>'
+            f'<div style="color:#e2e8f0;margin-top:2px;">{selected_lead.budget or "—"}</div></div>'
+            f'<div><span style="color:#94a3b8;font-size:0.75rem;text-transform:uppercase;">Zone</span>'
+            f'<div style="color:#e2e8f0;margin-top:2px;">{_zone}</div></div>'
+            f'<div><span style="color:#94a3b8;font-size:0.75rem;text-transform:uppercase;">Type de bien</span>'
+            f'<div style="color:#e2e8f0;margin-top:2px;">{_type_bien}</div></div>'
+            f'<div><span style="color:#94a3b8;font-size:0.75rem;text-transform:uppercase;">Motivation</span>'
+            f'<div style="color:#e2e8f0;margin-top:2px;">{_motivation}</div></div>'
+            f'<div><span style="color:#94a3b8;font-size:0.75rem;text-transform:uppercase;">Financement</span>'
+            f'<div style="color:#e2e8f0;margin-top:2px;">{selected_lead.financement or "—"}</div></div>'
+            f'</div>'
+            f'{_pts_html}'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+        # 6. Historique & informations secondaires en expander
+        with st.expander("Historique & informations secondaires", expanded=False):
             # Notes agent
-            st.markdown("#### Notes agent")
+            st.markdown("**Notes agent**")
             new_notes = st.text_area(
                 "Ajouter une note",
                 value=selected_lead.notes_agent,
@@ -321,9 +389,19 @@ else:
                 update_lead(selected_lead)
                 st.success("Notes sauvegardées")
 
-            # ── Timeline interactions ──────────────────────────────────────────
-            st.markdown("#### 📅 Historique des interactions")
+            st.markdown("---")
+            _sec_c1, _sec_c2 = st.columns(2)
+            with _sec_c1:
+                st.markdown(f"**Statut :** {format_lead_status(selected_lead.statut.value)}")
+                st.markdown(f"**Email :** {selected_lead.email or '—'}")
+                st.markdown(f"**Timeline :** {selected_lead.timeline or '—'}")
+            with _sec_c2:
+                st.markdown(f"**Source :** {selected_lead.source.value}")
+                st.markdown(f"**Créé le :** {fmt_paris_datetime(selected_lead.created_at, '%d/%m/%Y')}")
+                st.markdown(f"**Prochain suivi :** {fmt_paris_datetime(selected_lead.prochain_followup, '%d/%m %H:%M')}")
 
+            st.markdown("---")
+            st.markdown("**Historique des interactions**")
             try:
                 from memory.lead_repository import get_conversation_history
                 from memory.call_repository import get_calls_by_lead
@@ -332,7 +410,6 @@ else:
                 calls_hist = get_calls_by_lead(lead_id)
 
                 timeline: list[dict] = []
-
                 for conv in conversations:
                     canal = conv.canal.value if hasattr(conv.canal, "value") else str(conv.canal)
                     canal_icons = {"sms": "💬", "whatsapp": "💬", "email": "📧", "appel": "📞"}
@@ -388,44 +465,56 @@ else:
             except Exception as exc:
                 st.caption(f"Historique indisponible : {exc}")
 
-            # ── Données extraites agrégées (appel ou SMS) ──────────────────────
-            try:
-                from memory.call_repository import get_latest_extraction_for_lead
-                last = get_latest_extraction_for_lead(lead_id)
+# ─── MODE LISTE ───────────────────────────────────────────────────────────────
 
-                if last:
-                    source_label = "appel téléphonique" if last.get("source") == "call" else "SMS"
-                    st.markdown("#### 📋 Informations détectées")
-                    ext_col1, ext_col2, ext_col3 = st.columns(3)
-                    with ext_col1:
-                        st.markdown(f"**Type projet :** {last.get('type_projet') or '—'}")
-                        bmin, bmax = last.get("budget_min"), last.get("budget_max")
-                        if bmin or bmax:
-                            bstr = f"{bmin:,} €".replace(",", " ") if bmin else ""
-                            bstr += " — " if bmin and bmax else ""
-                            bstr += f"{bmax:,} €".replace(",", " ") if bmax else ""
-                            st.markdown(f"**Budget :** {bstr}")
-                        else:
-                            st.markdown("**Budget :** —")
-                        st.markdown(f"**Zone :** {last.get('zone_geographique') or '—'}")
-                        st.markdown(f"**Type bien :** {last.get('type_bien') or '—'}")
-                    with ext_col2:
-                        st.markdown(f"**Motivation :** {last.get('motivation') or '—'}")
-                        st.markdown(f"**Score qualif :** {last.get('score_qualification') or '—'}")
-                        next_act = last.get("prochaine_action_suggeree")
-                        if next_act:
-                            st.markdown(f"**Prochaine action :** *{next_act}*")
-                    with ext_col3:
-                        pts = last.get("points_attention") or []
-                        if pts:
-                            st.markdown("**⚠️ Points d'attention**")
-                            for pt in (pts if isinstance(pts, list) else [str(pts)]):
-                                st.markdown(f"• {pt}")
-                    extracted_dt = last.get("extracted_at")
-                    extracted_str = extracted_dt.strftime("%d/%m/%Y %H:%M") if extracted_dt else "—"
-                    st.caption(f"Source : {source_label} · Analysé le {extracted_str}")
-            except Exception:
-                pass
+else:
+    if not leads:
+        st.info("Aucun lead trouvé. Les leads apparaissent ici dès que vos premiers contacts seront reçus via votre numéro PropPilot.")
+    else:
+        # Tri : priorité haute en premier, puis deadline croissante
+        _lead_items = []
+        for lead in leads:
+            na = _next_actions.get(lead.id, {})
+            _lead_items.append({
+                "lead": lead,
+                "na": na,
+                "_priority": na.get("next_action_priority") or "basse",
+                "_deadline": na.get("next_action_deadline"),
+            })
+        _lead_items.sort(key=lambda r: (
+            _PRIORITY_ORDER.get(r["_priority"], 2),
+            r["_deadline"] or datetime.max,
+        ))
+
+        st.markdown(f"**{len(leads)} leads** correspondant aux filtres")
+
+        for item in _lead_items:
+            lead = item["lead"]
+            na = item["na"]
+            _level, _badge_cls = _score_level(lead.score)
+            lead_type = getattr(lead, "lead_type", "acheteur") or "acheteur"
+            type_icon = _TYPE_ICONS.get(lead_type, "🔑")
+            na_label = na.get("next_action_label") or "—"
+            na_prio = na.get("next_action_priority") or "basse"
+            na_icon = _PRIORITY_ICONS.get(na_prio, "⚪")
+
+            st.markdown(
+                f'<div class="lead-card">'
+                f'<div class="lead-card-header">'
+                f'<span class="lead-card-name">{type_icon} {lead.display_label}</span>'
+                f'<span class="{_badge_cls}">{_level}</span>'
+                f'</div>'
+                f'<div class="lead-card-action">{na_icon} {na_label}</div>'
+                f'<div class="lead-card-meta">'
+                f'{lead.projet.value.capitalize()} · {lead.budget or "—"} · {lead.localisation or "—"}'
+                f'</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            if st.button("Voir la fiche →", key=f"sel_{lead.id}", use_container_width=True):
+                st.session_state["detail_lead_id"] = lead.id
+                st.query_params["lead"] = lead.id
+                st.rerun()
 
 # ─── Formulaire ajout lead manuel ─────────────────────────────────────────────
 
@@ -474,10 +563,6 @@ with st.expander("➕ Ajouter un lead manuellement"):
                     st.rerun()
 
 # ─── Auto-refresh intelligent ─────────────────────────────────────────────────
-# Placé en dernier — le JS vérifie qu'aucun input n'est focus et qu'aucun champ
-# n'a de contenu avant de déclencher le reload (pas de perte de saisie).
-# Note : une sélection de ligne dans le tableau est réinitialisée au refresh
-# (comportement attendu sur un cockpit temps réel).
 try:
     from dashboard.lib.auto_refresh import inject_smart_refresh
     inject_smart_refresh(interval_seconds=60)
